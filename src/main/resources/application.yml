@@ -1,0 +1,40 @@
+# 1. 服务器端口配置
+server:
+  port: 8090
+
+spring:
+  application:
+    name: reading-system
+
+  # 2. 数据库连接配置 (MySQL)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # TODO: 请确保数据库名 reading_db 正确，且 MySQL 服务已启动
+    url: jdbc:mysql://localhost:3306/smartreader?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root        # TODO: 修改为你的 MySQL 用户名
+    password: yarizm75    # TODO: 修改为你的 MySQL 密码
+
+  # 3. Redis 连接配置 (用于缓存)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      # password:     # 如果你的 Redis 设置了密码，请取消注释并填入
+
+# 4. MyBatis Plus 配置
+mybatis-plus:
+  configuration:
+    # 开启 SQL 日志打印 (非常重要！开发时能在控制台看到程序到底执行了什么 SQL)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 驼峰下划线转换
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted # 如果后续要做逻辑删除可以保留
+
+  # 5. 文件上传限制 (为后续上传书籍做准备)
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
