@@ -285,25 +285,55 @@ onMounted(() => {
 
 <style scoped>
 .admin-container {
-  padding: 20px;
+  padding: 18px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-/* 头部样式 */
+/* === 头部 === */
 .admin-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #e8e0d6;
+  padding-bottom: 12px;
+}
+.admin-header h2 {
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-weight: 600;
+  font-size: 22px;
 }
 
-.toolbar { margin-bottom: 20px; }
+.toolbar { margin-bottom: 18px; }
 
-/* 上传图片样式优化 */
+/* === 表格微调 === */
+:deep(.el-table) {
+  border: 1px solid #e8e0d6;
+  border-radius: 4px;
+}
+:deep(.el-table th.el-table__cell) {
+  background-color: #f5f0e8;
+  color: #4a3828;
+  font-weight: 600;
+}
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background-color: #fcfaf6;
+}
+
+/* === Tab 微调 === */
+:deep(.el-tabs--border-card) {
+  border-color: #e8e0d6;
+}
+:deep(.el-tabs__item.is-active) {
+  color: #5a4435;
+}
+
+/* === 上传图片 === */
 .avatar-uploader {
-  border: 1px dashed #d9d9d9;
-  border-radius: 6px;
+  border: 1px dashed #d4c8ba;
+  border-radius: 4px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -312,10 +342,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: .2s;
+  transition: border-color 0.2s;
 }
 .avatar-uploader:hover {
-  border-color: #409EFF;
+  border-color: #8b6f52;
 }
 .upload-img-preview {
   width: 100%;
@@ -323,7 +353,7 @@ onMounted(() => {
   object-fit: cover;
 }
 .avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
+  font-size: 24px;
+  color: #b5a99c;
 }
 </style>

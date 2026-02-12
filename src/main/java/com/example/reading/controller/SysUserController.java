@@ -6,9 +6,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.reading.common.Result;
 import com.example.reading.dto.UserDto;
 import com.example.reading.entity.SysUser;
+import com.example.reading.mapper.UserBookshelfMapper;
 import com.example.reading.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/sysUser")
@@ -16,6 +21,9 @@ public class SysUserController {
 
     @Autowired
     private ISysUserService sysUserService;
+
+    @Autowired
+    private UserBookshelfMapper shelfMapper;
 
     // 登录接口
     @PostMapping("/login")
@@ -83,6 +91,34 @@ public class SysUserController {
 
         query.orderByDesc("id"); // 最新注册的在前面
         return Result.success(sysUserService.page(page, query));
+    }
+
+    /**
+     * 查看用户公开资料 (含公开书架)
+     */
+    @GetMapping("/profile/{id}")
+    public Result<?> getUserProfile(@PathVariable Long id) {
+        SysUser user = sysUserService.getById(id);
+        if (user == null) {
+            return Result.error("404", "用户不存在");
+        }
+
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("id", user.getId());
+        profile.put("nickname", user.getNickname());
+        profile.put("avatar", user.getAvatar());
+        profile.put("preferences", user.getPreferences());
+        profile.put("createTime", user.getCreateTime());
+        profile.put("shelfVisible", user.getShelfVisible() != null ? user.getShelfVisible() : 1);
+
+        // 若书架公开，查出书架列表
+        Integer visible = user.getShelfVisible();
+        if (visible == null || visible == 1) {
+            List<Map<String, Object>> shelf = shelfMapper.selectMyShelf(id);
+            profile.put("shelfList", shelf);
+        }
+
+        return Result.success(profile);
     }
 
     /**

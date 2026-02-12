@@ -65,12 +65,14 @@ const handleSubmit = async () => {
 <template>
   <div class="login-container">
     <div class="login-card">
+      <div class="brand-strip"></div>
+
       <div class="title">
-        <h2>{{ isLoginMode ? '欢迎登录' : '新用户注册' }}</h2>
-        <p>智能书籍阅读系统</p>
+        <h2>{{ isLoginMode ? '欢迎回来' : '加入我们' }}</h2>
+        <p>智慧阅读 · 让每一页都有温度</p>
       </div>
 
-      <el-form label-position="top">
+      <el-form label-position="top" class="login-form">
         <el-form-item label="用户名">
           <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" />
         </el-form-item>
@@ -79,9 +81,9 @@ const handleSubmit = async () => {
           <el-input v-model="form.password" type="password" placeholder="请输入密码" prefix-icon="Lock" show-password />
         </el-form-item>
 
-        <div v-if="!isLoginMode">
+        <div v-if="!isLoginMode" class="register-fields">
           <el-form-item label="昵称">
-            <el-input v-model="form.nickname" placeholder="请输入昵称" prefix-icon="Postcard" />
+            <el-input v-model="form.nickname" placeholder="给自己取个名字" prefix-icon="Postcard" />
           </el-form-item>
           <el-form-item label="年龄 (用于推荐)">
             <el-input-number v-model="form.age" :min="1" :max="120" />
@@ -94,7 +96,7 @@ const handleSubmit = async () => {
 
         <div class="toggle-link">
           <span @click="isLoginMode = !isLoginMode">
-            {{ isLoginMode ? '没有账号？去注册' : '已有账号？去登录' }}
+            {{ isLoginMode ? '没有账号？立即注册 →' : '← 已有账号？返回登录' }}
           </span>
         </div>
       </el-form>
@@ -108,48 +110,114 @@ const handleSubmit = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+  background-color: #f0ece4;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(180,160,130,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(160,140,120,0.08) 0%, transparent 50%);
 }
 
 .login-card {
-  width: 400px;
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 420px;
+  background: #fffdf9;
+  padding: 0 38px 36px;
+  border-radius: 6px;
+  border: 1px solid #e4ddd3;
+  box-shadow: 0 1px 3px rgba(80, 60, 40, 0.06),
+              0 8px 30px rgba(80, 60, 40, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-strip {
+  width: 60px;
+  height: 4px;
+  background: #8b6f52;
+  margin: 36px auto 0;
+  border-radius: 2px;
 }
 
 .title {
   text-align: center;
-  margin-bottom: 30px;
+  margin: 24px 0 28px;
 }
 
 .title h2 {
   margin: 0;
-  color: #333;
+  color: #2e2520;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .title p {
-  color: #666;
-  margin-top: 5px;
+  color: #9b8e82;
+  margin-top: 8px;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.login-form :deep(.el-form-item__label) {
+  color: #6b5e53;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.login-form :deep(.el-input__wrapper) {
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #ddd5ca inset;
+}
+
+.login-form :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #b8a898 inset;
+}
+
+.login-form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #8b6f52 inset;
+}
+
+.register-fields {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .submit-btn {
   width: 100%;
-  margin-top: 20px;
-  height: 40px;
-  font-size: 16px;
+  margin-top: 24px;
+  height: 42px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  background-color: #6b5040;
+  border-color: #6b5040;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #8b6f52;
+  border-color: #8b6f52;
 }
 
 .toggle-link {
   text-align: center;
-  margin-top: 15px;
-  font-size: 14px;
-  color: #409EFF;
+  margin-top: 18px;
+  font-size: 13px;
+  color: #9b8e82;
+}
+
+.toggle-link span {
   cursor: pointer;
+  transition: color 0.2s;
 }
 
 .toggle-link span:hover {
+  color: #6b5040;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 </style>

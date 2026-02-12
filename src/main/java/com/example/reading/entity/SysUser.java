@@ -86,4 +86,7 @@ public class SysUser implements Serializable {
 
     @TableField("avatar")
     private String avatar;   // === 新增 ===
+
+    @TableField("shelf_visible")
+    private Integer shelfVisible; // 0:私密 1:公开，默认1
 }

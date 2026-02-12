@@ -56,6 +56,18 @@ const routes = [
         name: 'BookDetail',
         component: () => import('../views/BookDetail.vue')
     },
+    // 书单分享导入页
+    {
+        path: '/shelf/import/:shareCode',
+        name: 'ImportBooklist',
+        component: () => import('../views/ImportBooklist.vue')
+    },
+    // 查看用户资料页
+    {
+        path: '/user/:id',
+        name: 'UserProfile',
+        component: () => import('../views/UserProfile.vue')
+    },
 ]
 
 // 创建路由实例

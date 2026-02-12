@@ -20,7 +20,14 @@ spring:
       host: localhost
       port: 6379
       database: 0
+      timeout: 3000ms
       # password:     # 如果你的 Redis 设置了密码，请取消注释并填入
+  # 5. 文件上传限制 (为后续上传书籍做准备)
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB      # 单个文件的最大上限
+      max-request-size: 200MB   # 单次请求的总大小上限
 
 # 4. MyBatis Plus 配置
 mybatis-plus:
@@ -33,8 +40,11 @@ mybatis-plus:
     db-config:
       logic-delete-field: deleted # 如果后续要做逻辑删除可以保留
 
-  # 5. 文件上传限制 (为后续上传书籍做准备)
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+
+# 自定义文件上传路径
+file:
+  upload-path: D:/WORK/reading-system-files/  # 请确保这个盘符存在，或者改成你喜欢的路径
+ai:
+  dashscope:
+    api-key: ${QWEN_API_KEY}
+  enable-recommendation: false  # 平时设为 false (省钱)，答辩演示时改为 true

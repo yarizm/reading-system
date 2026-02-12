@@ -50,11 +50,11 @@
         <el-empty v-if="commentList.length === 0" description="暂无评论，快来抢沙发！" />
 
         <div class="comment-item" v-for="item in commentList" :key="item.id">
-          <el-avatar :size="40" :src="item.avatar || defaultAvatar" class="user-avatar" />
+          <el-avatar :size="40" :src="item.avatar || defaultAvatar" class="user-avatar clickable-user" @click="goToUserProfile(item.userId)" />
 
           <div class="comment-content-wrapper">
             <div class="comment-header">
-              <span class="nickname">{{ item.nickname || '匿名书友' }}</span>
+              <span class="nickname clickable-user" @click="goToUserProfile(item.userId)">{{ item.nickname || '匿名书友' }}</span>
               <el-rate v-if="item.rating" v-model="item.rating" disabled size="small" />
               <span class="time">{{ formatTime(item.createTime) }}</span>
             </div>
@@ -79,10 +79,10 @@
 
             <div class="sub-comments" v-if="item.children && item.children.length > 0">
               <div class="sub-item" v-for="sub in item.children" :key="sub.id">
-                <el-avatar :size="24" :src="sub.avatar || defaultAvatar" />
+                <el-avatar :size="24" :src="sub.avatar || defaultAvatar" class="clickable-user" @click="goToUserProfile(sub.userId)" />
                 <div class="sub-content">
                   <div class="sub-header">
-                    <span class="sub-nickname">{{ sub.nickname }}</span>
+                    <span class="sub-nickname clickable-user" @click="goToUserProfile(sub.userId)">{{ sub.nickname }}</span>
                     <span v-if="sub.replyUserId && sub.replyUserId !== item.userId" class="reply-tag">
                       回复 <span class="at-name">@{{ sub.replyNickname }}</span>
                     </span>
@@ -311,63 +311,100 @@ const addToShelf = async () => {
 const startReading = () => router.push(`/read/${bookId}`)
 const goBack = () => router.back()
 const formatTime = (str) => str ? str.replace('T', ' ').substring(0, 16) : ''
+const goToUserProfile = (userId) => {
+  if (userId) router.push(`/user/${userId}`)
+}
 </script>
 
 <style scoped>
-.book-detail-container { max-width: 1000px; margin: 20px auto; padding: 0 20px; }
+.book-detail-container { max-width: 960px; margin: 24px auto; padding: 0 24px; }
 
-/* 书籍卡片 */
-.info-card { border-radius: 12px; margin-bottom: 30px; }
-.info-wrapper { display: flex; gap: 30px; }
+/* === 书籍卡片 === */
+.info-card { border-radius: 6px; margin-bottom: 28px; border: 1px solid #e8e0d6; }
+.info-card :deep(.el-card__body) { padding: 28px 32px; }
+.info-wrapper { display: flex; gap: 32px; }
 .cover-box { width: 180px; flex-shrink: 0; }
-.book-cover { width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.book-cover { width: 100%; border-radius: 4px; box-shadow: 0 2px 8px rgba(60, 40, 20, 0.1); }
 .details-box { flex: 1; }
-.book-title { font-size: 26px; color: #333; margin: 0 0 10px 0; }
-.book-meta { display: flex; gap: 20px; color: #666; font-size: 14px; align-items: center; margin-bottom: 20px; }
+.book-title { font-size: 24px; color: #2e2520; margin: 0 0 12px 0; font-family: 'Noto Serif SC', serif; font-weight: 600; }
+.book-meta { display: flex; gap: 18px; color: #7a6e63; font-size: 13px; align-items: center; margin-bottom: 18px; }
 .meta-item { display: flex; align-items: center; gap: 5px; }
-.book-desc { color: #555; line-height: 1.6; margin-bottom: 25px; background: #f9f9f9; padding: 15px; border-radius: 8px; }
-.book-desc h3 { font-size: 16px; margin-bottom: 8px; border-left: 4px solid #409EFF; padding-left: 10px; }
-.action-btns { display: flex; gap: 15px; }
-.read-btn { width: 140px; font-weight: bold; }
+.book-desc {
+  color: #5a5048;
+  line-height: 1.7;
+  margin-bottom: 24px;
+  background: #faf5ed;
+  padding: 16px 18px;
+  border-radius: 4px;
+  border-left: 3px solid #d4c4a8;
+}
+.book-desc h3 { font-size: 14px; margin: 0 0 8px; color: #6b5e53; font-weight: 600; }
+.book-desc p { margin: 0; font-size: 14px; }
+.action-btns { display: flex; gap: 12px; }
+.action-btns :deep(.el-button--primary) { background-color: #5a4435; border-color: #5a4435; }
+.action-btns :deep(.el-button--primary:hover) { background-color: #6b5040; border-color: #6b5040; }
+.action-btns :deep(.el-button--warning) { background-color: #b8944e; border-color: #b8944e; }
+.action-btns :deep(.el-button--warning:hover) { background-color: #c09a5c; border-color: #c09a5c; }
 
-/* 评论区 */
-.comment-section { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+/* === 评论区 === */
+.comment-section {
+  background: #fffdf9;
+  padding: 28px 32px;
+  border-radius: 6px;
+  border: 1px solid #e8e0d6;
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #ede7de;
+  padding-bottom: 12px;
+}
+.section-header h3 {
+  font-family: 'Noto Serif SC', serif;
+  color: #3d3632;
+  font-weight: 600;
+}
 
-/* 评论列表 */
-.comment-list { margin-bottom: 40px; }
-.comment-item { display: flex; gap: 15px; padding: 20px 0; border-bottom: 1px solid #f5f5f5; }
+/* === 评论列表 === */
+.comment-list { margin-bottom: 36px; }
+.comment-item { display: flex; gap: 14px; padding: 18px 0; border-bottom: 1px solid #f0ece4; }
 .comment-content-wrapper { flex: 1; }
-.comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.nickname { font-weight: bold; font-size: 15px; color: #333; }
-.time { color: #999; font-size: 12px; margin-left: auto; }
-.text { font-size: 15px; color: #333; line-height: 1.6; margin-bottom: 10px; }
+.comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.nickname { font-weight: 600; font-size: 14px; color: #4a3828; }
+.time { color: #b5a99c; font-size: 12px; margin-left: auto; }
+.text { font-size: 14px; color: #3d3632; line-height: 1.7; margin-bottom: 10px; }
 
-/* 操作栏 */
-.comment-actions { display: flex; gap: 20px; font-size: 13px; color: #909399; }
+/* === 操作栏 === */
+.comment-actions { display: flex; gap: 18px; font-size: 13px; color: #9b8e82; }
 .action-item { cursor: pointer; display: flex; align-items: center; gap: 4px; transition: color 0.2s; }
-.action-item:hover { color: #409EFF; }
-.action-item.is-active { color: #409EFF; }
-.delete-btn:hover { color: #F56C6C; }
+.action-item:hover { color: #6b5040; }
+.action-item.is-active { color: #a34040; }
+.delete-btn:hover { color: #a34040; }
 
-/* 楼中楼 */
-.sub-comments { margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px; }
-.sub-item { display: flex; gap: 10px; margin-bottom: 15px; }
+/* === 楼中楼 === */
+.sub-comments { margin-top: 14px; background: #faf5ed; padding: 14px; border-radius: 4px; }
+.sub-item { display: flex; gap: 10px; margin-bottom: 14px; }
 .sub-item:last-child { margin-bottom: 0; }
 .sub-content { flex: 1; }
 .sub-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 13px; }
-.sub-nickname { font-weight: bold; color: #555; }
-.reply-tag { color: #999; }
-.at-name { color: #409EFF; cursor: pointer; }
-.sub-time { font-size: 12px; color: #ccc; margin-left: auto; }
-.sub-text { font-size: 14px; color: #444; margin-bottom: 6px; }
+.sub-nickname { font-weight: 600; color: #5a5048; }
+.reply-tag { color: #9b8e82; }
+.at-name { color: #8b6f52; cursor: pointer; }
+.sub-time { font-size: 12px; color: #c4b9ab; margin-left: auto; }
+.sub-text { font-size: 14px; color: #4a4440; margin-bottom: 6px; }
 .sub-actions { font-size: 12px; }
 
-/* 底部输入框 */
-.post-comment-box { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
-.reply-indicator { background: #ecf5ff; color: #409EFF; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px; font-size: 13px; }
+/* === 底部输入框 === */
+.post-comment-box { background: #fffdf9; padding: 18px; border-radius: 4px; border: 1px solid #e8e0d6; }
+.reply-indicator { background: #f5f0e8; color: #8b6f52; padding: 5px 10px; border-radius: 3px; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px; font-size: 13px; }
 .close-reply { cursor: pointer; }
-.input-row { display: flex; gap: 15px; flex-direction: column; }
-.rate-select { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #606266; }
-.submit-row { text-align: right; margin-top: 15px; }
+.input-row { display: flex; gap: 14px; flex-direction: column; }
+.rate-select { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #6b5e53; }
+.submit-row { text-align: right; margin-top: 14px; }
+
+/* === 可点击用户 === */
+.clickable-user { cursor: pointer; transition: opacity 0.15s; }
+.clickable-user:hover { opacity: 0.75; }
 </style>

@@ -245,62 +245,94 @@ const formatTime = (timeStr) => {
 
 <style scoped>
 .profile-container {
-  max-width: 1000px;
-  margin: 20px auto;
-  padding: 20px;
+  max-width: 960px;
+  margin: 24px auto;
+  padding: 0 24px;
 }
 
-/* 顶部头部 */
+/* === 顶部头部 === */
 .profile-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 15px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e8e0d6;
+  padding-bottom: 14px;
+}
+.profile-header h2 {
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-weight: 600;
 }
 
+/* === 用户卡片 === */
 .user-card {
   text-align: center;
-  padding-bottom: 20px;
+  padding-bottom: 18px;
+  border: 1px solid #e8e0d6;
+  position: relative;
+  overflow: hidden;
+}
+.user-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #8b6f52, #c09a5c);
 }
 
 .user-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  padding-top: 8px;
 }
 
 .username {
   margin: 10px 0;
-  font-size: 22px;
+  font-size: 20px;
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
 }
 
 .user-info-list {
   text-align: left;
-  padding: 0 20px;
+  padding: 0 18px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
-  font-size: 14px;
-  color: #606266;
-  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #6b5e53;
+  border-bottom: 1px dashed #e8e0d6;
   padding-bottom: 10px;
 }
 
 .info-item .el-icon {
   margin-right: 10px;
-  font-size: 18px;
+  font-size: 16px;
+  color: #8b6f52;
 }
 
-/* 头像上传样式 */
+/* === 右侧设置卡片 === */
+.box-card {
+  border: 1px solid #e8e0d6;
+}
+.card-header span {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 600;
+  color: #3d3632;
+}
+
+/* === 头像上传 === */
 .avatar-uploader {
-  border: 1px dashed #d9d9d9;
-  border-radius: 6px;
+  border: 1px dashed #d4c8ba;
+  border-radius: 4px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -309,14 +341,14 @@ const formatTime = (timeStr) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: .2s;
+  transition: border-color 0.2s;
 }
 .avatar-uploader:hover {
-  border-color: #409EFF;
+  border-color: #8b6f52;
 }
 .avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
+  font-size: 24px;
+  color: #b5a99c;
 }
 .avatar {
   width: 100px;
@@ -326,11 +358,11 @@ const formatTime = (timeStr) => {
 }
 .upload-tip {
   position: absolute;
-  bottom: 5px;
+  bottom: 4px;
   width: 100%;
   text-align: center;
-  font-size: 12px;
-  color: #999;
-  background: rgba(255,255,255,0.8);
+  font-size: 11px;
+  color: #9b8e82;
+  background: rgba(255,253,249,0.85);
 }
 </style>
