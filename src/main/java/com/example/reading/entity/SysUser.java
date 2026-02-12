@@ -89,4 +89,13 @@ public class SysUser implements Serializable {
 
     @TableField("shelf_visible")
     private Integer shelfVisible; // 0:私密 1:公开，默认1
+
+    @TableField("info_visible")
+    private Integer infoVisible; // 0:私密 1:公开，默认1
+
+    @TableField("email")
+    private String email;
+
+    @TableField("phone")
+    private String phone;
 }

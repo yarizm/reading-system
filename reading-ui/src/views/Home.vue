@@ -1,7 +1,7 @@
 <template>
   <div class="home-container">
     <div class="nav-header">
-      <div class="logo">📚 智慧阅读</div>
+      <div class="logo">📚 智能书籍管理系统</div>
       <div class="nav-right">
         <el-button link class="nav-item" @click="goToShelf">
           <el-icon><Collection /></el-icon> 我的书架

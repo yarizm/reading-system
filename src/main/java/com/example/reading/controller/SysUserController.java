@@ -97,23 +97,43 @@ public class SysUserController {
      * 查看用户公开资料 (含公开书架)
      */
     @GetMapping("/profile/{id}")
-    public Result<?> getUserProfile(@PathVariable Long id) {
+    public Result<?> getUserProfile(@PathVariable Long id, @RequestParam(required = false) Long viewerId) {
         SysUser user = sysUserService.getById(id);
         if (user == null) {
             return Result.error("404", "用户不存在");
         }
 
+        // 鉴权逻辑：是否为管理员查看
+        boolean isAdmin = false;
+        if (viewerId != null) {
+            SysUser viewer = sysUserService.getById(viewerId);
+            if (viewer != null && viewer.getRole() != null && viewer.getRole() == 1) {
+                isAdmin = true;
+            }
+        }
+
+        // 默认可见性判断
+        boolean showInfo = (user.getInfoVisible() == null || user.getInfoVisible() == 1) || isAdmin;
+        boolean showShelf = (user.getShelfVisible() == null || user.getShelfVisible() == 1) || isAdmin;
+
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
         profile.put("nickname", user.getNickname());
         profile.put("avatar", user.getAvatar());
-        profile.put("preferences", user.getPreferences());
         profile.put("createTime", user.getCreateTime());
-        profile.put("shelfVisible", user.getShelfVisible() != null ? user.getShelfVisible() : 1);
+        profile.put("infoVisible", user.getInfoVisible() == null ? 1 : user.getInfoVisible());
+        profile.put("shelfVisible", user.getShelfVisible() == null ? 1 : user.getShelfVisible());
+        // 告知前端是否使用了管理员权限查看
+        profile.put("viewedByAdmin", isAdmin);
 
-        // 若书架公开，查出书架列表
-        Integer visible = user.getShelfVisible();
-        if (visible == null || visible == 1) {
+        // 如果资料可见，且有年龄/偏好数据，则返回
+        if (showInfo) {
+            profile.put("age", user.getAge());
+            profile.put("preferences", user.getPreferences());
+        }
+
+        // 如果书架可见，返回书架列表
+        if (showShelf) {
             List<Map<String, Object>> shelf = shelfMapper.selectMyShelf(id);
             profile.put("shelfList", shelf);
         }

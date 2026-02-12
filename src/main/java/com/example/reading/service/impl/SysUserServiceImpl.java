@@ -52,4 +52,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         user.setPassword(null);
         return user;
     }
+
+    @Override
+    public SysUser getByUsername(String username) {
+        QueryWrapper<SysUser> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("username", username);
+        return getOne(queryWrapper);
+    }
 }

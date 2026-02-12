@@ -14,12 +14,18 @@
         <div class="user-info">
           <h2 class="user-nickname">{{ profile.nickname || '匿名用户' }}</h2>
           <div class="user-meta">
+            <span v-if="profile.age" class="meta-tag">
+              <el-icon><Calendar /></el-icon> {{ profile.age }} 岁
+            </span>
             <span v-if="profile.preferences" class="meta-tag">
               <el-icon><CollectionTag /></el-icon> {{ profile.preferences }}
             </span>
             <span class="meta-tag">
               <el-icon><Calendar /></el-icon> {{ formatDate(profile.createTime) }} 加入
             </span>
+            <el-tag v-if="profile.viewedByAdmin && profile.infoVisible === 0" type="danger" size="small" effect="dark" style="margin-left: 8px">
+              管理员特权查看 (用户已设为私密)
+            </el-tag>
           </div>
         </div>
       </div>
@@ -31,10 +37,13 @@
           <span class="visibility-badge" :class="profile.shelfVisible === 1 ? 'public' : 'private'">
             {{ profile.shelfVisible === 1 ? '公开' : '私密' }}
           </span>
+          <el-tag v-if="profile.viewedByAdmin && profile.shelfVisible === 0" type="danger" size="small" effect="dark">
+            管理员特权查看
+          </el-tag>
         </div>
 
-        <!-- 书架私密 -->
-        <div v-if="profile.shelfVisible === 0" class="private-tip">
+        <!-- 书架私密（且非管理员查看时） -->
+        <div v-if="profile.shelfVisible === 0 && !profile.viewedByAdmin" class="private-tip">
           <el-icon size="36" color="#c4b9ab"><Lock /></el-icon>
           <p>该用户的书架不对外公开</p>
         </div>
@@ -79,8 +88,17 @@ const error = ref(false)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 onMounted(async () => {
+  const userStr = localStorage.getItem('user')
+  let viewerId = null
+  if (userStr) {
+    const u = JSON.parse(userStr)
+    viewerId = u.id
+  }
+
   try {
-    const res = await axios.get(`/api/sysUser/profile/${route.params.id}`)
+    const res = await axios.get(`/api/sysUser/profile/${route.params.id}`, {
+      params: { viewerId }
+    })
     if (res.data.code === '200') {
       profile.value = res.data.data
     } else {

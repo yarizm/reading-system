@@ -49,7 +49,24 @@
             <el-tab-pane label="基本资料" name="info">
               <el-form label-width="80px" style="margin-top: 20px; max-width: 500px">
                 <el-form-item label="昵称">
-                  <el-input v-model="form.nickname" placeholder="请输入昵称" />
+                  <el-input v-model="form.nickname" placeholder="请输入昵称" maxlength="20" show-word-limit />
+                </el-form-item>
+
+                <el-form-item label="年龄">
+                  <el-input-number v-model="form.age" :min="1" :max="120" />
+                </el-form-item>
+
+                <el-form-item label="资料公开">
+                  <el-switch
+                      v-model="form.infoVisible"
+                      active-text="公开"
+                      inactive-text="私密"
+                      :active-value="1"
+                      :inactive-value="0"
+                  />
+                  <div style="font-size: 12px; color: #999; margin-left: 10px;">
+                    关闭后，其他用户无法查看您的年龄和偏好
+                  </div>
                 </el-form-item>
 
                 <el-form-item label="头像">
@@ -122,7 +139,9 @@ const userInfo = ref({})
 const form = reactive({
   id: null,
   nickname: '',
-  avatar: ''
+  avatar: '',
+  age: null,
+  infoVisible: 1
 })
 
 // 修改密码表单
@@ -157,6 +176,8 @@ onMounted(() => {
     form.id = user.id
     form.nickname = user.nickname
     form.avatar = user.avatar
+    form.age = user.age
+    form.infoVisible = user.infoVisible !== undefined ? user.infoVisible : 1
   } else {
     router.push('/login')
   }

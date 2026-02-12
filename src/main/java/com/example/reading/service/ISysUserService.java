@@ -17,4 +17,6 @@ public interface ISysUserService extends IService<SysUser> {
     void register(UserDto userDto);
     // 登录
     SysUser login(UserDto userDto);
+
+    SysUser getByUsername(String username);
 }
