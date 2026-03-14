@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.reading.mapper.BookShareMapper">
+
+    <!-- 收到的分享列表（关联书籍+发送者信息） -->
+    <select id="selectSharesWithBookInfo" resultType="java.util.Map">
+        SELECT
+            bs.id AS shareId,
+            bs.message AS shareMessage,
+            bs.is_read AS isRead,
+            bs.create_time AS shareTime,
+            b.id AS bookId,
+            b.title AS bookTitle,
+            b.author AS bookAuthor,
+            b.cover_url AS coverUrl,
+            u.id AS senderUserId,
+            u.nickname AS senderNickname,
+            u.avatar AS senderAvatar
+        FROM book_share bs
+        JOIN sys_book b ON b.id = bs.book_id
+        JOIN sys_user u ON u.id = bs.sender_id
+        WHERE bs.receiver_id = #{userId}
+        ORDER BY bs.create_time DESC
+    </select>
+
+</mapper>

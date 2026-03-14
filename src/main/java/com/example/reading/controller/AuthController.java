@@ -2,6 +2,7 @@ package com.example.reading.controller;
 
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.common.Result;
 import com.example.reading.entity.SysUser;
@@ -82,7 +83,7 @@ public class AuthController {
 
         SysUser user = new SysUser();
         user.setUsername(target); // 默认用户名 = 手机/邮箱
-        user.setPassword(password); // 实际应加密
+        user.setPassword(BCrypt.hashpw(password, BCrypt.gensalt())); // BCrypt 加密
         user.setNickname(nickname);
         user.setAge(age);
         user.setRole(0); // 普通用户
@@ -148,7 +149,7 @@ public class AuthController {
             return Result.error("404", "用户不存在");
         }
 
-        user.setPassword(newPassword);
+        user.setPassword(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
         sysUserService.updateById(user);
 
         return Result.success("密码重置成功");

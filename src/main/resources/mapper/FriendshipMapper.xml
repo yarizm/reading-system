@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.reading.mapper.FriendshipMapper">
+
+    <!-- 查询好友列表 (双向关系: user_id 或 friend_id 都可能是自己) -->
+    <select id="selectFriendsWithUserInfo" resultType="java.util.Map">
+        SELECT
+            f.id AS friendshipId,
+            u.id AS friendUserId,
+            u.nickname,
+            u.avatar,
+            u.username,
+            f.create_time AS friendSince
+        FROM user_friendship f
+        JOIN sys_user u ON u.id = CASE
+            WHEN f.user_id = #{userId} THEN f.friend_id
+            ELSE f.user_id
+        END
+        WHERE f.status = 1
+          AND (f.user_id = #{userId} OR f.friend_id = #{userId})
+        ORDER BY f.update_time DESC
+    </select>
+
+    <!-- 查询收到的待处理请求 -->
+    <select id="selectPendingRequests" resultType="java.util.Map">
+        SELECT
+            f.id AS requestId,
+            u.id AS fromUserId,
+            u.nickname,
+            u.avatar,
+            u.username,
+            f.create_time AS requestTime
+        FROM user_friendship f
+        JOIN sys_user u ON u.id = f.user_id
+        WHERE f.friend_id = #{userId}
+          AND f.status = 0
+        ORDER BY f.create_time DESC
+    </select>
+
+</mapper>

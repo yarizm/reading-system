@@ -6,6 +6,14 @@
         <el-button link class="nav-item" @click="goToShelf">
           <el-icon><Collection /></el-icon> 我的书架
         </el-button>
+        <el-button link class="nav-item" @click="goToFriends">
+          <el-icon><User /></el-icon> 好友
+          <el-badge v-if="unreadCount > 0" :value="unreadCount" :max="99" class="unread-badge" />
+        </el-button>
+        <el-button link class="nav-item notification-bell" :class="{ blinking: isBlinking }" @click="toggleNotifyPanel" v-if="userInfo.id">
+          <el-icon><Bell /></el-icon>
+          <el-badge v-if="notifications.length > 0" :value="notifications.length" :max="99" class="unread-badge" />
+        </el-button>
         <el-dropdown v-if="userInfo.id" trigger="click" @command="handleUserCommand">
           <div class="user-avatar-box">
             <el-avatar :size="32" :src="userInfo.avatar || defaultAvatar" />
@@ -107,15 +115,40 @@
     <div class="pagination-box">
       <el-pagination background layout="prev, pager, next" :total="total" :page-size="pageSize" @current-change="handleCurrentChange" />
     </div>
+
+    <!-- 通知面板 -->
+    <transition name="slide-notify">
+      <div v-if="showNotifyPanel" class="notify-panel">
+        <div class="notify-panel-header">
+          <span>🔔 消息通知</span>
+          <el-button link size="small" @click="clearNotifications">清空</el-button>
+          <el-button link size="small" @click="showNotifyPanel = false">关闭</el-button>
+        </div>
+        <div class="notify-panel-body">
+          <el-empty v-if="notifications.length === 0" description="暂无新通知" :image-size="60" />
+          <div v-for="(n, idx) in notifications" :key="idx" class="notify-item" @click="handleNotifyClick(n, idx)">
+            <div class="notify-icon">
+              <span v-if="n.type === 'chat'">💬</span>
+              <span v-else-if="n.type === 'friend_request'">👥</span>
+              <span v-else-if="n.type === 'book_share'">📚</span>
+            </div>
+            <div class="notify-text">
+              <div class="notify-title">{{ getNotifyTitle(n) }}</div>
+              <div class="notify-desc">{{ getNotifyDesc(n) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // === 修改点 2: 引入 Refresh 图标 ===
-import { Search, StarFilled, Reading, Collection, CaretBottom, Refresh } from '@element-plus/icons-vue'
+import { Search, StarFilled, Reading, Collection, CaretBottom, Refresh, User, Bell } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -136,6 +169,14 @@ const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(12)
 const userInfo = ref({})
+const unreadCount = ref(0)
+
+// 通知系统
+const notifications = ref([])
+const showNotifyPanel = ref(false)
+const isBlinking = ref(false)
+let blinkTimer = null
+let ws = null
 
 onMounted(() => {
   const userStr = localStorage.getItem('user')
@@ -144,13 +185,106 @@ onMounted(() => {
   }
   loadHotBooks()
   loadRankBooks()
-  loadRecommendBooks() // 页面加载时触发一次推荐
+  loadRecommendBooks()
   loadBooks()
+  loadUnreadCount()
+  connectWebSocket()
 })
+
+onUnmounted(() => {
+  if (ws) ws.close()
+  if (blinkTimer) clearTimeout(blinkTimer)
+})
+
+const connectWebSocket = () => {
+  if (!userInfo.value.id) return
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}`
+  ws = new WebSocket(wsUrl)
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data)
+      notifications.value.unshift(msg)
+      // 触发闪烁动画
+      triggerBlink()
+      // 刷新未读数
+      loadUnreadCount()
+    } catch (e) {
+      console.error('WS parse error', e)
+    }
+  }
+
+  ws.onclose = () => {
+    // 自动重连（5秒后）
+    if (userInfo.value.id) {
+      setTimeout(connectWebSocket, 5000)
+    }
+  }
+}
+
+const triggerBlink = () => {
+  isBlinking.value = true
+  if (blinkTimer) clearTimeout(blinkTimer)
+  blinkTimer = setTimeout(() => { isBlinking.value = false }, 3000)
+}
+
+const toggleNotifyPanel = () => {
+  showNotifyPanel.value = !showNotifyPanel.value
+  if (showNotifyPanel.value) {
+    isBlinking.value = false
+  }
+}
+
+const clearNotifications = () => {
+  notifications.value = []
+}
+
+const getNotifyTitle = (n) => {
+  if (n.type === 'chat') return '💬 新消息'
+  if (n.type === 'friend_request') return '👥 好友请求'
+  if (n.type === 'book_share') return '📚 书籍分享'
+  return '通知'
+}
+
+const getNotifyDesc = (n) => {
+  const d = n.data || {}
+  if (n.type === 'chat') return d.content ? d.content.substring(0, 30) : '收到一条新消息'
+  if (n.type === 'friend_request') return `${d.nickname || '某人'} 想加你为好友`
+  if (n.type === 'book_share') return `收到一本书籍分享：${d.bookTitle || ''}`
+  return ''
+}
+
+const handleNotifyClick = (n, idx) => {
+  notifications.value.splice(idx, 1)
+  if (n.type === 'chat') {
+    router.push(`/chat/${n.data?.senderId}`)
+  } else if (n.type === 'friend_request') {
+    router.push('/friends')
+  } else if (n.type === 'book_share') {
+    router.push('/friends')
+  }
+  showNotifyPanel.value = false
+}
 
 const goToShelf = () => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
   router.push('/shelf')
+}
+
+const goToFriends = () => {
+  if (!userInfo.value.id) return ElMessage.warning('请先登录')
+  router.push('/friends')
+}
+
+const loadUnreadCount = async () => {
+  if (!userInfo.value.id) return
+  try {
+    const res = await axios.get(`/api/chat/unread/${userInfo.value.id}`)
+    unreadCount.value = res.data.data || 0
+  } catch (e) {
+    // 忽略
+  }
 }
 
 const goToLogin = () => router.push('/login')
@@ -204,8 +338,10 @@ const handleUserCommand = (cmd) => {
   if (cmd === 'logout') {
     localStorage.removeItem('user')
     userInfo.value = {}
+    unreadCount.value = 0
+    notifications.value = []
+    if (ws) ws.close()
     ElMessage.success('已退出登录')
-    // 登出后刷新一下推荐（变回随机推荐）
     loadRecommendBooks()
   } else if (cmd === 'profile') {
     router.push('/profile')
@@ -264,6 +400,100 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   font-size: 14px;
   color: #4a3828;
   font-weight: 500;
+}
+.unread-badge {
+  margin-left: 4px;
+}
+
+/* === 通知铃铛 === */
+.notification-bell {
+  position: relative;
+}
+.notification-bell.blinking :deep(.el-icon) {
+  animation: bell-blink 0.5s ease-in-out infinite alternate;
+}
+@keyframes bell-blink {
+  0% { color: #6b5e53; transform: scale(1); }
+  100% { color: #e6a23c; transform: scale(1.3) rotate(15deg); }
+}
+
+/* === 通知面板 === */
+.notify-panel {
+  position: fixed;
+  top: 60px;
+  right: 24px;
+  width: 340px;
+  max-height: 460px;
+  background: #fffdf9;
+  border: 1px solid #e8e0d6;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.15);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+}
+.notify-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0ece4;
+  font-weight: 600;
+  font-size: 14px;
+  color: #3d3632;
+  gap: 8px;
+}
+.notify-panel-header span:first-child {
+  flex: 1;
+}
+.notify-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.notify-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.notify-item:hover {
+  background: #faf7f2;
+}
+.notify-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.notify-text {
+  flex: 1;
+  min-width: 0;
+}
+.notify-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3d3632;
+  margin-bottom: 2px;
+}
+.notify-desc {
+  font-size: 12px;
+  color: #9b8e82;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 通知面板动画 */
+.slide-notify-enter-active,
+.slide-notify-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+.slide-notify-enter-from,
+.slide-notify-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 /* === 搜索与分类 === */

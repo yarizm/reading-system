@@ -68,6 +68,18 @@ const routes = [
         name: 'UserProfile',
         component: () => import('../views/UserProfile.vue')
     },
+    // 好友中心
+    {
+        path: '/friends',
+        name: 'Friends',
+        component: () => import('../views/Friends.vue')
+    },
+    // 聊天页面
+    {
+        path: '/chat/:friendId',
+        name: 'Chat',
+        component: () => import('../views/Chat.vue')
+    },
 ]
 
 // 创建路由实例

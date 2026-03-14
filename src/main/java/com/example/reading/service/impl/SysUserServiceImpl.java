@@ -1,4 +1,5 @@
 package com.example.reading.service.impl;
+import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.dto.UserDto;
 import com.example.reading.entity.SysUser;
@@ -22,8 +23,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 2. 创建新用户
         SysUser user = new SysUser();
         user.setUsername(userDto.getUsername());
-        // 密码加密存储 (使用 MD5，防止数据库泄露后密码直接暴露)
-        user.setPassword(userDto.getPassword());
+        // 密码加密存储 (使用 BCrypt)
+        user.setPassword(BCrypt.hashpw(userDto.getPassword(), BCrypt.gensalt()));
         user.setNickname(userDto.getNickname());
         user.setAge(userDto.getAge());
 
@@ -43,8 +44,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new RuntimeException("用户不存在！");
         }
 
-        // 3. 校验密码 (将前端传来的密码加密后，和数据库比对)
-        if (!user.getPassword().equals(userDto.getPassword())) {
+        // 3. 校验密码 (使用 BCrypt 校验，兼容旧的 null 密码)
+        if (user.getPassword() == null || !BCrypt.checkpw(userDto.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误！");
         }
 

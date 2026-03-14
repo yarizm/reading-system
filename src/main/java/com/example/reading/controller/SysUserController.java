@@ -1,6 +1,7 @@
 package com.example.reading.controller;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.reading.common.Result;
@@ -71,7 +72,8 @@ public class SysUserController {
         if (StrUtil.isBlank(user.getPassword())) {
             return Result.error("500", "新密码不能为空");
         }
-        // 实际项目中这里应该校验旧密码，这里简化直接重置
+        // 将新密码加密后保存
+        user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
         sysUserService.updateById(user);
         return Result.success();
     }
