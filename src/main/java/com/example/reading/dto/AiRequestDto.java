@@ -7,4 +7,5 @@ public class AiRequestDto {
     private String type;
     private Long bookId;
     private Long userId;
+    private String voice;
 }

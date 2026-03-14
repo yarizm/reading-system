@@ -1,8 +1,8 @@
 package com.example.reading.controller;
-import java.util.Collections;
 import com.alibaba.dashscope.aigc.generation.Generation;
 import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.aigc.multimodalconversation.AudioParameters;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.Role;
 import com.alibaba.dashscope.exception.InputRequiredException;
@@ -20,21 +20,23 @@ import com.example.reading.dto.AiRequestDto;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesisParam;
-import com.alibaba.dashscope.audio.ttsv2.SpeechSynthesizer;
-import com.example.reading.common.Result; // 记得引入Result
+import com.example.reading.common.Result;
+import com.example.reading.entity.SysChapter;
+import com.example.reading.mapper.SysChapterMapper;
 import cn.hutool.core.util.IdUtil;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.nio.ByteBuffer;
+import java.io.InputStream;
+import java.net.URL;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import org.springframework.data.redis.core.StringRedisTemplate; // 引入 Redis 模板
-import com.alibaba.dashscope.common.Message;
-import com.alibaba.dashscope.common.Role;
 import com.fasterxml.jackson.databind.ObjectMapper; // 用于 JSON 序列化
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/ai")
@@ -48,6 +50,9 @@ public class AiController {
     private String uploadPath;
     @Autowired
     private StringRedisTemplate redisTemplate; // 注入 Redis
+
+    @Autowired
+    private SysChapterMapper chapterMapper; // 注入章节Mapper
 
     @Autowired
     private ObjectMapper objectMapper; // 用于对象转 JSON 字符串
@@ -172,32 +177,43 @@ public class AiController {
             default -> "你是一个有用的AI助手。";
         };
     }
+
+    private AudioParameters.Voice getVoiceConstant(String voiceStr) {
+        if (voiceStr == null) return AudioParameters.Voice.CHERRY;
+        return switch (voiceStr.toLowerCase()) {
+            case "zhiqi" -> AudioParameters.Voice.ETHAN;
+            case "zhiying" -> AudioParameters.Voice.DYLAN;
+            case "zhiyuan" -> AudioParameters.Voice.KIKI;
+            default -> AudioParameters.Voice.CHERRY;
+        };
+    }
+
     @PostMapping("/tts")
     public Result<String> tts(@RequestBody AiRequestDto request) {
         try {
             String text = request.getText();
+            AudioParameters.Voice voice = getVoiceConstant(request.getVoice());
             if (text.length() > 300) {
                 text = text.substring(0, 300);
             }
 
-            // === 最终修正版：使用 CosyVoice 并指定音色 ===
-            SpeechSynthesisParam param = SpeechSynthesisParam.builder()
+            MultiModalConversation conv = new MultiModalConversation();
+            MultiModalConversationParam param = MultiModalConversationParam.builder()
                     .apiKey(apiKey)
-                    .model("cosyvoice-v1") // 指定大模型
-                    // 【关键点】必须通过 parameters 指定具体音色
-                    // "longxiaochun" 是阿里 CosyVoice 的标准女声音色 ID
-                    .parameters(Collections.singletonMap("voice", "longxiaochun"))
+                    .model("qwen-tts")
+                    .text(text)
+                    .voice(voice)
                     .build();
 
-            SpeechSynthesizer synthesizer = new SpeechSynthesizer(param, null);
-            ByteBuffer audioBuffer = synthesizer.call(text);
+            MultiModalConversationResult result = conv.call(param);
+            String audioUrl = result.getOutput().getAudio().getUrl();
 
-            if (audioBuffer == null) {
+            if (audioUrl == null) {
                 return Result.error("500", "语音合成返回为空");
             }
 
             // ... 下面的保存代码完全不用变 ...
-            String fileName = "tts_" + IdUtil.fastSimpleUUID() + ".mp3";
+            String fileName = "tts_" + IdUtil.fastSimpleUUID() + ".wav";
             String filePath = uploadPath + fileName;
 
             File file = new File(filePath);
@@ -205,8 +221,13 @@ public class AiController {
                 file.getParentFile().mkdirs();
             }
 
-            try (FileOutputStream fos = new FileOutputStream(file)) {
-                fos.write(audioBuffer.array());
+            try (InputStream in = new URL(audioUrl).openStream();
+                 FileOutputStream fos = new FileOutputStream(file)) {
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                }
             }
 
             String url = "http://localhost:8090/files/" + fileName;
@@ -217,6 +238,278 @@ public class AiController {
             return Result.error("500", "语音合成失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 获取整章 TTS 语音（异步处理 + Redis 状态跟踪）
+     */
+    @GetMapping("/chapter_tts/{chapterId}")
+    public Result<String> chapterTts(@PathVariable Long chapterId, @RequestParam(required = false, defaultValue = "cherry") String voiceParam) {
+        try {
+            // 1. 检查 Redis 中是否已经有正在生成或已完成的状态
+            String statusKey = "tts:status:" + chapterId + ":" + voiceParam;
+            String status = redisTemplate.opsForValue().get(statusKey);
+
+            if ("processing".equals(status)) {
+                return Result.success("processing");
+            }
+
+            SysChapter chapter = chapterMapper.selectById(chapterId);
+            if (chapter == null) {
+                return Result.error("404", "章节不存在");
+            }
+
+            // 2. 如果已有缓存，进行文件存在性校验
+            if (chapter.getAudioUrl() != null && !chapter.getAudioUrl().trim().isEmpty() && chapter.getAudioUrl().contains(voiceParam)) {
+                String existingUrl = chapter.getAudioUrl();
+                String fileName = existingUrl.substring(existingUrl.lastIndexOf("/") + 1);
+                File file = new File(uploadPath + fileName);
+                
+                if (file.exists() && file.length() > 0) {
+                    redisTemplate.opsForValue().set(statusKey, existingUrl, 24, TimeUnit.HOURS);
+                    return Result.success(existingUrl);
+                } else {
+                    System.out.println("检测到数据库记录存在但物理文件丢失或损坏，准备重新生成: " + file.getAbsolutePath());
+                    // 文件不存在，清空数据库记录以便重新生成（可选，这里直接往下走重新生成逻辑即可）
+                }
+            }
+
+            // 3. 开启异步任务进行合成
+            redisTemplate.opsForValue().set(statusKey, "processing", 10, TimeUnit.MINUTES);
+            
+            executor.execute(() -> {
+                System.out.println("====== 开始异步生成整章语音: 章节ID " + chapterId + " =====");
+                long startTime = System.currentTimeMillis();
+                try {
+                    String text = chapter.getContent();
+                    if (text == null || text.trim().isEmpty()) {
+                        System.err.println("章节内容为空");
+                        redisTemplate.opsForValue().set(statusKey, "error:内容为空", 5, TimeUnit.MINUTES);
+                        return;
+                    }
+
+                    List<String> textChunks = splitText(text, 300);
+                    System.out.println("文章已切分为 " + textChunks.size() + " 个片段，开始并行合成...");
+
+                    // 恢复为顺序执行，并加上延时以防止触发 Qwen API 并发/频率限制
+                    List<String> audioUrls = new ArrayList<>();
+                    for (int i = 0; i < textChunks.size(); i++) {
+                        String chunk = textChunks.get(i);
+                        if (chunk == null || chunk.trim().isEmpty()) continue;
+
+                        System.out.println("  -> 开始合成片段 " + (i + 1) + "/" + textChunks.size());
+                        try {
+                            MultiModalConversation conv = new MultiModalConversation();
+                            MultiModalConversationParam param = MultiModalConversationParam.builder()
+                                    .apiKey(apiKey)
+                                    .model("qwen-tts")
+                                    .text(chunk)
+                                    .voice(getVoiceConstant(voiceParam))
+                                    .build();
+
+                            MultiModalConversationResult result = conv.call(param);
+                            String audioUrl = result.getOutput().getAudio().getUrl();
+                            if (audioUrl != null) {
+                                audioUrls.add(audioUrl);
+                                System.out.println("  <- 片段 " + (i + 1) + " 合成成功: " + audioUrl);
+                            } else {
+                                System.err.println("  <- 片段 " + (i + 1) + " 返回的 URL 为空");
+                            }
+                            
+                            // 加上一个短延时，稍微缓解 API 压力
+                            if (i < textChunks.size() - 1) {
+                                Thread.sleep(500); 
+                            }
+                        } catch (Exception e) {
+                            System.err.println("  <- 片段 " + (i + 1) + " 合成异常: " + e.getMessage());
+                        }
+                    }
+
+                    System.out.println("所有片段合成完成，成功 " + audioUrls.size() + "/" + textChunks.size() + "。开始合并...");
+
+                    if (!audioUrls.isEmpty()) {
+                        String fileName = "chapter_tts_" + voiceParam + "_" + chapterId + "_" + IdUtil.fastSimpleUUID() + ".wav";
+                        String filePath = uploadPath + fileName;
+
+                        File file = new File(filePath);
+                        if (!file.getParentFile().exists()) {
+                            file.getParentFile().mkdirs();
+                        }
+
+                        mergeWavAudioStreams(audioUrls, filePath);
+                        System.out.println("合并完成! 耗时: " + (System.currentTimeMillis() - startTime) + "ms, 文件: " + filePath);
+                        
+                        String url = "http://localhost:8090/files/" + fileName;
+                        
+                        // 写入数据库
+                        chapter.setAudioUrl(url);
+                        chapterMapper.updateById(chapter);
+                        
+                        // 更新 Redis 状态为完成后的 URL
+                        redisTemplate.opsForValue().set(statusKey, url, 24, TimeUnit.HOURS);
+                        System.out.println("====== 章节 " + chapterId + " 语音任务结束 =====");
+                    } else {
+                        System.err.println("合成失败: 没有任何成功的音频片段");
+                        redisTemplate.opsForValue().set(statusKey, "error:所有片段合成失败", 5, TimeUnit.MINUTES);
+                    }
+
+                } catch (Exception e) {
+                    System.err.println("异步生成任务异常: " + e.getMessage());
+                    e.printStackTrace();
+                    redisTemplate.opsForValue().set(statusKey, "error:" + e.getMessage(), 5, TimeUnit.MINUTES);
+                }
+            });
+
+            return Result.success("processing");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("500", "章节语音合成初始化失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询 TTS 合成进度状态
+     */
+    @GetMapping("/chapter_tts/status/{chapterId}")
+    public Result<String> getTtsStatus(@PathVariable Long chapterId, @RequestParam(required = false, defaultValue = "cherry") String voiceParam) {
+        String statusKey = "tts:status:" + chapterId + ":" + voiceParam;
+        String status = redisTemplate.opsForValue().get(statusKey);
+        
+        if (status == null) {
+            // 如果缓存没了，去库里查一眼，也要校验物理文件
+            SysChapter chapter = chapterMapper.selectById(chapterId);
+            if (chapter != null && chapter.getAudioUrl() != null && chapter.getAudioUrl().contains(voiceParam)) {
+                String existingUrl = chapter.getAudioUrl();
+                String fileName = existingUrl.substring(existingUrl.lastIndexOf("/") + 1);
+                if (new File(uploadPath + fileName).exists()) {
+                    return Result.success(existingUrl);
+                }
+            }
+            return Result.success("not_found");
+        }
+        
+        return Result.success(status);
+    }
+
+    /**
+     * 合并多个 WAV 流：
+     * 1. 使用第一个分片的头部作为基准。
+     * 2. 拼接所有分片的数据部分。
+     * 3. 修正头部中的文件长度和数据长度。
+     */
+    private void mergeWavAudioStreams(List<String> audioUrls, String filePath) throws Exception {
+        long totalDataSize = 0;
+        byte[] firstHeader = null;
+
+        File tempFile = new File(filePath + ".tmp");
+        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+            for (int i = 0; i < audioUrls.size(); i++) {
+                try (InputStream in = new URL(audioUrls.get(i)).openStream()) {
+                    byte[] data = in.readAllBytes();
+                    if (data.length < 44) continue;
+
+                    if (i == 0) {
+                        firstHeader = new byte[44];
+                        System.arraycopy(data, 0, firstHeader, 0, 44);
+                    }
+
+                    // WAV 文件的 PCM 数据通常从 44 字节开始 (标准)
+                    // 但稳妥起见，寻找 "data" 标志
+                    int dataOffset = findDataOffset(data);
+                    if (dataOffset != -1) {
+                        int chunkSize = data.length - dataOffset - 4;
+                        byte[] pcmData = new byte[chunkSize];
+                        System.arraycopy(data, dataOffset + 4, pcmData, 0, chunkSize);
+                        fos.write(pcmData);
+                        totalDataSize += chunkSize;
+                    }
+                }
+            }
+        }
+
+        if (firstHeader != null) {
+            // 修改头部长度信息
+            // RIFF chunk size = 36 + totalDataSize
+            long riffSize = 36 + totalDataSize;
+            firstHeader[4] = (byte) (riffSize & 0xff);
+            firstHeader[5] = (byte) ((riffSize >> 8) & 0xff);
+            firstHeader[6] = (byte) ((riffSize >> 16) & 0xff);
+            firstHeader[7] = (byte) ((riffSize >> 24) & 0xff);
+
+            // data subchunk size = totalDataSize
+            firstHeader[40] = (byte) (totalDataSize & 0xff);
+            firstHeader[41] = (byte) ((totalDataSize >> 8) & 0xff);
+            firstHeader[42] = (byte) ((totalDataSize >> 16) & 0xff);
+            firstHeader[43] = (byte) ((totalDataSize >> 24) & 0xff);
+
+            try (FileOutputStream finalFos = new FileOutputStream(filePath)) {
+                finalFos.write(firstHeader);
+                try (FileInputStream fis = new FileInputStream(tempFile)) {
+                    byte[] buffer = new byte[4096];
+                    int len;
+                    while ((len = fis.read(buffer)) != -1) {
+                        finalFos.write(buffer, 0, len);
+                    }
+                }
+            }
+        }
+        tempFile.delete();
+    }
+
+    private int findDataOffset(byte[] data) {
+        for (int i = 0; i < data.length - 4; i++) {
+            if (data[i] == 'd' && data[i+1] == 'a' && data[i+2] == 't' && data[i+3] == 'a') {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+
+    /**
+     * 将长文本按照标点符号切分成小段，防止超过大模型单次合成字数限制
+     */
+    private List<String> splitText(String text, int maxLength) {
+        List<String> chunks = new ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return chunks;
+        }
+
+        // 以句号、感叹号、问号、换行符等作为切分符
+        String[] sentences = text.split("(?<=[。！？\\n])");
+        StringBuilder currentChunk = new StringBuilder();
+
+        for (String sentence : sentences) {
+            // 清理无意义的空白
+            sentence = sentence.trim();
+            if (sentence.isEmpty()) continue;
+
+            // 检查加上这一句后是否会超过 maxLength
+            if (currentChunk.length() + sentence.length() > maxLength) {
+                // 如果当下的 chunk 不空，保存当前的，并开启一个新的
+                if (currentChunk.length() > 0) {
+                    chunks.add(currentChunk.toString());
+                    currentChunk.setLength(0); // 清空
+                }
+
+                // 如果单条句子本身就超过了 maxLength, 强行按长度截断
+                while (sentence.length() > maxLength) {
+                    chunks.add(sentence.substring(0, maxLength));
+                    sentence = sentence.substring(maxLength);
+                }
+            }
+
+            currentChunk.append(sentence);
+        }
+
+        // 把最后剩下的内容加进去
+        if (currentChunk.length() > 0) {
+            chunks.add(currentChunk.toString());
+        }
+
+        return chunks;
+    }
+
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chat(@RequestBody AiRequestDto request) {
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);

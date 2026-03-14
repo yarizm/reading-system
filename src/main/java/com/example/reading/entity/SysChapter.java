@@ -15,4 +15,5 @@ public class SysChapter {
     private String content;
     private Integer wordCount;
     private Integer sort; // 排序号，0, 1, 2...
+    private String audioUrl; // 章节对应的TTS音频文件URL
 }

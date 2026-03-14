@@ -51,6 +51,9 @@ const myCommentsList = ref([])
 
 // === AI & 笔记状态 ===
 const currentAudio = ref(null)
+const currentChapterAudio = ref(null) // NEW: 整章听书音频实例
+const isGeneratingTts = ref(false)    // NEW: 听书生成中状态
+const isChapterPlaying = ref(false)   // NEW: 听书播放中状态
 const activeTab = ref('ai')
 const noteList = ref([])
 const menuVisible = ref(false)
@@ -69,7 +72,8 @@ const readingConfig = reactive({
   lineHeight: 1.8,    // 行高
   theme: 'default',   // 主题: default, green, dark, high-contrast
   eyeCareMode: false, // 护眼提醒开关
-  timerDuration: 45   // 提醒间隔(分钟)
+  timerDuration: 45,  // 提醒间隔(分钟)
+  voice: 'cherry'     // 听书音色
 })
 
 let eyeCareInterval = null
@@ -107,6 +111,10 @@ onBeforeUnmount(() => {
   if (currentAudio.value) {
     currentAudio.value.pause()
     currentAudio.value = null
+  }
+  if (currentChapterAudio.value) {
+    currentChapterAudio.value.pause()
+    currentChapterAudio.value = null
   }
   if (observer) observer.disconnect()
   window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -228,6 +236,13 @@ const loadCurrentChapter = async () => {
   isLoading.value = true
   showParagraphCommentsDrawer.value = false
   selectedParagraphIndex.value = -1
+
+  // 切换章节时停止上一个章节的播放
+  if (currentChapterAudio.value) {
+    currentChapterAudio.value.pause()
+    currentChapterAudio.value = null
+    isChapterPlaying.value = false
+  }
 
   const chapterId = catalog.value[chapterIndex.value].id
   currentChapterTitle.value = catalog.value[chapterIndex.value].title
@@ -665,7 +680,7 @@ const handleTTS = async () => {
   menuVisible.value = false
   ElMessage.info('正在生成语音...')
   try {
-    const res = await axios.post('/api/ai/tts', { text: selectedText.value, type: 'TTS' })
+    const res = await axios.post('/api/ai/tts', { text: selectedText.value, type: 'TTS', voice: readingConfig.voice || 'cherry' })
     if (res.data.code === '200') {
       const audio = new Audio(res.data.data)
       currentAudio.value = audio
@@ -676,8 +691,116 @@ const handleTTS = async () => {
 
 const handleBeforeUnload = () => { saveProgress() }
 const goBack = async () => {
+  if (currentChapterAudio.value) {
+    currentChapterAudio.value.pause()
+    currentChapterAudio.value = null
+  }
   await saveProgress()
   router.push('/shelf')
+}
+
+// === 整章朗读 (听本章) ===
+const toggleChapterTts = async () => {
+  // 1. 如果正在播放，则暂停
+  if (currentChapterAudio.value && isChapterPlaying.value) {
+    currentChapterAudio.value.pause()
+    isChapterPlaying.value = false
+    return
+  }
+
+  // 2. 如果已经加载过实例但暂停了，则继续播放
+  if (currentChapterAudio.value && !isChapterPlaying.value) {
+    currentChapterAudio.value.play()
+    isChapterPlaying.value = true
+    return
+  }
+
+  // 3. 如果没加载过，去请求后端
+  if (!catalog.value || catalog.value.length === 0) return
+  
+  const chapterId = catalog.value[chapterIndex.value].id
+  const voice = readingConfig.voice || 'cherry'
+  
+  isGeneratingTts.value = true
+  ElMessage.info('正在请求合成，请稍候...')
+  
+  try {
+    const res = await axios.get(`/api/ai/chapter_tts/${chapterId}?voice=${voice}`)
+    if (res.data.code === '200') {
+      const status = res.data.data
+      if (status === 'processing') {
+        // 进入轮询模式
+        pollTtsStatus(chapterId, voice)
+      } else {
+        // 直接返回了 URL
+        playChapterAudio(status)
+      }
+    } else {
+      ElMessage.error(res.data.msg || '语音获取失败')
+      isGeneratingTts.value = false
+    }
+  } catch (e) {
+    ElMessage.error('服务请求异常')
+    isGeneratingTts.value = false
+  }
+}
+
+// 轮询状态
+const pollTtsStatus = (chapterId, voice) => {
+  const timer = setInterval(async () => {
+    try {
+      const res = await axios.get(`/api/ai/chapter_tts/status/${chapterId}?voice=${voice}`)
+      if (res.data.code === '200') {
+        const status = res.data.data
+        if (status === 'processing') {
+          // 继续等待
+          showGeneratingTip()
+        } else if (status.startsWith('http')) {
+          // 合成成功
+          clearInterval(timer)
+          playChapterAudio(status)
+        } else if (status.startsWith('error:')) {
+          // 合成失败
+          clearInterval(timer)
+          ElMessage.error('合成失败: ' + status.substring(6))
+          isGeneratingTts.value = false
+        }
+      }
+    } catch (e) {
+      clearInterval(timer)
+      isGeneratingTts.value = false
+    }
+  }, 3000) // 每 3 秒轮询一次
+}
+
+let lastTipTime = 0
+const showGeneratingTip = () => {
+  const now = Date.now()
+  if (now - lastTipTime > 15000) { // 每 15 秒提示一次，避免太吵
+    ElMessage.info('长章节合成中，请耐心等待...')
+    lastTipTime = now
+  }
+}
+
+const playChapterAudio = (url) => {
+  if (currentChapterAudio.value) {
+    currentChapterAudio.value.pause()
+  }
+  
+  currentChapterAudio.value = new Audio(url)
+  currentChapterAudio.value.onended = () => {
+    isChapterPlaying.value = false
+  }
+  
+  currentChapterAudio.value.play().then(() => {
+    isChapterPlaying.value = true
+    isGeneratingTts.value = false
+    ElMessage.success('语音加载成功')
+  }).catch(err => {
+    console.error('播放失败', err)
+    ElMessage.error('音频文件加载失败，可能文件损坏')
+    isGeneratingTts.value = false
+  })
 }
 
 const goToUserProfile = (userId) => {
@@ -751,6 +874,14 @@ const goToUserProfile = (userId) => {
       <span class="toggle-text">助手</span>
     </div>
 
+    <!-- NEW: 听本章 -->
+    <div class="sidebar-toggle chapter-tts-toggle" @click.stop="toggleChapterTts">
+      <el-icon size="24" v-if="isGeneratingTts" class="is-loading"><Loading /></el-icon>
+      <el-icon size="24" v-else-if="isChapterPlaying"><Microphone style="color: #67C23A;" /></el-icon>
+      <el-icon size="24" v-else><Microphone /></el-icon>
+      <span class="toggle-text">{{ isGeneratingTts ? '生成中' : (isChapterPlaying ? '暂停' : '听本章') }}</span>
+    </div>
+
     <div class="sidebar-toggle add-to-shelf-toggle" @click.stop="toggleShelf" :class="{ 'is-added': isAddedToShelf }">
       <el-icon size="24" v-if="isCheckingShelf"><Loading /></el-icon>
       <el-icon size="24" v-else-if="isAddedToShelf"><Collection /></el-icon>
@@ -776,6 +907,15 @@ const goToUserProfile = (userId) => {
           <div class="theme-btn t-green" :class="{active: readingConfig.theme==='green'}" @click="readingConfig.theme='green'">护眼</div>
           <div class="theme-btn t-dark" :class="{active: readingConfig.theme==='dark'}" @click="readingConfig.theme='dark'">暗夜</div>
           <div class="theme-btn t-high" :class="{active: readingConfig.theme==='high-contrast'}" @click="readingConfig.theme='high-contrast'">适老</div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">听书音色</div>
+        <div class="theme-options">
+          <div class="theme-btn t-default" :class="{active: readingConfig.voice==='cherry'}" @click="readingConfig.voice='cherry'">甜美女声</div>
+          <div class="theme-btn t-default" :class="{active: readingConfig.voice==='zhiqi'}" @click="readingConfig.voice='zhiqi'">温柔女声</div>
+          <div class="theme-btn t-default" :class="{active: readingConfig.voice==='zhiying'}" @click="readingConfig.voice='zhiying'">知性女声</div>
+          <div class="theme-btn t-default" :class="{active: readingConfig.voice==='zhiyuan'}" @click="readingConfig.voice='zhiyuan'">阳光男声</div>
         </div>
       </div>
       <div class="setting-group">
@@ -923,6 +1063,7 @@ const goToUserProfile = (userId) => {
 
 .ai-toggle { bottom: 100px; right: 40px; }
 .add-to-shelf-toggle { bottom: 164px; right: 40px; }
+.chapter-tts-toggle { bottom: 228px; right: 40px; }
 .add-to-shelf-toggle.is-added { color: #6a8c5a; border-color: #a3c296; }
 .my-comments-toggle { bottom: 100px; left: 40px; }
 .share-book-toggle { bottom: 164px; left: 40px; }
