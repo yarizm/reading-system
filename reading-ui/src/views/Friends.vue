@@ -2,11 +2,16 @@
   <div class="friends-container">
     <!-- 顶部导航 -->
     <div class="page-header">
-      <el-button link @click="$router.push('/')">
-        <el-icon><ArrowLeft /></el-icon> 返回首页
-      </el-button>
-      <h2>👥 好友中心</h2>
-      <div style="width: 100px;"></div>
+      <div class="header-left">
+        <el-button link class="back-btn" @click="$router.push('/')">
+          <el-icon><ArrowLeft /></el-icon> 返回首页
+        </el-button>
+        <el-divider direction="vertical" />
+        <div class="header-title-box">
+          <h2>👥 好友中心</h2>
+        </div>
+      </div>
+      <div class="header-right"></div>
     </div>
 
     <el-row :gutter="24">
@@ -382,20 +387,7 @@ const formatDate = (timeStr) => {
   padding: 18px 24px;
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e8e0d6;
-}
-.page-header h2 {
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
-  margin: 0;
-  font-size: 22px;
-}
+
 
 .section-card {
   margin-bottom: 20px;
@@ -612,5 +604,91 @@ const formatDate = (timeStr) => {
   right: 4px;
   color: #8b6f52;
   font-size: 18px;
+}
+/* === 标准统一头部 === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e8e0d6;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.back-btn {
+  font-size: 15px;
+  color: #6b5e53;
+}
+.back-btn:hover { color: #8b6f52; }
+.header-title-box {
+  display: flex;
+  flex-direction: column;
+}
+.header-title-box h2 {
+  margin: 0;
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-size: 22px;
+  font-weight: 600;
+}
+.subtitle {
+  color: #9b8e82;
+  font-size: 13px;
+  margin: 4px 0 0 0;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* === 标准统一头部 === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e8e0d6;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.back-btn {
+  font-size: 15px;
+  color: #6b5e53;
+}
+.back-btn:hover { color: #8b6f52; }
+.header-title-box {
+  display: flex;
+  flex-direction: column;
+}
+.header-title-box h2 {
+  margin: 0;
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-size: 22px;
+  font-weight: 600;
+}
+.subtitle {
+  color: #9b8e82;
+  font-size: 13px;
+  margin: 4px 0 0 0;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

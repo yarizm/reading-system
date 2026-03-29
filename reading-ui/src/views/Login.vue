@@ -42,8 +42,8 @@
             <el-form-item label="验证码">
               <div class="code-row">
                 <el-input v-model="form.code" placeholder="6位验证码" prefix-icon="Key" @keyup.enter="handleLogin" />
-                <el-button :disabled="cooldown > 0" @click="sendCode(2)">
-                  {{ cooldown > 0 ? `${cooldown}s` : '获取验证码' }}
+                <el-button :disabled="cooldownLogin > 0" @click="sendCode(2)">
+                  {{ cooldownLogin > 0 ? `${cooldownLogin}s` : '获取验证码' }}
                 </el-button>
               </div>
             </el-form-item>
@@ -63,8 +63,8 @@
           <el-form-item label="验证码">
             <div class="code-row">
               <el-input v-model="regForm.code" placeholder="6位验证码" prefix-icon="Key" />
-              <el-button :disabled="cooldown > 0" @click="sendCode(1)">
-                {{ cooldown > 0 ? `${cooldown}s` : '获取验证码' }}
+              <el-button :disabled="cooldownRegister > 0" @click="sendCode(1)">
+                {{ cooldownRegister > 0 ? `${cooldownRegister}s` : '获取验证码' }}
               </el-button>
             </div>
           </el-form-item>
@@ -95,8 +95,8 @@
            <el-form-item label="验证码">
             <div class="code-row">
               <el-input v-model="resetForm.code" placeholder="6位验证码" prefix-icon="Key" />
-              <el-button :disabled="cooldown > 0" @click="sendCode(3)">
-                {{ cooldown > 0 ? `${cooldown}s` : '获取验证码' }}
+              <el-button :disabled="cooldownReset > 0" @click="sendCode(3)">
+                {{ cooldownReset > 0 ? `${cooldownReset}s` : '获取验证码' }}
               </el-button>
             </div>
           </el-form-item>
@@ -128,7 +128,9 @@ const router = useRouter()
 const mode = ref('login') // login, register, reset
 const loginMethod = ref('password') // password, code
 const loading = ref(false)
-const cooldown = ref(0) // 验证码倒计时
+const cooldownLogin = ref(0)
+const cooldownRegister = ref(0)
+const cooldownReset = ref(0)
 
 const pageTitle = computed(() => {
   if (mode.value === 'login') return '欢迎回来'
@@ -179,10 +181,15 @@ const sendCode = async (type) => {
     ElMessage.success('验证码发送成功 (请查看控制台)')
     
     // 启动倒计时
-    cooldown.value = 60
+    let activeCooldown
+    if (type === 1) activeCooldown = cooldownRegister
+    else if (type === 2) activeCooldown = cooldownLogin
+    else if (type === 3) activeCooldown = cooldownReset
+
+    activeCooldown.value = 60
     const timer = setInterval(() => {
-      cooldown.value--
-      if (cooldown.value <= 0) clearInterval(timer)
+      activeCooldown.value--
+      if (activeCooldown.value <= 0) clearInterval(timer)
     }, 1000)
   } catch (e) {
     ElMessage.error(e.response?.data?.msg || '发送失败')

@@ -6,21 +6,21 @@ import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.common.Result;
 import com.example.reading.entity.SysUser;
-import com.example.reading.entity.SysValidation;
-import com.example.reading.mapper.SysValidationMapper;
 import com.example.reading.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
     @Autowired
-    private SysValidationMapper validationMapper;
+    private StringRedisTemplate redisTemplate;
 
     @Autowired
     private ISysUserService sysUserService;
@@ -41,13 +41,10 @@ public class AuthController {
         // 生成6位验证码
         String code = RandomUtil.randomNumbers(6);
 
-        // 保存到数据库
-        SysValidation validation = new SysValidation();
-        validation.setTarget(target);
-        validation.setCode(code);
-        validation.setType(type);
-        validation.setExpireTime(LocalDateTime.now().plusMinutes(5));
-        validationMapper.insert(validation);
+        // 保存到Redis，设置5分钟过期
+        // key格式: validation:code:类型:目标
+        String key = "validation:code:" + type + ":" + target;
+        redisTemplate.opsForValue().set(key, code, 5, TimeUnit.MINUTES);
 
         // 模拟发送：打印到控制台
         System.out.println("=========================================");
@@ -159,16 +156,10 @@ public class AuthController {
      * 校验验证码工具方法
      */
     private void verifyCode(String target, String code, Integer type) {
-        QueryWrapper<SysValidation> query = new QueryWrapper<>();
-        query.eq("target", target)
-             .eq("type", type)
-             .eq("code", code)
-             .gt("expire_time", LocalDateTime.now())
-             .orderByDesc("id")
-             .last("limit 1");
+        String key = "validation:code:" + type + ":" + target;
+        String savedCode = redisTemplate.opsForValue().get(key);
         
-        SysValidation validation = validationMapper.selectOne(query);
-        if (validation == null) {
+        if (savedCode == null || !savedCode.equals(code)) {
             throw new RuntimeException("验证码无效或已过期");
         }
     }

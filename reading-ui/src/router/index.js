@@ -85,7 +85,25 @@ const routes = [
 // 创建路由实例
 const router = createRouter({
     history: createWebHistory(),
-    routes
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition
+        } else {
+            return { top: 0 }
+        }
+    }
+})
+
+// 确保在路由跳转后强行将滚动条归零，防患未然
+router.afterEach(() => {
+    window.scrollTo(0, 0)
+    if (document.documentElement) {
+        document.documentElement.scrollTop = 0
+    }
+    if (document.body) {
+        document.body.scrollTop = 0
+    }
 })
 
 export default router

@@ -31,8 +31,8 @@
             <el-button type="primary" size="large" round @click="startReading">
               <el-icon><Reading /></el-icon> 立即阅读
             </el-button>
-            <el-button type="warning" size="large" round @click="addToShelf" :disabled="inShelf">
-              <el-icon><Collection /></el-icon> {{ inShelf ? '已在书架' : '加入书架' }}
+            <el-button :type="inShelf ? 'info' : 'warning'" size="large" round @click="toggleShelf">
+              <el-icon><Collection /></el-icon> {{ inShelf ? '移出书架' : '加入书架' }}
             </el-button>
             <el-button plain size="large" round @click="goBack">返回</el-button>
           </div>
@@ -301,11 +301,19 @@ const deleteComment = async (id) => {
   })
 }
 
-const addToShelf = async () => {
+const toggleShelf = async () => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
-  await axios.post('/api/bookshelf/add', { userId: userInfo.value.id, bookId: bookId })
-  ElMessage.success('加入成功')
-  inShelf.value = true
+  if (inShelf.value) {
+    ElMessageBox.confirm('确定要移出书架吗？', '提示', { type: 'warning' }).then(async () => {
+      await axios.delete('/api/bookshelf/removeByBook', { params: { userId: userInfo.value.id, bookId: bookId } })
+      ElMessage.success('已移出书架')
+      inShelf.value = false
+    }).catch(() => {})
+  } else {
+    await axios.post('/api/bookshelf/add', { userId: userInfo.value.id, bookId: bookId })
+    ElMessage.success('加入成功')
+    inShelf.value = true
+  }
 }
 
 const startReading = () => router.push(`/read/${bookId}`)

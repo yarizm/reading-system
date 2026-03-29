@@ -31,10 +31,12 @@ public class SysNoteController {
      * 获取某本书下的所有笔记
      */
     @GetMapping("/list/{bookId}")
-    public Result<List<SysNote>> list(@PathVariable Long bookId) {
-        // 实际场景还需要过滤当前 userId，这里简化演示
+    public Result<List<SysNote>> list(@PathVariable Long bookId, @RequestParam(required = false) Long userId) {
         QueryWrapper<SysNote> query = new QueryWrapper<>();
         query.eq("book_id", bookId);
+        if (userId != null) {
+            query.eq("user_id", userId);
+        }
         query.orderByDesc("create_time");
         return Result.success(sysNoteService.list(query));
     }

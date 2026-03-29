@@ -33,6 +33,14 @@ public interface SysBookMapper extends BaseMapper<SysBook> {
             "LIMIT 6")
     List<SysBook> selectHotBooks();
 
+    @Select("SELECT b.*, COUNT(s.id) as heat " +
+            "FROM sys_book b " +
+            "LEFT JOIN user_bookshelf s ON b.id = s.book_id " +
+            "GROUP BY b.id " +
+            "ORDER BY heat DESC, b.id DESC " +
+            "LIMIT 10")
+    List<SysBook> selectRankBooks();
+
     // === 新增：根据关键词模糊匹配书籍（用于 AI 推荐回落到本地库） ===
     // 优先匹配书名，其次匹配作者
     @Select("SELECT * FROM sys_book " +

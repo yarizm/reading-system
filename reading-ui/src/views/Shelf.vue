@@ -1,9 +1,15 @@
 <template>
   <div class="shelf-container">
-    <div class="shelf-header">
+    <div class="page-header">
       <div class="header-left">
-        <h2>我的书架 📚</h2>
-        <p class="subtitle">记录你的阅读足迹</p>
+        <el-button link class="back-btn" @click="$router.push('/')">
+          <el-icon><ArrowLeft /></el-icon> 返回首页
+        </el-button>
+        <el-divider direction="vertical" />
+        <div class="header-title-box">
+          <h2>我的书架 📚</h2>
+          <p class="subtitle">记录你的阅读足迹</p>
+        </div>
       </div>
       <div class="header-right">
         <el-switch
@@ -22,10 +28,6 @@
         <el-button plain @click="showCreateDialog = true">
           <el-icon style="margin-right:5px"><Plus /></el-icon>
           创建书单
-        </el-button>
-        <el-button type="primary" plain @click="$router.push('/')">
-          <el-icon style="margin-right: 5px"><HomeFilled /></el-icon>
-          返回首页
         </el-button>
       </div>
     </div>
@@ -362,34 +364,7 @@ const copyShareLink = (bl) => {
   padding: 18px 24px;
 }
 
-/* === 头部 === */
-.shelf-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 28px;
-  border-bottom: 1px solid #e8e0d6;
-  padding-bottom: 14px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left h2 {
-  margin: 0 0 4px 0;
-  color: #2e2520;
-  font-family: 'Noto Serif SC', serif;
-  font-size: 22px;
-}
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 0;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+
 
 /* === 书籍网格 === */
 .book-grid {
@@ -605,5 +580,91 @@ const copyShareLink = (bl) => {
 .detail-author {
   font-size: 12px;
   color: #9b8e82;
+}
+/* === 标准统一头部 === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e8e0d6;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.back-btn {
+  font-size: 15px;
+  color: #6b5e53;
+}
+.back-btn:hover { color: #8b6f52; }
+.header-title-box {
+  display: flex;
+  flex-direction: column;
+}
+.header-title-box h2 {
+  margin: 0;
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-size: 22px;
+  font-weight: 600;
+}
+.subtitle {
+  color: #9b8e82;
+  font-size: 13px;
+  margin: 4px 0 0 0;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* === 标准统一头部 === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e8e0d6;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.back-btn {
+  font-size: 15px;
+  color: #6b5e53;
+}
+.back-btn:hover { color: #8b6f52; }
+.header-title-box {
+  display: flex;
+  flex-direction: column;
+}
+.header-title-box h2 {
+  margin: 0;
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-size: 22px;
+  font-weight: 600;
+}
+.subtitle {
+  color: #9b8e82;
+  font-size: 13px;
+  margin: 4px 0 0 0;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 </style>

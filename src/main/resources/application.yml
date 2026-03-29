@@ -22,6 +22,10 @@ spring:
       database: 0
       timeout: 3000ms
       # password:     # 如果你的 Redis 设置了密码，请取消注释并填入
+
+  # Elasticsearch 配置
+  elasticsearch:
+    uris: http://localhost:9200
   # 5. 文件上传限制 (为后续上传书籍做准备)
   servlet:
     multipart:

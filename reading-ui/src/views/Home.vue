@@ -38,9 +38,26 @@
 
     <div class="header-section">
       <div class="search-box">
-        <el-input v-model="searchKeyword" placeholder="搜索书名 / 作者..." size="large" class="search-input" @keyup.enter="handleSearch">
-          <template #append><el-button :icon="Search" @click="handleSearch" /></template>
-        </el-input>
+        <el-autocomplete
+          v-model="searchKeyword"
+          :fetch-suggestions="querySearchAsync"
+          placeholder="搜索书名 / 作者 / 简介 / 正文内容..."
+          size="large"
+          class="search-input custom-autocomplete"
+          :prefix-icon="Search"
+          @select="handleSelect"
+          @keyup.enter="handleSearch"
+          clearable>
+          <template #default="{ item }">
+            <div class="suggest-item">
+              <img :src="item.coverUrl || defaultCover" class="suggest-cover" @error="(e) => e.target.src=defaultCover" />
+              <div class="suggest-info">
+                <div class="suggest-title" :title="item.title">{{ item.title }}</div>
+                <div class="suggest-author">{{ item.author }}</div>
+              </div>
+            </div>
+          </template>
+        </el-autocomplete>
       </div>
       <div class="category-tags">
         <span :class="['tag-item', currentCategory === '全部' ? 'active' : '']" @click="changeCategory('全部')">全部</span>
@@ -50,7 +67,7 @@
       </div>
     </div>
 
-    <el-row :gutter="20" class="core-section">
+    <el-row :gutter="20" class="core-section" v-if="!isSearchMode">
       <el-col :span="16">
         <el-carousel trigger="click" height="360px" class="promo-carousel">
           <el-carousel-item v-for="book in hotBooks" :key="book.id" @click="goToDetail(book.id)">
@@ -78,14 +95,14 @@
       </el-col>
     </el-row>
 
-    <div class="section-title">
+    <div class="section-title" v-if="!isSearchMode">
       <el-icon><StarFilled /></el-icon> 猜你喜欢
       <el-button link type="primary" size="small" @click="loadRecommendBooks" style="margin-left: 10px;" :loading="recommendLoading">
         <el-icon><Refresh /></el-icon> 换一批
       </el-button>
     </div>
 
-    <el-row :gutter="20" class="recommend-section" v-loading="recommendLoading" element-loading-text="AI 正在分析你的阅读口味...">
+    <el-row :gutter="20" class="recommend-section" v-loading="recommendLoading" element-loading-text="AI 正在分析你的阅读口味..." v-if="!isSearchMode">
       <el-col :span="6" v-for="book in recommendBooks" :key="book.id">
         <div class="book-card-simple" @click="goToDetail(book.id)">
           <div class="cover-wrapper">
@@ -101,7 +118,13 @@
       <el-empty v-if="recommendBooks.length === 0 && !recommendLoading" description="暂无推荐书籍" />
     </el-row>
 
-    <div class="section-title"><el-icon><Reading /></el-icon> 书库</div>
+    <div class="section-title search-result-title" v-if="isSearchMode">
+      <span>🔍 搜索 "{{ searchKeyword }}" 的结果 (共 {{ total }} 条)</span>
+      <el-button link type="primary" @click="clearSearch" class="clear-search-btn">
+        <el-icon><ArrowLeft /></el-icon>返回主界面
+      </el-button>
+    </div>
+    <div class="section-title" v-else><el-icon><Reading /></el-icon> 探索书库</div>
     <div class="book-grid">
       <el-card v-for="book in tableData" :key="book.id" class="book-card" shadow="hover" :body-style="{ padding: '0px' }" @click="goToDetail(book.id)">
         <img :src="book.coverUrl || defaultCover" class="book-cover" @error="(e) => e.target.src = defaultCover" />
@@ -109,6 +132,9 @@
           <div class="book-title" :title="book.title">{{ book.title }}</div>
           <div class="book-author">{{ book.author }}</div>
           <div class="book-desc">{{ book.description?.substring(0, 30) }}...</div>
+          <div class="match-tag" v-if="isSearchMode && book.score">
+            <span class="score-text">🔍 综合匹配度: {{ Number(book.score).toFixed(1) }}</span>
+          </div>
         </div>
       </el-card>
     </div>
@@ -163,6 +189,7 @@ const categories = ['科幻', '文学', '历史', '技术', '悬疑']
 const hotBooks = ref([])
 const rankBooks = ref([])
 const recommendBooks = ref([])
+const isSearchMode = ref(false)
 const recommendLoading = ref(false) // === 修改点 3: 新增 loading 状态 ===
 const tableData = ref([])
 const total = ref(0)
@@ -322,7 +349,12 @@ const loadRecommendBooks = async () => {
 }
 
 const loadBooks = async () => {
-  const res = await axios.get('/api/sysBook/list', {
+  const isSearch = searchKeyword.value.trim().length > 0
+  isSearchMode.value = isSearch
+  
+  const url = isSearch ? '/api/search' : '/api/sysBook/list'
+  
+  const res = await axios.get(url, {
     params: {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
@@ -350,6 +382,43 @@ const handleUserCommand = (cmd) => {
   }
 }
 
+
+const querySearchAsync = async (queryString, cb) => {
+  if (!queryString || !queryString.trim()) {
+    cb([]);
+    return;
+  }
+  try {
+    const res = await axios.get('/api/search', {
+      params: { keyword: queryString, pageNum: 1, pageSize: 5 }
+    });
+    if (res.data.code === '200') {
+      const suggestions = res.data.data.records.map(item => {
+        return {
+          ...item,
+          value: item.title + ' - ' + item.author // 仅为了提供给原生的 input value 显示
+        };
+      });
+      cb(suggestions);
+    } else {
+      cb([]);
+    }
+  } catch (e) {
+    cb([]);
+  }
+};
+
+const handleSelect = (item) => {
+  goToDetail(item.id);
+};
+
+const clearSearch = () => {
+  searchKeyword.value = '';
+  isSearchMode.value = false;
+  pageNum.value = 1;
+  loadBooks();
+};
+
 const handleSearch = () => { pageNum.value = 1; loadBooks() }
 const changeCategory = (cat) => { currentCategory.value = cat; pageNum.value = 1; loadBooks() }
 const handleCurrentChange = (val) => { pageNum.value = val; loadBooks() }
@@ -357,55 +426,86 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 </script>
 
 <style scoped>
+/* ==================================================
+   Modernized UI Styles for Home.vue
+================================================== */
 .home-container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 18px 24px;
+  padding: 0 24px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #3d3632;
+  background-color: #f0ece4;
+  min-height: 100vh;
+  
+  /* Override Element Plus Primary Color to warm brown */
+  --el-color-primary: #8b6f52;
+  --el-color-primary-light-3: #a38c75;
+  --el-color-primary-light-5: #bdae9c;
+  --el-color-primary-light-7: #d6ccc2;
+  --el-color-primary-light-9: #f0ece4;
+  --el-color-primary-dark-2: #6b5040;
 }
 
-/* === 导航栏 === */
+/* === Navigation Bar (Glassmorphism & Sticky) === */
 .nav-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 56px;
-  border-bottom: 1px solid #e8e0d6;
-  margin-bottom: 24px;
-  padding: 0 8px;
+  height: 64px;
+  margin: 0 -24px 32px;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(255, 253, 249, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 .logo {
   font-size: 22px;
-  font-weight: 700;
-  color: #4a3828;
-  font-family: 'Noto Serif SC', serif;
-  letter-spacing: 2px;
+  font-weight: 800;
+  color: #2e2520;
+  letter-spacing: 1px;
 }
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 24px;
 }
 .nav-item {
-  font-size: 14px;
-  color: #6b5e53;
+  font-size: 15px;
+  color: #5a5048;
   font-weight: 500;
+  transition: color 0.2s ease;
+}
+.nav-item:hover {
+  color: #8b6f52;
 }
 .user-avatar-box {
   display: flex;
   align-items: center;
   cursor: pointer;
-  gap: 8px;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+.user-avatar-box:hover {
+  background: rgba(60, 40, 20, 0.06);
 }
 .username {
   font-size: 14px;
-  color: #4a3828;
-  font-weight: 500;
+  color: #2e2520;
+  font-weight: 600;
 }
 .unread-badge {
   margin-left: 4px;
 }
 
-/* === 通知铃铛 === */
+/* === Notification Bell === */
 .notification-bell {
   position: relative;
 }
@@ -413,39 +513,38 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   animation: bell-blink 0.5s ease-in-out infinite alternate;
 }
 @keyframes bell-blink {
-  0% { color: #6b5e53; transform: scale(1); }
-  100% { color: #e6a23c; transform: scale(1.3) rotate(15deg); }
+  0% { color: #5a5048; transform: scale(1); }
+  100% { color: #ff3b30; transform: scale(1.2) rotate(15deg); }
 }
 
-/* === 通知面板 === */
+/* === Notification Panel === */
 .notify-panel {
-  position: fixed;
-  top: 60px;
-  right: 24px;
-  width: 340px;
-  max-height: 460px;
-  background: #fffdf9;
-  border: 1px solid #e8e0d6;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.15);
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 360px;
+  max-height: 480px;
+  background: rgba(255, 253, 249, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
   z-index: 2000;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .notify-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0ece4;
-  font-weight: 600;
-  font-size: 14px;
-  color: #3d3632;
-  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
+  font-weight: 700;
+  font-size: 15px;
+  color: #2e2520;
 }
-.notify-panel-header span:first-child {
-  flex: 1;
-}
+.notify-panel-header .el-button { margin-left: 8px; }
 .notify-panel-body {
   flex: 1;
   overflow-y: auto;
@@ -454,339 +553,457 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 .notify-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 12px 20px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s;
 }
 .notify-item:hover {
-  background: #faf7f2;
+  background: rgba(139, 111, 82, 0.04);
 }
 .notify-icon {
-  font-size: 20px;
+  font-size: 22px;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 .notify-text {
   flex: 1;
   min-width: 0;
 }
 .notify-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #3d3632;
-  margin-bottom: 2px;
+  color: #2e2520;
+  margin-bottom: 4px;
 }
 .notify-desc {
-  font-size: 12px;
+  font-size: 13px;
   color: #9b8e82;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* 通知面板动画 */
 .slide-notify-enter-active,
 .slide-notify-leave-active {
-  transition: opacity 0.25s, transform 0.25s;
+  transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .slide-notify-enter-from,
 .slide-notify-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-10px) scale(0.98);
 }
 
-/* === 搜索与分类 === */
+/* === Search & Filters === */
 .header-section {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
+  padding-top: 20px;
 }
 .search-box {
-  width: 560px;
-  margin: 0 auto 18px;
+  width: 600px;
+  margin: 0 auto 24px;
 }
 .search-box :deep(.el-input__wrapper) {
-  border-radius: 4px;
-  box-shadow: 0 0 0 1px #ddd5ca inset;
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.06);
+  background: #fffdf9;
+  padding: 4px 20px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
 }
 .search-box :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #b8a898 inset;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
 .search-box :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #8b6f52 inset;
+  box-shadow: 0 0 0 2px rgba(139, 111, 82, 0.2);
+  border-color: #8b6f52;
 }
 .category-tags {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 .tag-item {
   cursor: pointer;
-  padding: 5px 18px;
-  border-radius: 3px;
-  color: #7a6e63;
+  padding: 8px 24px;
+  border-radius: 20px;
+  color: #5a5048;
   font-size: 14px;
-  transition: all 0.2s;
-  border: 1px solid transparent;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  background: #fffdf9;
+  border: 1px solid rgba(60, 40, 20, 0.08);
+  box-shadow: 0 2px 6px rgba(60, 40, 20, 0.03);
 }
 .tag-item:hover {
-  color: #4a3828;
-  border-color: #d4c8ba;
-  background: #f5f0e8;
+  color: #8b6f52;
+  border-color: rgba(139, 111, 82, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 111, 82, 0.08);
 }
 .tag-item.active {
-  background-color: #5a4435;
-  color: #fff;
+  background-color: #8b6f52;
+  color: #fffdf9;
   font-weight: 600;
-  border-color: #5a4435;
+  border-color: #8b6f52;
+  box-shadow: 0 4px 12px rgba(139, 111, 82, 0.3);
 }
 
-/* === 轮播 + 排行区 === */
+/* === Carousel + Rank Section === */
 .core-section {
-  margin-bottom: 36px;
+  margin-bottom: 48px;
 }
 .promo-carousel {
-  border-radius: 6px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(60, 40, 20, 0.08);
-  border: 1px solid #e8e0d6;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+::v-deep(.el-carousel__item:hover) .carousel-img {
+  transform: scale(1.03);
 }
 .carousel-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background-color: #efe9e0;
+  background-color: #ebe3d5;
+  will-change: transform;
+  transform: translateZ(0);
+  transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .carousel-info {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(30,20,10,0.88) 0%, rgba(30,20,10,0.2) 100%);
-  color: #f0ece4;
-  padding: 22px 28px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+  color: #fffdf9;
+  padding: 40px 32px 24px;
   text-align: left;
+  backdrop-filter: blur(2px);
 }
 .carousel-info h3 {
-  margin: 0 0 6px 0;
-  font-size: 22px;
-  font-weight: 700;
-  font-family: 'Noto Serif SC', serif;
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 .author-text {
-  font-size: 13px;
-  margin-bottom: 6px;
-  opacity: 0.85;
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
 }
 .heat-tag {
   display: inline-block;
-  background-color: #a34040;
+  background: linear-gradient(135deg, #ff3b30, #ff9500);
   color: #fff;
-  padding: 3px 10px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-bottom: 8px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
 }
 .desc-text {
-  font-size: 13px;
-  opacity: 0.75;
-  line-height: 1.5;
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  line-height: 1.6;
   margin: 0;
+  max-width: 80%;
 }
 
-/* === 排行榜 === */
+/* === Rank List === */
 .rank-card {
   height: 360px;
   display: flex;
   flex-direction: column;
-  border: 1px solid #e8e0d6;
+  border-radius: 16px;
+  border: 1px solid rgba(60, 40, 20, 0.08);
+  box-shadow: 0 8px 24px rgba(60, 40, 20, 0.04);
+  background: #fffdf9;
 }
 .rank-card :deep(.el-card__header) {
-  border-bottom: 1px solid #e8e0d6;
-  padding: 14px 18px;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
+  padding: 16px 20px;
+  background: rgba(245,240,232,0.5);
 }
 .card-header span {
-  font-family: 'Noto Serif SC', serif;
-  font-weight: 600;
-  color: #4a3828;
+  font-weight: 700;
+  font-size: 16px;
+  color: #2e2520;
 }
 .rank-list {
   overflow-y: auto;
   flex: 1;
-  padding: 4px 14px;
+  padding: 8px 16px;
+}
+.rank-list::-webkit-scrollbar {
+  width: 6px;
+}
+.rank-list::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
 }
 .rank-item {
   display: flex;
   align-items: center;
-  padding: 9px 0;
-  border-bottom: 1px solid #f0ece4;
+  padding: 12px 8px;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.04);
   cursor: pointer;
-  width: 100%;
-  transition: background 0.15s;
+  transition: all 0.2s ease;
+  border-radius: 8px;
 }
 .rank-item:hover {
-  background: #faf5ed;
+  background: #ebe3d5;
+  transform: translateX(4px);
 }
 .rank-item:last-child {
   border-bottom: none;
 }
 .rank-num {
-  width: 22px;
-  height: 22px;
-  line-height: 22px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
   text-align: center;
-  background: #ede7de;
-  border-radius: 3px;
+  background: #e0d8c8;
+  border-radius: 6px;
   font-size: 12px;
-  margin-right: 10px;
-  color: #8a7d72;
+  margin-right: 12px;
+  color: #9b8e82;
   flex-shrink: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 .rank-num.top-three {
-  background: #c09a5c;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
   color: #fff;
-  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
 }
 .rank-name {
   flex: 1;
   width: 0;
   font-size: 14px;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 5px;
-  color: #3d3632;
+  margin-right: 8px;
+  color: #2e2520;
 }
 .rank-hot {
-  font-size: 12px;
-  flex-shrink: 0;
+  font-size: 14px;
 }
 
-/* === 通用标题 === */
+/* === Section Titles === */
 .section-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 18px;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 24px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-left: 3px solid #8b6f52;
-  padding-left: 12px;
-  color: #3d3632;
-  font-family: 'Noto Serif SC', serif;
+  gap: 10px;
+  color: #2e2520;
+  letter-spacing: 0.5px;
+}
+.section-title i {
+  color: #8b6f52;
 }
 
-/* === 推荐区 === */
+/* === Recommend Section === */
 .recommend-section {
-  margin-bottom: 36px;
+  margin-bottom: 48px;
 }
 .book-card-simple {
   cursor: pointer;
   background: #fffdf9;
-  border-radius: 6px;
+  border-radius: 12px;
   overflow: hidden;
-  transition: box-shadow 0.25s, transform 0.25s;
-  border: 1px solid #e8e0d6;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.03);
 }
 .book-card-simple:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(60, 40, 20, 0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
 }
 .cover-wrapper {
   position: relative;
-  height: 200px;
-  background-color: #f0ece4;
+  height: 220px;
+  background-color: #ebe3d5;
+  overflow: hidden;
 }
 .simple-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.book-card-simple:hover .simple-cover {
+  transform: scale(1.06);
 }
 .hover-mask {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(40, 28, 16, 0.45);
-  color: #f0ece4;
+  background: linear-gradient(to top, rgba(139, 111, 82, 0.9), rgba(60, 40, 20, 0.2));
+  color: #fffdf9;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.25s;
-  font-weight: 600;
-  font-size: 14px;
+  transition: opacity 0.4s ease;
+  font-weight: 700;
+  font-size: 15px;
   letter-spacing: 1px;
 }
 .book-card-simple:hover .hover-mask {
   opacity: 1;
 }
 .simple-info {
-  padding: 10px 12px;
+  padding: 14px 16px;
   text-align: left;
 }
 .simple-name {
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 4px;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #3d3632;
+  color: #2e2520;
 }
 .simple-author {
   color: #9b8e82;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-/* === 书库网格 === */
+/* === Book Grid === */
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 24px;
 }
 .book-card {
   cursor: pointer;
-  transition: box-shadow 0.25s, transform 0.2s;
-  border: 1px solid #e8e0d6;
-  border-radius: 6px;
+  background: #fffdf9;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.03);
 }
 .book-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 14px rgba(60, 40, 20, 0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
 }
 .book-cover {
   width: 100%;
-  height: 220px;
+  height: 240px;
   object-fit: cover;
-  background-color: #f0ece4;
+  background-color: #ebe3d5;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.04);
 }
 .book-info {
-  padding: 12px;
+  padding: 16px;
 }
 .book-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #2e2520;
+  font-size: 15px;
+}
+.book-author {
+  font-size: 13px;
+  color: #9b8e82;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.book-desc {
+  font-size: 13px;
+  color: #9b8e82;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pagination-box {
+  margin-top: 48px;
+  display: flex;
+  justify-content: center;
+}
+.match-tag {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #a38c75;
+  background-color: #f7f4f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  border: 1px solid #ebdaca;
+}
+.score-text {
+  font-family: monospace;
+}
+
+/* === Custom AutoComplete Styles === */
+.custom-autocomplete {
+  width: 100%;
+}
+::v-deep(.custom-autocomplete .el-input__wrapper) {
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(139, 111, 82, 0.08) !important;
+  transition: all 0.3s ease;
+  padding-left: 18px;
+}
+::v-deep(.custom-autocomplete .el-input__wrapper.is-focus) {
+  box-shadow: 0 6px 16px rgba(139, 111, 82, 0.2) !important;
+}
+.suggest-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  gap: 12px;
+}
+.suggest-cover {
+  width: 32px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.suggest-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.suggest-title {
+  font-size: 14px;
+  color: #2e2520;
   font-weight: 600;
+  line-height: 1.2;
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #3d3632;
-  font-size: 14px;
 }
-.book-author {
+.suggest-author {
   font-size: 12px;
-  color: #9b8e82;
-  margin-bottom: 4px;
+  color: #a38c75;
 }
-.book-desc {
-  font-size: 12px;
-  color: #b5a99c;
-  line-height: 1.4;
-}
-.pagination-box {
-  margin-top: 32px;
+.search-result-title {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
 }
+.clear-search-btn {
+  font-size: 14px;
+  color: #8b6f52;
+}
+
 </style>

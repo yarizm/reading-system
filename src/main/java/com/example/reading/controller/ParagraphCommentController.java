@@ -2,7 +2,9 @@ package com.example.reading.controller;
 
 import com.example.reading.common.Result;
 import com.example.reading.entity.SysParagraphComment;
+import com.example.reading.entity.SysUser;
 import com.example.reading.mapper.SysParagraphCommentMapper;
+import com.example.reading.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +23,9 @@ public class ParagraphCommentController {
 
     @Autowired // 需要注入 jdbcTemplate 或专门的 LikeMapper，这里简单演示直接用 mapper 执行 sql
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ISysUserService userService;
 
     // 1. 获取列表 (升级版，带点赞状态)
     @GetMapping("/list/{bookId}/{chapterIndex}/{paragraphIndex}")
@@ -46,8 +51,11 @@ public class ParagraphCommentController {
         // 你可以去查一下 SysUser user = userService.getById(userId); if(user.getRole()==1)...
 
         if (!comment.getUserId().equals(userId)) {
-            // 如果不是本人，暂且只允许本人删除 (如果想允许管理员，需查库判断角色)
-            return Result.error("403", "无权删除");
+            // 查询是否为管理员
+            SysUser user = userService.getById(userId);
+            if (user == null || user.getRole() != 1) {
+                return Result.error("403", "无权删除");
+            }
         }
 
         commentMapper.deleteById(id);

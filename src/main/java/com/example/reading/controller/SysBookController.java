@@ -35,6 +35,9 @@ public class SysBookController {
     @Autowired
     private ISysBookService sysBookService;
 
+    @Autowired
+    private com.example.reading.service.BookSearchService bookSearchService;
+
     // 注入 CommentMapper
     @Autowired
     private com.example.reading.mapper.SysCommentMapper commentMapper;
@@ -106,6 +109,8 @@ public class SysBookController {
             return Result.error("500", "书名不能为空");
         }
         sysBookService.save(sysBook);
+        // 同步到 Elasticsearch
+        try { bookSearchService.syncOneBookToEs(sysBook.getId()); } catch (Exception ignored) {}
         return Result.success();
     }
 
@@ -115,6 +120,8 @@ public class SysBookController {
     @PutMapping("/update")
     public Result<?> update(@RequestBody SysBook sysBook) {
         sysBookService.updateById(sysBook);
+        // 同步到 Elasticsearch
+        try { bookSearchService.syncOneBookToEs(sysBook.getId()); } catch (Exception ignored) {}
         return Result.success();
     }
 
@@ -123,11 +130,9 @@ public class SysBookController {
      */
     @DeleteMapping("/{id}")
     public Result<?> delete(@PathVariable Long id) {
-        // 1. 删除数据库记录
         sysBookService.removeById(id);
-
-        // 2. (可选) 删除关联的笔记、书架记录、以及本地的物理文件
-        // 实际生产中物理文件一般不删，或者由定时任务清理
+        // 从 Elasticsearch 删除
+        try { bookSearchService.deleteFromEs(id); } catch (Exception ignored) {}
         return Result.success();
     }
 
@@ -218,11 +223,7 @@ public class SysBookController {
      */
     @GetMapping("/rank")
     public Result<List<SysBook>> getRankBooks() {
-        QueryWrapper<SysBook> query = new QueryWrapper<>();
-        // 实际项目中应按 view_count 排序
-        query.orderByDesc("id");
-        query.last("limit 10");
-        return Result.success(sysBookService.list(query));
+        return Result.success(sysBookMapper.selectRankBooks());
     }
 
 
@@ -290,7 +291,15 @@ public class SysBookController {
             chapterMapper.insert(chapter);
         }
 
+        // 章节解析完成，自动同步到 Elasticsearch
+        syncBookToEsAfterAnalyze(bookId);
+
         return Result.success("成功解析出 " + chapters.size() + " 个章节");
+    }
+
+    // 章节解析完成后自动同步到 ES
+    private void syncBookToEsAfterAnalyze(Long bookId) {
+        try { bookSearchService.syncOneBookToEs(bookId); } catch (Exception ignored) {}
     }
 
     /**

@@ -116,6 +116,7 @@ onBeforeUnmount(() => {
     currentChapterAudio.value.pause()
     currentChapterAudio.value = null
   }
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
   if (observer) observer.disconnect()
   window.removeEventListener('beforeunload', handleBeforeUnload)
   saveProgress()
@@ -241,6 +242,10 @@ const loadCurrentChapter = async () => {
   if (currentChapterAudio.value) {
     currentChapterAudio.value.pause()
     currentChapterAudio.value = null
+    isChapterPlaying.value = false
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel()
     isChapterPlaying.value = false
   }
 
@@ -653,8 +658,9 @@ const saveNote = async (msgContent) => {
 }
 
 const fetchNotes = async () => {
+  if (!userInfo.value.id) return
   try {
-    const res = await axios.get(`/api/sysNote/list/${bookId}`)
+    const res = await axios.get(`/api/sysNote/list/${bookId}`, { params: { userId: userInfo.value.id } })
     if (res.data.code === '200') noteList.value = res.data.data
   } catch (e) { console.error(e) }
 }
@@ -695,112 +701,82 @@ const goBack = async () => {
     currentChapterAudio.value.pause()
     currentChapterAudio.value = null
   }
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
+  if (window.speechSynthesis) window.speechSynthesis.cancel()
   await saveProgress()
   router.push('/shelf')
 }
 
-// === 整章朗读 (听本章) ===
+// === 整章朗读 (听本章 - 使用系统免费 Web Speech API) ===
+let speechSynthesisUtterance = null;
+
 const toggleChapterTts = async () => {
+  if (!catalog.value || catalog.value.length === 0) return;
+
+  const synth = window.speechSynthesis;
+  if (!synth) {
+    ElMessage.error('您的浏览器不支持本地语音播报功能');
+    return;
+  }
+
   // 1. 如果正在播放，则暂停
-  if (currentChapterAudio.value && isChapterPlaying.value) {
-    currentChapterAudio.value.pause()
-    isChapterPlaying.value = false
-    return
+  if (synth.speaking && !synth.paused && isChapterPlaying.value) {
+    synth.pause();
+    isChapterPlaying.value = false;
+    return;
   }
 
   // 2. 如果已经加载过实例但暂停了，则继续播放
-  if (currentChapterAudio.value && !isChapterPlaying.value) {
-    currentChapterAudio.value.play()
-    isChapterPlaying.value = true
-    return
+  if (synth.paused && !isChapterPlaying.value) {
+    synth.resume();
+    isChapterPlaying.value = true;
+    return;
   }
 
-  // 3. 如果没加载过，去请求后端
-  if (!catalog.value || catalog.value.length === 0) return
+  // 3. 彻底停止之前的发音（如果处于非常规状态）
+  synth.cancel();
+
+  // 4. 开始合成整个章节
+  const fullText = lines.value.join('，');
+  if (!fullText) {
+    ElMessage.warning('当前章节无内容，无法朗读');
+    return;
+  }
+
+  isGeneratingTts.value = true;
+  speechSynthesisUtterance = new SpeechSynthesisUtterance(fullText);
+
+  speechSynthesisUtterance.rate = 1.0;
+  speechSynthesisUtterance.pitch = 1.0;
   
-  const chapterId = catalog.value[chapterIndex.value].id
-  const voice = readingConfig.voice || 'cherry'
-  
-  isGeneratingTts.value = true
-  ElMessage.info('正在请求合成，请稍候...')
-  
-  try {
-    const res = await axios.get(`/api/ai/chapter_tts/${chapterId}?voice=${voice}`)
-    if (res.data.code === '200') {
-      const status = res.data.data
-      if (status === 'processing') {
-        // 进入轮询模式
-        pollTtsStatus(chapterId, voice)
-      } else {
-        // 直接返回了 URL
-        playChapterAudio(status)
-      }
-    } else {
-      ElMessage.error(res.data.msg || '语音获取失败')
-      isGeneratingTts.value = false
+  // 匹配优先音色
+  const voices = synth.getVoices();
+  const zhVoices = voices.filter(v => v.lang.includes('zh') || v.lang.includes('cmn'));
+  if (zhVoices.length > 0) {
+    // 尽量挑选较好听的语音（如 Edge 的 Xiaoxiao 等）
+    const preferredVoice = zhVoices.find(v => v.name.includes('Xiaoxiao') || v.name.includes('Tingting')) || zhVoices[0];
+    speechSynthesisUtterance.voice = preferredVoice;
+  }
+
+  speechSynthesisUtterance.onstart = () => {
+    isGeneratingTts.value = false;
+    isChapterPlaying.value = true;
+  };
+
+  speechSynthesisUtterance.onend = () => {
+    isChapterPlaying.value = false;
+  };
+
+  speechSynthesisUtterance.onerror = (e) => {
+    console.error('TTS Error:', e);
+    isGeneratingTts.value = false;
+    isChapterPlaying.value = false;
+    if (e.error !== 'canceled' && e.error !== 'interrupted') {
+      ElMessage.error('本地语音引擎出错: ' + e.error);
     }
-  } catch (e) {
-    ElMessage.error('服务请求异常')
-    isGeneratingTts.value = false
-  }
-}
+  };
 
-// 轮询状态
-const pollTtsStatus = (chapterId, voice) => {
-  const timer = setInterval(async () => {
-    try {
-      const res = await axios.get(`/api/ai/chapter_tts/status/${chapterId}?voice=${voice}`)
-      if (res.data.code === '200') {
-        const status = res.data.data
-        if (status === 'processing') {
-          // 继续等待
-          showGeneratingTip()
-        } else if (status.startsWith('http')) {
-          // 合成成功
-          clearInterval(timer)
-          playChapterAudio(status)
-        } else if (status.startsWith('error:')) {
-          // 合成失败
-          clearInterval(timer)
-          ElMessage.error('合成失败: ' + status.substring(6))
-          isGeneratingTts.value = false
-        }
-      }
-    } catch (e) {
-      clearInterval(timer)
-      isGeneratingTts.value = false
-    }
-  }, 3000) // 每 3 秒轮询一次
-}
-
-let lastTipTime = 0
-const showGeneratingTip = () => {
-  const now = Date.now()
-  if (now - lastTipTime > 15000) { // 每 15 秒提示一次，避免太吵
-    ElMessage.info('长章节合成中，请耐心等待...')
-    lastTipTime = now
-  }
-}
-
-const playChapterAudio = (url) => {
-  if (currentChapterAudio.value) {
-    currentChapterAudio.value.pause()
-  }
-  
-  currentChapterAudio.value = new Audio(url)
-  currentChapterAudio.value.onended = () => {
-    isChapterPlaying.value = false
-  }
-  
-  currentChapterAudio.value.play().then(() => {
-    isChapterPlaying.value = true
-    isGeneratingTts.value = false
-    ElMessage.success('语音加载成功')
-  }).catch(err => {
-    console.error('播放失败', err)
-    ElMessage.error('音频文件加载失败，可能文件损坏')
-    isGeneratingTts.value = false
-  })
+  synth.speak(speechSynthesisUtterance);
 }
 
 const goToUserProfile = (userId) => {
@@ -1019,148 +995,200 @@ const goToUserProfile = (userId) => {
 </template>
 
 <style scoped>
-/* === 主题配色 === */
-.read-container { min-height: 100vh; transition: background-color 0.3s, color 0.3s; }
-.theme-default { background-color: #f5f0e6; color: #3d3632; }
-.theme-default .read-header { background: #fffdf9; border-bottom: 1px solid #e8e0d6; color: #3d3632; }
-.theme-default .text-paragraph { color: #3d3632; }
-.theme-green { background-color: #cce8cf; color: #004d00; }
-.theme-green .read-header { background: #b0dcb5; border-bottom: 1px solid #99c79e; color: #003300; }
-.theme-green .text-paragraph { color: #004d00; }
-.theme-green .text-paragraph:hover { background-color: rgba(0, 50, 0, 0.05); }
-.theme-dark { background-color: #1a1a1a; color: #b0b0b0; }
-.theme-dark .read-header { background: #2c2c2c; border-bottom: 1px solid #444; color: #ccc; }
-.theme-dark .text-paragraph { color: #b0b0b0; }
-.theme-dark .chapter-title { color: #ddd; }
-.theme-dark .text-paragraph:hover { background-color: rgba(255, 255, 255, 0.05); }
-.theme-dark .book-title { color: #ccc; }
+/* ==================================================
+   Modernized Premium Reading UI Styles
+================================================== */
+.read-container { 
+  min-height: 100vh; 
+  transition: background-color 0.4s ease, color 0.4s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* === Themes === */
+/* Default: Elegant paper-like reading experience */
+.theme-default { background-color: #fdfcf8; color: #2c2925; }
+.theme-default .read-header { background: rgba(253, 252, 248, 0.85); border-bottom: 1px solid rgba(0,0,0,0.04); color: #2c2925; }
+.theme-default .text-paragraph { color: #2c2925; }
+
+/* Eye-care (Green): Soothing pastel mint */
+.theme-green { background-color: #dcedc8; color: #2e4a2d; }
+.theme-green .read-header { background: rgba(220, 237, 200, 0.85); border-bottom: 1px solid rgba(46,74,45,0.1); color: #2e4a2d; }
+.theme-green .text-paragraph { color: #2e4a2d; }
+.theme-green .text-paragraph:hover { background-color: rgba(46, 74, 45, 0.04); }
+
+/* Dark: Deep slate for OLED / night reading */
+.theme-dark { background-color: #181a1b; color: #d0d0d0; }
+.theme-dark .read-header { background: rgba(24, 26, 27, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); color: #e8e8e8; }
+.theme-dark .text-paragraph { color: #d0d0d0; }
+.theme-dark .chapter-title { color: #e8e8e8; }
+.theme-dark .text-paragraph:hover { background-color: rgba(255, 255, 255, 0.03); }
+.theme-dark .book-title { color: #e8e8e8; }
+
+/* High-contrast: Maximum readability */
 .theme-high-contrast { background-color: #000000; color: #ffffff; }
-.theme-high-contrast .read-header { background: #000; border-bottom: 2px solid #fff; color: #fff; }
-.theme-high-contrast .text-paragraph { color: #fff; font-weight: bold; }
-.theme-high-contrast .chapter-title { color: #fff; text-decoration: underline; }
-.theme-high-contrast .book-title { color: #fff; }
+.theme-high-contrast .read-header { background: #000; border-bottom: 2px solid #555; color: #fff; }
+.theme-high-contrast .text-paragraph { color: #ffffff; font-weight: 500; }
+.theme-high-contrast .chapter-title { color: #ffffff; text-decoration: underline; }
 
-/* === 顶栏 === */
-.read-header { position: fixed; top: 0; left: 0; right: 0; height: 50px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; z-index: 100; box-shadow: 0 1px 3px rgba(60, 40, 20, 0.06); }
-.book-title { margin-left: 15px; font-weight: 600; font-family: 'Noto Serif SC', serif; }
-.read-content { padding-top: 80px; padding-bottom: 50px; max-width: 900px; margin: 0 auto; }
-.chapter-title { text-align: center; font-size: 22px; margin-bottom: 36px; font-family: 'Noto Serif SC', serif; color: #2e2520; font-weight: 600; }
+/* === Header (Glassmorphism) === */
+.read-header { 
+  position: fixed; top: 0; left: 0; right: 0; height: 60px; 
+  display: flex; justify-content: space-between; align-items: center; 
+  padding: 0 24px; z-index: 100; 
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03); 
+  transition: all 0.3s ease;
+}
+.book-title { margin-left: 15px; font-weight: 700; font-family: 'Noto Serif SC', 'Source Han Serif SC', serif; letter-spacing: 0.5px; }
 
-/* === 段落 === */
-.text-paragraph { font-family: "Georgia", "Noto Serif SC", "Microsoft YaHei", serif; margin-bottom: 22px; text-indent: 2em; text-align: justify; cursor: pointer; padding: 10px 20px; border-radius: 4px; transition: background-color 0.2s; position: relative; }
-.text-paragraph:hover { background-color: rgba(139, 111, 82, 0.04); }
-.text-paragraph.selected-paragraph { background-color: rgba(139, 111, 82, 0.08); }
+.read-content { padding-top: 100px; padding-bottom: 80px; max-width: 800px; margin: 0 auto; }
+.chapter-title { 
+  text-align: center; font-size: 26px; margin-bottom: 48px; 
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', serif; 
+  font-weight: 700; letter-spacing: 1px;
+}
 
-/* === 段落工具栏 === */
-.paragraph-tools { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; background: rgba(255,253,249,0.9); padding: 4px 8px; border-radius: 4px; box-shadow: 0 1px 6px rgba(60, 40, 20, 0.1); border: 1px solid #e8e0d6; }
-.tool-icon { color: #8b6f52; cursor: pointer; font-size: 18px; transition: all 0.2s; }
-.tool-icon:hover { transform: scale(1.15); color: #5a4435; }
+/* === Paragraphs === */
+.text-paragraph { 
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', "Georgia", serif; 
+  margin-bottom: 24px; text-indent: 2em; text-align: justify; 
+  cursor: pointer; padding: 8px 16px; border-radius: 8px; 
+  transition: background-color 0.2s ease; position: relative; 
+}
+.text-paragraph:hover { background-color: rgba(0, 0, 0, 0.02); }
+.theme-dark .text-paragraph:hover { background-color: rgba(255, 255, 255, 0.03); }
+.text-paragraph.selected-paragraph { background-color: rgba(0, 102, 204, 0.06); }
+.theme-dark .text-paragraph.selected-paragraph { background-color: rgba(255, 255, 255, 0.08); }
 
-/* === 悬浮按钮 === */
-.sidebar-toggle { position: fixed; width: 54px; height: 54px; background: #fffdf9; border-radius: 14px; box-shadow: 0 2px 8px rgba(60, 40, 20, 0.1); border: 1px solid #e8e0d6; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; z-index: 900; color: #7a6e63; transition: all 0.2s; }
-.sidebar-toggle:hover { box-shadow: 0 4px 12px rgba(60, 40, 20, 0.14); color: #5a4435; border-color: #c4b09a; }
-.toggle-text { font-size: 11px; margin-top: 2px; font-weight: 600; }
+/* === Paragraph Tools === */
+.paragraph-tools { 
+  position: absolute; right: -60px; top: 50%; transform: translateY(-50%); 
+  display: flex; flex-direction: column; gap: 8px; 
+  background: rgba(255,255,255,0.9); padding: 8px; border-radius: 12px; 
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); border: 1px solid rgba(0,0,0,0.05); 
+  backdrop-filter: blur(8px);
+}
+.theme-dark .paragraph-tools { background: rgba(40,40,40,0.9); border-color: rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.tool-icon { color: #515154; cursor: pointer; font-size: 18px; transition: all 0.2s ease; }
+.theme-dark .tool-icon { color: #b0b0b0; }
+.tool-icon:hover { transform: scale(1.15); color: #0066cc; }
+
+/* === Floating Action Buttons (FABs) === */
+.sidebar-toggle { 
+  position: fixed; width: 52px; height: 52px; 
+  background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px);
+  border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); 
+  border: 1px solid rgba(0,0,0,0.05); 
+  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+  cursor: pointer; z-index: 900; color: #515154; 
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+.theme-dark .sidebar-toggle { background: rgba(30, 30, 30, 0.85); border-color: rgba(255,255,255,0.08); color: #ccc; }
+.sidebar-toggle:hover { 
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12); color: #0066cc; 
+  transform: translateY(-2px) scale(1.05); border-color: rgba(0,102,204,0.2);
+}
+.theme-dark .sidebar-toggle:hover { color: #409eff; }
+.toggle-text { font-size: 10px; margin-top: 2px; font-weight: 600; opacity: 0.8; }
 
 .ai-toggle { bottom: 100px; right: 40px; }
 .add-to-shelf-toggle { bottom: 164px; right: 40px; }
 .chapter-tts-toggle { bottom: 228px; right: 40px; }
-.add-to-shelf-toggle.is-added { color: #6a8c5a; border-color: #a3c296; }
+.add-to-shelf-toggle.is-added { color: #34c759; border-color: rgba(52, 199, 89, 0.3); }
 .my-comments-toggle { bottom: 100px; left: 40px; }
 .share-book-toggle { bottom: 164px; left: 40px; }
 
-/* === 设置面板 === */
-.setting-group { margin-bottom: 22px; border-bottom: 1px solid #f0ece4; padding-bottom: 14px; }
+/* === Settings Panel === */
+.setting-group { margin-bottom: 24px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 20px; }
 .setting-group:last-child { border-bottom: none; }
-.setting-label { font-weight: 600; margin-bottom: 10px; color: #3d3632; display: flex; justify-content: space-between; align-items: center; }
-.desc { font-size: 12px; color: #9b8e82; margin-top: 5px; }
-.theme-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.theme-btn { text-align: center; padding: 10px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; font-size: 13px; }
-.theme-btn.active { border-color: #8b6f52; position: relative; }
-.theme-btn.active::after { content: '✔'; position: absolute; top: 2px; right: 5px; color: #8b6f52; font-size: 12px; }
-.t-default { background: #f5f0e6; color: #3d3632; }
-.t-green { background: #cce8cf; color: #004d00; }
-.t-dark { background: #1a1a1a; color: #ccc; }
-.t-high { background: #000; color: #fff; font-weight: bold; border: 1px solid #ccc; }
+.setting-label { font-weight: 600; margin-bottom: 14px; color: #1d1d1f; display: flex; justify-content: space-between; align-items: center; }
+.desc { font-size: 12px; color: #86868b; margin-top: 6px; line-height: 1.4; }
+.theme-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.theme-btn { text-align: center; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+.theme-btn.active { border-color: #0066cc; position: relative; box-shadow: 0 2px 8px rgba(0,102,204,0.15); }
+.theme-btn.active::after { content: '✔'; position: absolute; top: 4px; right: 8px; color: #0066cc; font-size: 12px; }
+.t-default { background: #fdfcf8; color: #2c2925; border: 1px solid rgba(0,0,0,0.05); }
+.t-green { background: #dcedc8; color: #2e4a2d; border: 1px solid rgba(0,0,0,0.05); }
+.t-dark { background: #181a1b; color: #d0d0d0; border: 1px solid rgba(255,255,255,0.1); }
+.t-high { background: #000; color: #fff; font-weight: bold; border: 1px solid #555; }
 
-/* === 目录 === */
-.catalog-list { padding: 10px; }
-.catalog-item { padding: 11px; border-bottom: 1px solid #f0ece4; cursor: pointer; font-size: 14px; transition: background 0.15s; }
-.catalog-item:hover { background: #faf5ed; color: #5a4435; }
-.catalog-item.active { color: #5a4435; font-weight: 600; background: #f5f0e8; }
+/* === Catalog === */
+.catalog-list { padding: 8px 12px; }
+.catalog-item { padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,0.03); cursor: pointer; font-size: 15px; transition: all 0.2s ease; border-radius: 8px; }
+.catalog-item:hover { background: rgba(0,0,0,0.02); color: #0066cc; transform: translateX(4px); }
+.catalog-item.active { color: #0066cc; font-weight: 600; background: rgba(0,102,204,0.06); }
 
-/* === 书籍信息弹窗 === */
-.book-info-content { display: flex; flex-direction: column; align-items: center; padding: 18px; }
-.book-cover-large { width: 120px; height: 160px; object-fit: cover; border-radius: 4px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(60,40,20,0.1); }
-.info-title { font-size: 20px; margin-bottom: 14px; font-family: 'Noto Serif SC', serif; color: #2e2520; }
-.info-meta { color: #7a6e63; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
-.info-desc { margin-top: 18px; width: 100%; text-align: left; }
-.info-desc h4 { margin-bottom: 8px; color: #4a3828; }
-.info-desc p { color: #5a5048; line-height: 1.7; font-size: 14px; }
+/* === Book Info Dialog === */
+.book-info-content { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+.book-cover-large { width: 140px; height: 190px; object-fit: cover; border-radius: 8px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+.info-title { font-size: 24px; margin-bottom: 16px; font-family: 'Noto Serif SC', serif; color: #1d1d1f; font-weight: 700; }
+.info-meta { color: #86868b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.info-desc { margin-top: 20px; width: 100%; text-align: left; }
+.info-desc h4 { margin-bottom: 10px; color: #1d1d1f; font-size: 16px; }
+.info-desc p { color: #515154; line-height: 1.8; font-size: 15px; }
 
-/* === 段落评论抽屉 === */
+/* === Comments Drawer === */
 .comment-drawer .el-drawer__body { display: flex; flex-direction: column; padding: 0; }
-.paragraph-quote { padding: 14px; background: #faf5ed; border-bottom: 1px solid #e8e0d6; font-style: italic; color: #7a6e63; font-size: 14px; line-height: 1.6; max-height: 100px; overflow-y: auto; }
-.comment-list { flex: 1; overflow-y: auto; padding: 14px; }
-.comment-item { display: flex; gap: 12px; margin-bottom: 18px; border-bottom: 1px solid #f5f0e8; padding-bottom: 14px; }
+.paragraph-quote { padding: 16px; background: rgba(0,0,0,0.02); border-bottom: 1px solid rgba(0,0,0,0.05); font-style: italic; color: #515154; font-size: 14px; line-height: 1.6; max-height: 120px; overflow-y: auto; }
+.comment-list { flex: 1; overflow-y: auto; padding: 16px; }
+.comment-list::-webkit-scrollbar { width: 6px; }
+.comment-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+.comment-item { display: flex; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid rgba(0,0,0,0.03); padding-bottom: 20px; }
 .comment-body { flex: 1; }
-.comment-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; align-items: center; }
-.comment-user { font-weight: 600; color: #4a3828; }
-.comment-ops { display: flex; gap: 10px; align-items: center; }
-.op-icon { cursor: pointer; font-size: 16px; color: #b5a99c; }
-.op-icon:hover { color: #a34040; }
-.like-box { display: flex; align-items: center; gap: 2px; cursor: pointer; color: #b5a99c; }
-.like-box:hover, .like-box .is-liked { color: #a34040; }
-.is-liked { color: #a34040; }
-.like-count { font-size: 12px; }
-.comment-time { color: #c4b9ab; font-size: 12px; display: block; margin-top: 5px; }
-.comment-content { font-size: 14px; line-height: 1.5; color: #3d3632; }
-.comment-input-area { padding: 14px; border-top: 1px solid #e8e0d6; background: #fffdf9; }
+.comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; align-items: center; }
+.comment-user { font-weight: 700; color: #1d1d1f; }
+.comment-ops { display: flex; gap: 16px; align-items: center; }
+.op-icon { cursor: pointer; font-size: 16px; color: #86868b; transition: color 0.2s; }
+.op-icon:hover { color: #ff3b30; }
+.like-box { display: flex; align-items: center; gap: 4px; cursor: pointer; color: #86868b; transition: color 0.2s; }
+.like-box:hover, .like-box .is-liked { color: #ff3b30; }
+.is-liked { color: #ff3b30; }
+.like-count { font-size: 13px; font-weight: 500; }
+.comment-time { color: #a1a1a6; font-size: 12px; display: block; margin-top: 8px; }
+.comment-content { font-size: 15px; line-height: 1.6; color: #1d1d1f; }
+.comment-input-area { padding: 16px; border-top: 1px solid rgba(0,0,0,0.05); background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); }
 
-/* === 我的评论 === */
-.my-comment-list { padding: 10px; }
-.my-comment-item { padding: 12px; border-bottom: 1px solid #f0ece4; cursor: pointer; transition: background 0.15s; border-radius: 4px; }
-.my-comment-item:hover { background: #faf5ed; }
-.my-comment-pos { font-size: 12px; color: #8b6f52; margin-bottom: 4px; }
-.my-comment-quote { font-size: 12px; color: #9b8e82; background: #f5f0e8; padding: 4px 6px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 3px; }
-.my-comment-content { font-size: 14px; line-height: 1.4; color: #3d3632; }
-.my-comment-time { font-size: 12px; color: #c4b9ab; text-align: right; margin-top: 4px; }
+/* === My Comments === */
+.my-comment-list { padding: 12px; }
+.my-comment-item { padding: 16px; border: 1px solid rgba(0,0,0,0.04); cursor: pointer; transition: all 0.2s; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.01); }
+.my-comment-item:hover { background: rgba(0,0,0,0.01); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.04); }
+.my-comment-pos { font-size: 13px; color: #0066cc; margin-bottom: 8px; font-weight: 600; }
+.my-comment-quote { font-size: 13px; color: #86868b; background: rgba(0,0,0,0.03); padding: 8px 12px; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 6px; }
+.my-comment-content { font-size: 15px; line-height: 1.6; color: #1d1d1f; }
+.my-comment-time { font-size: 12px; color: #a1a1a6; text-align: right; margin-top: 10px; }
 
-/* === AI 右键菜单 === */
-.ai-menu { position: absolute; background: #3d2e20; color: #f0ece4; border-radius: 6px; padding: 5px; display: flex; gap: 4px; box-shadow: 0 4px 14px rgba(40, 28, 16, 0.3); z-index: 999; animation: fadeIn 0.15s ease; }
-.menu-item { display: flex; flex-direction: column; align-items: center; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-size: 12px; }
-.menu-item:hover { background: rgba(255,255,255,0.1); }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+/* === AI Context Menu === */
+.ai-menu { position: absolute; background: rgba(30, 30, 30, 0.95); backdrop-filter: blur(16px); color: #ffffff; border-radius: 12px; padding: 6px; display: flex; gap: 6px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); z-index: 999; animation: fadeInMenu 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); border: 1px solid rgba(255,255,255,0.1); }
+.menu-item { display: flex; flex-direction: column; align-items: center; padding: 10px 14px; cursor: pointer; border-radius: 8px; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+.menu-item:hover { background: rgba(255,255,255,0.15); }
+@keyframes fadeInMenu { from { opacity: 0; transform: translateY(8px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-/* === AI 聊天 === */
+/* === AI Chat === */
 .chat-layout { display: flex; flex-direction: column; height: calc(100vh - 110px); }
-.chat-history-box { flex: 1; overflow-y: auto; padding: 14px; background-color: #faf8f5; }
-.chat-row { display: flex; margin-bottom: 18px; align-items: flex-start; }
+.chat-history-box { flex: 1; overflow-y: auto; padding: 20px; background-color: rgba(0,0,0,0.01); }
+.chat-row { display: flex; margin-bottom: 24px; align-items: flex-start; }
 .row-left { flex-direction: row; }
 .row-right { flex-direction: row-reverse; }
-.avatar-wrapper { flex-shrink: 0; margin: 0 10px; }
+.avatar-wrapper { flex-shrink: 0; margin: 0 12px; }
 .bubble-wrapper { max-width: 80%; }
-.bubble-content { padding: 10px 14px; border-radius: 6px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; box-shadow: 0 1px 2px rgba(60,40,20,0.05); }
-.row-left .bubble-content { background: #fffdf9; color: #3d3632; border: 1px solid #e8e0d6; border-top-left-radius: 2px; }
-.row-right .bubble-content { background: #d4e8c4; color: #2a3a20; border-top-right-radius: 2px; }
-.chat-input-area { padding: 14px; background: #fffdf9; border-top: 1px solid #e8e0d6; }
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #b5a99c; gap: 10px; }
-.msg-actions { display: flex; justify-content: flex-end; margin-top: 8px; opacity: 0; transform: translateY(4px); transition: all 0.25s; }
-.chat-row:hover .msg-actions { opacity: 1; transform: translateY(0); }
-.action-icon { cursor: pointer; font-size: 22px; color: #7a6e63; padding: 6px; border-radius: 50%; background-color: #fffdf9; box-shadow: 0 1px 4px rgba(60,40,20,0.08); transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-.action-icon:hover { color: #fff; background-color: #8b6f52; box-shadow: 0 3px 10px rgba(139,111,82,0.3); transform: scale(1.1); }
+.bubble-content { padding: 12px 18px; border-radius: 16px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.row-left .bubble-content { background: #ffffff; color: #1d1d1f; border: 1px solid rgba(0,0,0,0.05); border-top-left-radius: 4px; }
+.row-right .bubble-content { background: #0066cc; color: #ffffff; border-top-right-radius: 4px; }
+.chat-input-area { padding: 16px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); border-top: 1px solid rgba(0,0,0,0.05); }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #86868b; gap: 16px; }
 
-/* === 笔记 === */
-.note-card { background: #fffdf9; border: 1px solid #e8e0d6; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
-.note-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
-.note-time { font-size: 12px; color: #b5a99c; }
-.note-quote { font-size: 12px; color: #9b8e82; background: #f5f0e8; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #d4c4a8; }
-.note-content { font-size: 14px; color: #3d3632; line-height: 1.5; white-space: pre-wrap; }
+/* === Notes === */
+.note-card { background: #ffffff; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+.note-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.note-time { font-size: 12px; color: #a1a1a6; }
+.note-quote { font-size: 13px; color: #515154; background: rgba(0,0,0,0.03); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #0066cc; }
+.note-content { font-size: 15px; color: #1d1d1f; line-height: 1.6; white-space: pre-wrap; }
 
-/* === 章节导航 === */
-.chapter-nav { display: flex; justify-content: center; gap: 24px; margin-top: 40px; padding: 20px 0; }
-.empty-tip { text-align: center; color: #b5a99c; padding: 60px 0; font-size: 15px; }
+/* === Chapter Nav === */
+.chapter-nav { display: flex; justify-content: center; gap: 32px; margin-top: 64px; padding: 24px 0; border-top: 1px solid rgba(0,0,0,0.05); }
+.chapter-nav .el-button { border-radius: 20px; padding: 10px 32px; font-weight: 500; font-size: 15px; }
 
-/* === 可点击用户 === */
-.clickable-user { cursor: pointer; transition: opacity 0.15s; }
-.clickable-user:hover { opacity: 0.75; }
+.empty-tip { text-align: center; color: #a1a1a6; padding: 80px 0; font-size: 16px; font-weight: 500; }
+.clickable-user { cursor: pointer; transition: opacity 0.2s; }
+.clickable-user:hover { opacity: 0.8; }
 </style>
