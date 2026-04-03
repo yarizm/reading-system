@@ -1,0 +1,120 @@
+/* ================================
+   Mobile Design System
+   Color Palette: Warm brown / paper
+================================ */
+:root {
+  --color-primary: #8b6f52;
+  --color-primary-light: #a38c75;
+  --color-primary-dark: #6b5040;
+  --color-bg: #f5f0e8;
+  --color-bg-card: #fffdf9;
+  --color-bg-warm: #faf5ed;
+  --color-text: #2e2520;
+  --color-text-secondary: #7a6e63;
+  --color-text-muted: #9b8e82;
+  --color-border: #e8e0d6;
+  --color-border-light: #f0ece4;
+  --color-danger: #ee4d38;
+  --color-success: #52c41a;
+  --color-gold: #f5a623;
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* Override Vant theme colors */
+:root:root {
+  --van-primary-color: #8b6f52;
+  --van-success-color: #52c41a;
+  --van-danger-color: #ee4d38;
+  --van-warning-color: #f5a623;
+  --van-text-color: #2e2520;
+  --van-text-color-2: #7a6e63;
+  --van-text-color-3: #9b8e82;
+  --van-border-color: #e8e0d6;
+  --van-background: #f5f0e8;
+  --van-background-2: #fffdf9;
+  --van-nav-bar-background: rgba(255, 253, 249, 0.92);
+  --van-tabbar-background: rgba(255, 253, 249, 0.95);
+}
+
+/* Smooth page transitions */
+.page-slide-enter-active,
+.page-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.page-slide-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+.page-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+/* Custom scrollbar for mobile-like */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Safe area padding for bottom tabs */
+.safe-bottom {
+  padding-bottom: calc(50px + var(--safe-bottom));
+}
+
+/* Book cover default aspect ratio */
+.cover-aspect {
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--color-border-light);
+}
+
+/* Common card style */
+.m-card {
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(60, 40, 20, 0.04);
+}
+
+/* Section title */
+.m-section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+  padding: 16px 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pull refresh text */
+.van-pull-refresh__text {
+  color: var(--color-text-muted) !important;
+}
+
+/* Fix vant image lazy load */
+.van-image__error, .van-image__loading {
+  background: var(--color-border-light) !important;
+}
