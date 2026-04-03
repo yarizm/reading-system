@@ -52,3 +52,6 @@ ai:
   dashscope:
     api-key: ${QWEN_API_KEY}
   enable-recommendation: false  # 平时设为 false (省钱)，答辩演示时改为 true
+dify:
+  api-url: "http://localhost/v1/chat-messages" # 替换为你在 Dify API 页面看到的真实地址
+  api-key: "app-aDnWDMzlbKPZqI85aRutB6SQ"        # 替换为你复制的 API Key

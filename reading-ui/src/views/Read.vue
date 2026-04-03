@@ -9,6 +9,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
+import { fetchEventSource } from '@microsoft/fetch-event-source'
 
 const route = useRoute()
 const router = useRouter()
@@ -64,6 +65,7 @@ const chatList = ref([])
 const inputMessage = ref('')
 const isThinking = ref(false)
 const aiTitle = ref('AI 助手')
+const currentConversationId = ref('');
 
 // === 阅读设置 (护眼/适老) ===
 const showSettings = ref(false)
@@ -578,61 +580,76 @@ const handleGlobalClick = (e) => {
   }
 }
 
-const sendChat = async (textOverride = null) => {
-  const message = typeof textOverride === 'string' ? textOverride : inputMessage.value
-  if (!message || !message.trim() || isThinking.value) return
+// === 核弹级改造：接入 Dify 流式接口 ===
+const sendChat = async (contextText = null, modeOverride = null, displayMsg = null) => {
+  // 如果是用户自己打字，contextText 传 null，指令就是用户的打字内容
+  const instruction = modeOverride || inputMessage.value
+  // 如果没有选中文本，传一个默认提示防止后端报错
+  const textToAnalyze = contextText || selectedText.value || '用户没有提供具体文本，请直接回答用户的问题'
+  const messageToShow = displayMsg || inputMessage.value
+
+  if (!instruction || !instruction.trim() || isThinking.value) return
 
   let userId = userInfo.value.id
   if (!userId) { ElMessage.warning('请先登录'); return }
 
-  chatList.value.push({ role: 'user', content: message })
+  // 1. 将用户的提问加入聊天框
+  chatList.value.push({ role: 'user', content: messageToShow })
   inputMessage.value = ''
   isThinking.value = true
   scrollToBottom()
 
+  // 2. 先创建一个空的 AI 气泡，拿到它的索引，等会儿往里塞字
   const aiMsgIndex = chatList.value.push({ role: 'ai', content: '' }) - 1
 
   try {
-    const response = await fetch('/api/ai/chat', {
+    await fetchEventSource('/api/difyreading/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, bookId, text: message })
-    })
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      // 2. 👇 在发送的 body 里，加上 conversationId
+      body: JSON.stringify({
+        text: textToAnalyze,
+        mode: instruction,
+        conversationId: currentConversationId.value, // 首次为空，后续有值
+        bookName: bookInfo.value.title // 🌟 把你 Vue 里的书籍标题传过去
+      }),
+      onmessage(event) {
+        const dataJson = JSON.parse(event.data);
 
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder('utf-8')
+        // Dify 的 Chat 模式事件和 Workflow 稍微有一点不同
+        // 主要是通过 message 类型的事件来推送文本
+        if (dataJson.event === 'message') {
+          const newText = dataJson.answer || ''; // 聊天模式通常把字放在 answer 里
+          chatList.value[aiMsgIndex].content += newText;
+          scrollToBottom();
 
-    // === 核心修复：新增缓冲区变量 ===
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value, { stream: true })
-      // 1. 拼接到缓冲区
-      buffer += chunk
-
-      // 2. 按换行符切分
-      const lines = buffer.split('\n')
-
-      // 3. 关键步骤：把数组最后一行（可能是半截话）弹出来，放回缓冲区等待下一次拼接
-      // 只有遇到 \n 才会切出完整的行，最后剩下的就是没 \n 的部分
-      buffer = lines.pop()
-
-      for (const line of lines) {
-        if (line.startsWith('data:')) {
-          // 去掉前缀，拼接到对话框
-          const content = line.replace(/^data:/, '')
-          chatList.value[aiMsgIndex].content += content
+          // 3. 👇 核心：从 Dify 吐出的数据中抓取 conversation_id 并存起来！
+          if (dataJson.conversation_id) {
+            currentConversationId.value = dataJson.conversation_id;
+          }
         }
+
+
+        if (dataJson.event === 'error') {
+          chatList.value[aiMsgIndex].content += '\n[解析出错]';
+        }
+      },
+      onclose() {
+        isThinking.value = false;
+        scrollToBottom();
+      },
+      onerror(err) {
+        console.error("流式输出异常:", err);
+        chatList.value[aiMsgIndex].content += '\n[网络异常，连接中断]';
+        isThinking.value = false;
+        throw err; // 阻止疯狂重连
       }
-      scrollToBottom()
-    }
+    });
   } catch (error) {
-    chatList.value[aiMsgIndex].content += '\n[网络异常]'
     console.error(error)
-  } finally {
     isThinking.value = false
     scrollToBottom()
   }
@@ -672,13 +689,27 @@ const handleDeleteNote = async (id) => {
 
 const handleAiAction = (type) => {
   menuVisible.value = false
-  toggleSidebar()
-  let prompt = selectedText.value
-  if (type === 'EXPLAIN') prompt = `请帮我解释：“${selectedText.value}”`
-  else if (type === 'SUMMARY') prompt = `请提炼摘要：“${selectedText.value}”`
-  else if (type === 'CONTINUE') prompt = `请续写：“${selectedText.value}”`
-  else if (type === 'TTS') { handleTTS(); return }
-  sendChat(prompt)
+  toggleSidebar() // 打开右侧 AI 抽屉
+
+  let modeInstruction = ''
+  let displayMessage = ''
+
+  if (type === 'EXPLAIN') {
+    modeInstruction = '请用大白话详细解释这段话，越通俗越好'
+    displayMessage = `【释疑】${selectedText.value}`
+  } else if (type === 'SUMMARY') {
+    modeInstruction = '请提炼这段话的核心摘要和关键点'
+    displayMessage = `【提炼摘要】${selectedText.value}`
+  } else if (type === 'CONTINUE') {
+    modeInstruction = '请根据这段话的语境和风格，发挥想象继续往下续写'
+    displayMessage = `【续写】${selectedText.value}`
+  } else if (type === 'TTS') {
+    handleTTS()
+    return
+  }
+
+  // 调用发送逻辑：传入原文、指令、以及要在聊天框显示的文字
+  sendChat(selectedText.value, modeInstruction, displayMessage)
 }
 
 const handleTTS = async () => {

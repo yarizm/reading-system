@@ -80,6 +80,12 @@ const routes = [
         name: 'Chat',
         component: () => import('../views/Chat.vue')
     },
+    // Dify测试
+    {
+        path: '/dify',
+        name: 'Dify',
+        component: () => import('../views/Dify.vue')
+    },
 ]
 
 // 创建路由实例
