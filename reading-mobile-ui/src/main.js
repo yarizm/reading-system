@@ -10,7 +10,8 @@ import {
   Loading, Empty, Badge, Divider, Slider, Switch, Rate, Progress,
   FloatingBubble, BackTop, Notify, ImagePreview, Uploader, DropdownMenu,
   DropdownItem, SwipeCell, Collapse, CollapseItem, Grid, GridItem,
-  ShareSheet, TextEllipsis, Sticky, ConfigProvider, Picker, Popover
+  ShareSheet, TextEllipsis, Sticky, ConfigProvider, Picker, Popover,
+  ActionBar, ActionBarIcon, ActionBarButton
 } from 'vant'
 import 'vant/lib/index.css'
 import '@vant/touch-emulator'
@@ -27,7 +28,8 @@ const vantComponents = [
   Loading, Empty, Badge, Divider, Slider, Switch, Rate, Progress,
   FloatingBubble, BackTop, Notify, ImagePreview, Uploader, DropdownMenu,
   DropdownItem, SwipeCell, Collapse, CollapseItem, Grid, GridItem,
-  ShareSheet, TextEllipsis, Sticky, ConfigProvider, Picker, Popover
+  ShareSheet, TextEllipsis, Sticky, ConfigProvider, Picker, Popover,
+  ActionBar, ActionBarIcon, ActionBarButton
 ]
 vantComponents.forEach(c => app.use(c))
 

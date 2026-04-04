@@ -49,6 +49,12 @@ const readingConfig = reactive({
 const selectedText = ref('')
 const showAiActions = ref(false)
 
+// Paragraph comments
+const showParagraphDrawer = ref(false)
+const selectedParagraphIndex = ref(-1)
+const paragraphComments = ref([])
+const newParagraphComment = ref('')
+
 onMounted(async () => {
   const u = localStorage.getItem('user')
   if (u) userInfo.value = JSON.parse(u)
@@ -62,11 +68,13 @@ onMounted(async () => {
   checkShelf()
   fetchNotes()
   window.addEventListener('beforeunload', saveProgress)
+  document.addEventListener('selectionchange', handleTextSelect)
 })
 
 onBeforeUnmount(() => {
   if (window.speechSynthesis) window.speechSynthesis.cancel()
   window.removeEventListener('beforeunload', saveProgress)
+  document.removeEventListener('selectionchange', handleTextSelect)
   saveProgress()
 })
 
@@ -172,6 +180,53 @@ const handleTextSelect = () => {
   if (text && text.length >= 2) {
     selectedText.value = text
     showAiActions.value = true
+  } else {
+    showAiActions.value = false
+  }
+}
+
+// Paragraph
+const handleParagraphClick = (idx) => {
+  if (selectedText.value) return // Don't trigger if selecting text
+  selectedParagraphIndex.value = idx
+  showParagraphDrawer.value = true
+  fetchParagraphComments(idx)
+}
+
+const fetchParagraphComments = async (idx) => {
+  try {
+    const res = await axios.get(`/api/paragraphComment/list/${bookId}/${chapterIndex.value}/${idx}`)
+    paragraphComments.value = res.data.data || []
+  } catch (e) { console.error(e) }
+}
+
+const submitParagraphComment = async () => {
+  if (!userInfo.value.id) return showToast('请先登录')
+  if (!newParagraphComment.value.trim()) return showToast('请输入内容')
+  try {
+    await axios.post('/api/paragraphComment/add', {
+      userId: userInfo.value.id, bookId, chapterIndex: chapterIndex.value, 
+      paragraphIndex: selectedParagraphIndex.value, content: newParagraphComment.value, 
+      quote: lines.value[selectedParagraphIndex.value].substring(0,25) + '...'
+    })
+    showSuccessToast('评论成功')
+    newParagraphComment.value = ''
+    fetchParagraphComments(selectedParagraphIndex.value)
+  } catch (e) { showFailToast('评论失败') }
+}
+
+const shareParagraph = () => {
+  if (navigator.clipboard) {
+    const t = lines.value[selectedParagraphIndex.value]
+    navigator.clipboard.writeText(`"${t}" -- 《${bookInfo.value.title}》`)
+    showSuccessToast('已复制该段落内容')
+  }
+}
+
+const shareBook = () => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(`推荐好书《${bookInfo.value.title}》：${window.location.href}`)
+    showSuccessToast('书籍链接已复制')
   }
 }
 
@@ -274,7 +329,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 </script>
 
 <template>
-  <div class="read-page" :class="themeClass" @touchend="handleTextSelect">
+  <div class="read-page" :class="themeClass">
     <!-- Top Bar -->
     <van-nav-bar :title="bookInfo.title" left-arrow @click-left="goBack" class="read-nav" :border="false">
       <template #right>
@@ -290,6 +345,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
         :key="idx"
         :id="'m-line-' + idx"
         class="text-line"
+        @click="handleParagraphClick(idx)"
         :style="{ fontSize: readingConfig.fontSize + 'px', lineHeight: readingConfig.lineHeight }"
       >{{ line }}</p>
 
@@ -307,22 +363,53 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
       <div class="bar-item" @click="showCatalog = true"><van-icon name="bars" size="20" /><span>目录</span></div>
       <div class="bar-item" @click="toggleChapterTts">
         <van-icon :name="isChapterPlaying ? 'pause-circle-o' : 'music-o'" size="20" :color="isChapterPlaying ? '#52c41a' : ''" />
-        <span>{{ isChapterPlaying ? '暂停' : '听书' }}</span>
-      </div>
-      <div class="bar-item" @click="toggleShelf">
-        <van-icon :name="isAddedToShelf ? 'star' : 'star-o'" size="20" :color="isAddedToShelf ? '#f5a623' : ''" />
-        <span>{{ isAddedToShelf ? '已收藏' : '收藏' }}</span>
+        <span>听书</span>
       </div>
       <div class="bar-item" @click="showAiDrawer = true"><van-icon name="chat-o" size="20" /><span>助手</span></div>
+      <div class="bar-item" @click="toggleShelf">
+        <van-icon :name="isAddedToShelf ? 'star' : 'star-o'" size="20" :color="isAddedToShelf ? '#f5a623' : ''" />
+        <span>收藏</span>
+      </div>
+      <div class="bar-item" @click="shareBook"><van-icon name="share-o" size="20" /><span>分享</span></div>
     </div>
 
-    <!-- AI Text Action Popup -->
-    <van-action-sheet v-model:show="showAiActions" title="选中文本操作" :actions="[
-      { name: '🔊 朗读', value: 'TTS' },
-      { name: '💡 释意', value: 'EXPLAIN' },
-      { name: '✍ 续写', value: 'CONTINUE' },
-      { name: '📝 摘要', value: 'SUMMARY' }
-    ]" @select="(a) => handleAiAction(a.value)" cancel-text="取消" />
+    <!-- Inline Selection Actions -->
+    <div v-show="showAiActions" class="ai-inline-actions">
+      <span class="ai-btn" @click="handleAiAction('EXPLAIN')">💡释意</span>
+      <span class="ai-btn" @click="handleAiAction('SUMMARY')">📝摘要</span>
+      <span class="ai-btn" @click="handleAiAction('CONTINUE')">✍续写</span>
+      <span class="ai-btn" @click="handleAiAction('TTS')">🔊朗读</span>
+    </div>
+
+    <!-- Paragraph Comments Drawer -->
+    <van-popup v-model:show="showParagraphDrawer" position="bottom" round :style="{ height: '60%' }">
+      <div class="p-comment-drawer">
+        <div class="p-drawer-tools">
+          <span style="font-size: 14px; font-weight: 600;">段落评论区</span>
+          <div>
+            <van-button size="mini" type="primary" plain @click="shareParagraph" style="margin-right: 8px;">分享段落</van-button>
+            <van-icon name="cross" @click="showParagraphDrawer = false" />
+          </div>
+        </div>
+        <div class="p-quote">"{{ lines[selectedParagraphIndex]?.substring(0, 30) }}..."</div>
+        
+        <div class="p-comment-list">
+          <van-empty v-if="paragraphComments.length === 0" description="暂无评论，来抢沙发吧~" image-size="60" />
+          <div class="p-comment-item" v-for="c in paragraphComments" :key="c.id">
+            <van-image round :src="c.avatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'" class="p-avatar" />
+            <div class="p-content">
+              <div class="p-name">{{ c.nickname }} <span class="p-time">{{ c.createTime?.substring(5,16) }}</span></div>
+              <div class="p-text">{{ c.content }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-input-box">
+          <van-field v-model="newParagraphComment" placeholder="发条评论支持一下..." rows="1" autosize type="textarea" />
+          <van-button type="primary" size="small" round style="white-space: nowrap;" @click="submitParagraphComment">发表</van-button>
+        </div>
+      </div>
+    </van-popup>
 
     <!-- Catalog Popup -->
     <van-popup v-model:show="showCatalog" position="right" :style="{ width: '75%', height: '100%' }">
@@ -438,6 +525,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
   padding: 4px 0;
   border-radius: 4px;
 }
+.text-line:active { background: rgba(139,111,82,0.05); }
 
 .chapter-nav { display: flex; justify-content: center; gap: 20px; margin-top: 40px; padding: 16px 0; }
 
@@ -501,4 +589,26 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 .note-time { font-size: 12px; color: var(--color-text-muted); }
 .note-quote { font-size: 13px; color: var(--color-text-secondary); background: var(--color-bg-warm); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid var(--color-primary); }
 .note-body { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+.ai-inline-actions {
+  position: fixed; bottom: 65px; left: 50%; transform: translateX(-50%); z-index: 300;
+  background: rgba(44, 41, 37, 0.95); backdrop-filter: blur(8px);
+  padding: 10px 16px; border-radius: 24px;
+  display: flex; gap: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: opacity 0.3s; pointer-events: auto; white-space: nowrap;
+}
+.theme-dark .ai-inline-actions { background: rgba(220, 220, 220, 0.95); color: #000; }
+.ai-btn { color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.theme-dark .ai-btn { color: #333; }
+
+/* Paragraph Comment Drawer */
+.p-comment-drawer { display: flex; flex-direction: column; height: 100%; border-radius: 12px 12px 0 0; }
+.p-drawer-tools { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--color-border-light); }
+.p-quote { padding: 12px 16px; background: var(--color-bg-warm); color: var(--color-text-secondary); font-size: 13px; font-style: italic; }
+.p-comment-list { flex: 1; overflow-y: auto; padding: 16px; }
+.p-comment-item { display: flex; gap: 12px; margin-bottom: 16px; }
+.p-avatar { width: 36px; height: 36px; flex-shrink: 0; }
+.p-content { flex: 1; }
+.p-name { font-size: 13px; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.p-text { font-size: 14px; color: var(--color-text); line-height: 1.5; }
+.p-input-box { padding: 10px 16px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--color-border); display: flex; align-items: flex-end; gap: 10px; background: var(--color-bg); }
 </style>

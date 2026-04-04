@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
 import axios from 'axios'
 
+const showCommentPopup = ref(false)
+
 const route = useRoute()
 const router = useRouter()
 const bookId = route.params.id
@@ -65,8 +67,9 @@ const startReading = () => router.push(`/read/${bookId}`)
 const replyTo = (parent, target) => {
   if (!userInfo.value.id) return showToast('请先登录')
   replyParent.value = parent; replyTarget.value = target
+  showCommentPopup.value = true
 }
-const cancelReply = () => { replyTarget.value = null; replyParent.value = null }
+const cancelReply = () => { replyTarget.value = null; replyParent.value = null; showCommentPopup.value = false }
 
 const submitComment = async () => {
   if (!userInfo.value.id) return showToast('请先登录')
@@ -83,6 +86,7 @@ const submitComment = async () => {
     showSuccessToast(isReply ? '回复成功' : '发表成功')
     myComment.value = ''; cancelReply(); loadComments()
     if (!isReply) loadBookDetail()
+    showCommentPopup.value = false
   } catch (e) { showFailToast('发表失败') }
   finally { submitting.value = false }
 }
@@ -100,6 +104,15 @@ const deleteComment = async (id) => {
 }
 
 const formatTime = (s) => s ? s.replace('T', ' ').substring(0, 16) : ''
+
+const shareBook = () => {
+  const shareText = `书荒救星！我发现了一本好书《${bookInfo.value.title}》，强烈推荐给你：\n${window.location.href}`
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareText).then(() => showSuccessToast('分享链接已复制')).catch(() => showFailToast('复制失败'))
+  } else {
+    showSuccessToast('请手动复制链接分享')
+  }
+}
 </script>
 
 <template>
@@ -119,19 +132,9 @@ const formatTime = (s) => s ? s.replace('T', ' ').substring(0, 16) : ''
     </div>
 
     <!-- Description -->
-    <div class="desc-section m-card" style="margin: 0 16px 12px;">
-      <div class="desc-label">简介</div>
-      <p class="desc-text">{{ bookInfo.description || '暂无简介...' }}</p>
-    </div>
-
-    <!-- Actions -->
-    <div class="action-row">
-      <van-button type="primary" round block size="large" @click="startReading" icon="books-o">
-        立即阅读
-      </van-button>
-      <van-button :type="inShelf ? 'default' : 'warning'" round block size="large" @click="toggleShelf" :icon="inShelf ? 'star' : 'star-o'">
-        {{ inShelf ? '移出书架' : '加入书架' }}
-      </van-button>
+    <div class="desc-section m-card" style="margin: 0 16px 12px; position: relative;">
+      <div class="desc-label" style="font-size: 16px; margin-bottom: 8px;">简介</div>
+      <p class="desc-text" style="color: #666; font-size: 14px; line-height: 1.8;">{{ bookInfo.description || '暂无简介...' }}</p>
     </div>
 
     <!-- Comments Section -->
@@ -179,21 +182,55 @@ const formatTime = (s) => s ? s.replace('T', ' ').substring(0, 16) : ''
       </div>
     </div>
 
-    <!-- Comment Input (sticky bottom) -->
-    <div class="comment-input-bar">
-      <div v-if="replyTarget" class="reply-hint">
-        回复 @{{ replyTarget.nickname }} <van-icon name="cross" @click="cancelReply" />
-      </div>
-      <div class="input-row">
-        <div v-if="!replyTarget" class="rate-box">
-          <van-rate v-model="myRating" size="16" color="#f5a623" />
+    <!-- Bottom Action Bar -->
+    <van-action-bar>
+      <van-action-bar-icon
+        icon="chat-o"
+        text="留评"
+        @click="replyTarget=null; showCommentPopup=true;" 
+      />
+      <van-action-bar-icon
+        icon="share-o"
+        text="分享"
+        @click="shareBook"
+      />
+      <van-action-bar-icon
+        :icon="inShelf ? 'star' : 'star-o'"
+        :text="inShelf ? '已收藏' : '收藏'"
+        :color="inShelf ? '#f5a623' : ''"
+        @click="toggleShelf"
+      />
+      <van-action-bar-button
+        type="primary"
+        text="立即阅读"
+        @click="startReading"
+      />
+    </van-action-bar>
+
+    <!-- Comment Popup -->
+    <van-popup v-model:show="showCommentPopup" position="bottom" round :style="{ padding: '16px' }">
+      <div class="comment-input-area">
+        <div class="popup-header">
+          <span class="popup-title">{{ replyTarget ? `回复 @${replyTarget.nickname}` : '发表感悟' }}</span>
+          <van-icon name="cross" @click="cancelReply" />
         </div>
-        <van-field v-model="myComment" :placeholder="replyTarget ? `回复 @${replyTarget.nickname}` : '写下你的感想...'" rows="1" autosize type="textarea" />
-        <van-button type="primary" size="small" round :loading="submitting" @click="submitComment">
-          {{ replyTarget ? '回复' : '发表' }}
+        <div v-if="!replyTarget" class="rate-box" style="margin-bottom: 12px;">
+          <span style="font-size: 14px; margin-right: 8px;">综合评分</span>
+          <van-rate v-model="myRating" size="20" color="#f5a623" />
+        </div>
+        <van-field
+          v-model="myComment"
+          rows="4"
+          autosize
+          type="textarea"
+          placeholder="写下你的真实感想..."
+          style="background: #f7f8fa; border-radius: 8px; margin-bottom: 12px; padding: 12px;"
+        />
+        <van-button type="primary" round block :loading="submitting" @click="submitComment">
+          {{ replyTarget ? '回复' : '发布' }}
         </van-button>
       </div>
-    </div>
+    </van-popup>
   </div>
 </template>
 
@@ -216,12 +253,7 @@ const formatTime = (s) => s ? s.replace('T', ' ').substring(0, 16) : ''
 .rating-text { font-size: 13px; color: #f5a623; font-weight: 600; margin-left: 4px; }
 
 .desc-section .desc-label { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--color-text-secondary); }
-.desc-section .desc-text { font-size: 14px; line-height: 1.7; color: var(--color-text); margin: 0; }
-
-.action-row { display: flex; gap: 10px; padding: 0 16px 16px; }
-.action-row .van-button { flex: 1; }
-
-.comment-section { padding: 0 16px; }
+.comment-section { padding: 0 16px; padding-bottom: 24px; }
 
 .comment-item { display: flex; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--color-border-light); }
 .c-avatar { flex-shrink: 0; }
@@ -244,14 +276,10 @@ const formatTime = (s) => s ? s.replace('T', ' ').substring(0, 16) : ''
 .sub-reply-tag { font-size: 12px; color: var(--color-text-muted); }
 .sub-text { font-size: 13px; margin: 2px 0 0; }
 
-.comment-input-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: rgba(255,253,249,0.95); backdrop-filter: blur(12px);
-  border-top: 1px solid var(--color-border);
-  padding: 10px 16px calc(10px + var(--safe-bottom));
-}
-.reply-hint { font-size: 13px; color: var(--color-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.input-row { display: flex; align-items: flex-end; gap: 8px; }
-.rate-box { flex-shrink: 0; padding-bottom: 8px; }
-.input-row .van-field { flex: 1; }
+.popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.popup-title { font-weight: 600; font-size: 16px; }
+
+/* Custom Action Bar colors */
+:deep(.van-action-bar) { background: rgba(255,253,249,0.98); backdrop-filter: blur(10px); border-top: 1px solid var(--color-border-light); }
+:deep(.van-action-bar-button--primary) { background: var(--color-primary); }
 </style>
