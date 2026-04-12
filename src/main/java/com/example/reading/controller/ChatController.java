@@ -9,9 +9,14 @@ import com.example.reading.utils.NotificationWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 即时聊天控制器
+ * 提供消息发送（含 WebSocket 通知）、历史记录查询、未读计数、已读标记及会话列表功能。
+ */
 @RestController
 @RequestMapping("/chat")
 public class ChatController {
@@ -25,16 +30,13 @@ public class ChatController {
     @Autowired
     private NotificationWebSocketHandler notificationHandler;
 
-    /**
-     * 发送消息
-     */
+    /** 发送消息（同时通过 WebSocket 推送通知给接收方） */
     @PostMapping("/send")
     public Result<?> sendMessage(@RequestBody ChatMessage msg) {
         msg.setIsRead(0);
         chatMessageService.save(msg);
 
-        // WebSocket 推送通知给接收方
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        Map<String, Object> data = new HashMap<>();
         data.put("senderId", msg.getSenderId());
         data.put("content", msg.getContent());
         notificationHandler.sendNotification(msg.getReceiverId(), "chat", data);
@@ -42,31 +44,21 @@ public class ChatController {
         return Result.success();
     }
 
-    /**
-     * 获取两人聊天记录
-     */
+    /** 获取两人之间的聊天记录 */
     @GetMapping("/history")
-    public Result<?> getChatHistory(@RequestParam Long userId,
-                                     @RequestParam Long friendId) {
-        List<ChatMessage> history = chatMessageMapper.selectChatHistory(userId, friendId);
-        return Result.success(history);
+    public Result<?> getChatHistory(@RequestParam Long userId, @RequestParam Long friendId) {
+        return Result.success(chatMessageMapper.selectChatHistory(userId, friendId));
     }
 
-    /**
-     * 获取未读消息数
-     */
+    /** 获取用户未读消息总数 */
     @GetMapping("/unread/{userId}")
     public Result<?> getUnreadCount(@PathVariable Long userId) {
-        Long count = chatMessageMapper.selectUnreadCount(userId);
-        return Result.success(count);
+        return Result.success(chatMessageMapper.selectUnreadCount(userId));
     }
 
-    /**
-     * 标记与某人的消息为已读
-     */
+    /** 将来自指定发送者的消息标记为已读 */
     @PostMapping("/read")
-    public Result<?> markAsRead(@RequestParam Long userId,
-                                 @RequestParam Long senderId) {
+    public Result<?> markAsRead(@RequestParam Long userId, @RequestParam Long senderId) {
         UpdateWrapper<ChatMessage> uw = new UpdateWrapper<>();
         uw.eq("receiver_id", userId)
           .eq("sender_id", senderId)
@@ -76,12 +68,9 @@ public class ChatController {
         return Result.success();
     }
 
-    /**
-     * 获取会话列表
-     */
+    /** 获取用户的会话列表 */
     @GetMapping("/conversations/{userId}")
     public Result<?> getConversations(@PathVariable Long userId) {
-        List<Map<String, Object>> conversations = chatMessageMapper.selectConversations(userId);
-        return Result.success(conversations);
+        return Result.success(chatMessageMapper.selectConversations(userId));
     }
 }

@@ -9,9 +9,14 @@ import com.example.reading.utils.NotificationWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 书籍分享控制器
+ * 提供好友间书籍推荐分享的发送、接收列表查询、已读标记及删除功能。
+ */
 @RestController
 @RequestMapping("/bookShare")
 public class BookShareController {
@@ -28,19 +33,15 @@ public class BookShareController {
     @Autowired
     private ISysBookService sysBookService;
 
-    /**
-     * 分享书籍给好友
-     */
+    /** 分享书籍给好友（同时推送 WebSocket 通知） */
     @PostMapping("/send")
     public Result<?> shareBook(@RequestBody BookShare share) {
         share.setIsRead(0);
         bookShareService.save(share);
 
-        // WebSocket 推送书籍分享通知
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        Map<String, Object> data = new HashMap<>();
         data.put("senderId", share.getSenderId());
         data.put("bookId", share.getBookId());
-        // 尝试获取书名
         var book = sysBookService.getById(share.getBookId());
         data.put("bookTitle", book != null ? book.getTitle() : "");
         notificationHandler.sendNotification(share.getReceiverId(), "book_share", data);
@@ -48,18 +49,13 @@ public class BookShareController {
         return Result.success();
     }
 
-    /**
-     * 获取收到的书籍分享列表
-     */
+    /** 获取收到的书籍分享列表（含书籍详情） */
     @GetMapping("/received/{userId}")
     public Result<?> getReceivedShares(@PathVariable Long userId) {
-        List<Map<String, Object>> shares = bookShareMapper.selectSharesWithBookInfo(userId);
-        return Result.success(shares);
+        return Result.success(bookShareMapper.selectSharesWithBookInfo(userId));
     }
 
-    /**
-     * 标记分享已读
-     */
+    /** 标记分享记录为已读 */
     @PostMapping("/read/{id}")
     public Result<?> markAsRead(@PathVariable Long id) {
         BookShare share = bookShareService.getById(id);
@@ -70,9 +66,7 @@ public class BookShareController {
         return Result.success();
     }
 
-    /**
-     * 删除收到的分享记录
-     */
+    /** 删除分享记录 */
     @DeleteMapping("/{id}")
     public Result<?> deleteShare(@PathVariable Long id) {
         bookShareService.removeById(id);

@@ -97,7 +97,7 @@
 
     <div class="section-title" v-if="!isSearchMode">
       <el-icon><StarFilled /></el-icon> 猜你喜欢
-      <el-button link type="primary" size="small" @click="loadRecommendBooks" style="margin-left: 10px;" :loading="recommendLoading">
+      <el-button link type="primary" size="small" @click="loadRecommendBooks(true)" style="margin-left: 10px;" :loading="recommendLoading">
         <el-icon><Refresh /></el-icon> 换一批
       </el-button>
     </div>
@@ -138,8 +138,8 @@
         </div>
       </el-card>
     </div>
-    <div class="pagination-box">
-      <el-pagination background layout="prev, pager, next" :total="total" :page-size="pageSize" @current-change="handleCurrentChange" />
+    <div class="pagination-box" v-if="total > 0">
+      <el-pagination background layout="total, prev, pager, next, jumper" :total="total" :page-size="pageSize" v-model:current-page="pageNum" @current-change="handleCurrentChange" />
     </div>
 
     <!-- 通知面板 -->
@@ -194,7 +194,7 @@ const recommendLoading = ref(false) // === 修改点 3: 新增 loading 状态 ==
 const tableData = ref([])
 const total = ref(0)
 const pageNum = ref(1)
-const pageSize = ref(12)
+const pageSize = ref(20)
 const userInfo = ref({})
 const unreadCount = ref(0)
 
@@ -327,13 +327,13 @@ const loadRankBooks = async () => {
 }
 
 // === 修改点 4: 升级版推荐获取逻辑 ===
-const loadRecommendBooks = async () => {
+const loadRecommendBooks = async (refresh = false) => {
   recommendLoading.value = true
   try {
     // 传入 userId，让后端决定是走 AI 还是走随机
     // 如果没登录，userId 为 undefined，后端会自动处理
     const res = await axios.get('/api/sysBook/recommend', {
-      params: { userId: userInfo.value.id }
+      params: { userId: userInfo.value.id, refresh }
     })
 
     if (res.data.code === '200') {
@@ -799,12 +799,17 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 .section-title {
   font-size: 22px;
   font-weight: 800;
+  color: #2e2520;
   margin-bottom: 24px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #2e2520;
-  letter-spacing: 0.5px;
+  gap: 8px;
+}
+
+.pagination-box {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
 }
 .section-title i {
   color: #8b6f52;

@@ -21,6 +21,14 @@
             @change="toggleVisibility"
             style="margin-right: 14px;"
         />
+        <el-button type="primary" @click="showUploadDialog = true">
+          <el-icon style="margin-right:5px"><Upload /></el-icon>
+          上传书籍
+        </el-button>
+        <el-button plain @click="openMyUploads">
+          <el-icon style="margin-right:5px"><Document /></el-icon>
+          我的上传
+        </el-button>
         <el-button plain @click="showBooklistDrawer = true">
           <el-icon style="margin-right:5px"><Collection /></el-icon>
           我的书单
@@ -168,6 +176,83 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- ====== 上传书籍 Dialog ====== -->
+    <el-dialog v-model="showUploadDialog" title="上传书籍" width="500px">
+      <el-form :model="uploadForm" label-width="80px">
+        <el-form-item label="书名" required>
+          <el-input v-model="uploadForm.title" placeholder="请输入书名" maxlength="100" />
+        </el-form-item>
+        <el-form-item label="作者">
+          <el-input v-model="uploadForm.author" placeholder="请输入作者名" />
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="uploadForm.category" style="width: 100%" placeholder="选择分类">
+            <el-option value="科幻" label="科幻"/>
+            <el-option value="文学" label="文学"/>
+            <el-option value="历史" label="历史"/>
+            <el-option value="技术" label="技术"/>
+            <el-option value="悬疑" label="悬疑"/>
+            <el-option value="其他" label="其他"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="简介">
+          <el-input v-model="uploadForm.description" type="textarea" :rows="3" placeholder="简单描述一下这本书" maxlength="500" show-word-limit />
+        </el-form-item>
+        <el-form-item label="封面图">
+          <el-upload
+              action="/api/sysBook/upload"
+              :on-success="(res) => uploadForm.coverUrl = res.data"
+              :show-file-list="false"
+              class="avatar-uploader"
+          >
+            <img v-if="uploadForm.coverUrl" :src="uploadForm.coverUrl" class="upload-img-preview"/>
+            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="电子书" required>
+          <el-upload
+              action="/api/sysBook/upload"
+              :on-success="(res) => uploadForm.filePath = res.data"
+              :show-file-list="false"
+          >
+            <el-button size="small" type="primary">
+              {{ uploadForm.filePath ? '文件已上传 (点击替换)' : '上传 TXT 文件' }}
+            </el-button>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showUploadDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitUserUpload" :disabled="!uploadForm.title || !uploadForm.filePath">提交上传</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ====== 我的上传 Drawer ====== -->
+    <el-drawer v-model="showMyUploadsDrawer" title="我的上传" direction="rtl" size="420px">
+      <div v-if="myUploads.length === 0" class="empty-list-tip">
+        <p>你还没有上传过书籍</p>
+      </div>
+      <div class="booklist-list" v-else>
+        <div class="upload-item" v-for="book in myUploads" :key="book.id">
+          <div class="upload-item-left">
+            <img :src="book.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover" />
+            <div class="detail-info">
+              <div class="detail-title">{{ book.title }}</div>
+              <div class="detail-author">{{ book.author || '未知作者' }}</div>
+            </div>
+          </div>
+          <div class="upload-item-right">
+            <el-tag size="small" :type="statusTagType(book.status)" effect="dark">{{ statusText(book.status) }}</el-tag>
+            <el-button
+                v-if="book.status === 0 || book.status === 3"
+                type="primary" size="small" plain
+                @click="applyPublic(book.id)"
+            >申请公开</el-button>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -176,7 +261,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { VideoPlay, Delete, HomeFilled, Plus, Collection, FolderAdd, Share, View } from '@element-plus/icons-vue'
+import { VideoPlay, Delete, HomeFilled, Plus, Collection, FolderAdd, Share, View, Upload, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const shelfList = ref([])
@@ -190,6 +275,12 @@ const showBooklistDrawer = ref(false)
 const showDetailDialog = ref(false)
 const newBooklist = ref({ name: '', description: '' })
 const detailBooklist = ref(null)
+
+// 上传相关
+const showUploadDialog = ref(false)
+const showMyUploadsDrawer = ref(false)
+const myUploads = ref([])
+const uploadForm = ref({ title: '', author: '', category: '', description: '', coverUrl: '', filePath: '' })
 
 onMounted(() => {
   const userStr = localStorage.getItem('user')
@@ -355,6 +446,68 @@ const copyShareLink = (bl) => {
     ElMessage({ message: `分享链接：${link}`, type: 'info', duration: 8000 })
   })
 }
+
+// ===== 用户上传书籍 =====
+const submitUserUpload = async () => {
+  if (!uploadForm.value.title || !uploadForm.value.filePath) return
+  try {
+    const res = await axios.post('/api/sysBook/userUpload', {
+      ...uploadForm.value,
+      uploaderId: userInfo.value.id
+    })
+    if (res.data.code === '200') {
+      ElMessage.success('上传成功！书籍已加入你的书架')
+      showUploadDialog.value = false
+      uploadForm.value = { title: '', author: '', category: '', description: '', coverUrl: '', filePath: '' }
+      loadShelf()
+
+      // 自动解析章节
+      const bookId = res.data.data?.id
+      if (bookId) {
+        try { await axios.post(`/api/sysBook/analyze/${bookId}`) } catch (e) { /* 解析失败不影响主流程 */ }
+      }
+    } else {
+      ElMessage.error(res.data.msg || '上传失败')
+    }
+  } catch (e) {
+    ElMessage.error('上传失败')
+  }
+}
+
+const openMyUploads = async () => {
+  try {
+    const res = await axios.get(`/api/sysBook/myUploads/${userInfo.value.id}`)
+    if (res.data.code === '200') {
+      myUploads.value = res.data.data
+    }
+  } catch (e) {
+    console.error('加载失败', e)
+  }
+  showMyUploadsDrawer.value = true
+}
+
+const applyPublic = async (bookId) => {
+  try {
+    const res = await axios.post(`/api/sysBook/applyPublic/${bookId}`)
+    if (res.data.code === '200') {
+      ElMessage.success('已提交公开申请，等待管理员审核')
+      openMyUploads()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const statusText = (status) => {
+  const map = { 0: '私有', 1: '审核中', 2: '已公开', 3: '已驳回' }
+  return map[status] || '未知'
+}
+const statusTagType = (status) => {
+  const map = { 0: 'info', 1: 'warning', 2: 'success', 3: 'danger' }
+  return map[status] || 'info'
+}
 </script>
 
 <style scoped>
@@ -362,6 +515,48 @@ const copyShareLink = (bl) => {
   max-width: 1100px;
   margin: 0 auto;
   padding: 18px 24px;
+}
+
+/* === 上传弹窗 === */
+.avatar-uploader {
+  border: 1px dashed #d4c8ba;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  width: 80px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+.avatar-uploader:hover { border-color: #8b6f52; }
+.upload-img-preview { width: 100%; height: 100%; object-fit: cover; }
+.avatar-uploader-icon { font-size: 22px; color: #b5a99c; }
+
+/* === 我的上传 Drawer === */
+.upload-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0ece4;
+  gap: 12px;
+}
+.upload-item:hover { background: #faf5ed; }
+.upload-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.upload-item-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 

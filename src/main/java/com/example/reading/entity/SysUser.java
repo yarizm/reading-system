@@ -98,4 +98,7 @@ public class SysUser implements Serializable {
 
     @TableField("phone")
     private String phone;
+
+    @TableField("is_banned")
+    private Integer isBanned; // 0:正常 1:封禁
 }

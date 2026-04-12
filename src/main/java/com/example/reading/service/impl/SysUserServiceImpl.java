@@ -44,6 +44,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new RuntimeException("用户不存在！");
         }
 
+        if (user.getIsBanned() != null && user.getIsBanned() == 1) {
+            throw new RuntimeException("该账号已被封禁！");
+        }
+
         // 3. 校验密码 (使用 BCrypt 校验，兼容旧的 null 密码)
         if (user.getPassword() == null || !BCrypt.checkpw(userDto.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误！");

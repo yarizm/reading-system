@@ -16,6 +16,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 用户管理控制器
+ * 提供用户登录、资料更新、密码修改、用户列表查询（管理员）、用户删除（管理员）及公开资料查看功能。
+ */
 @RestController
 @RequestMapping("/sysUser")
 public class SysUserController {
@@ -26,7 +30,7 @@ public class SysUserController {
     @Autowired
     private UserBookshelfMapper shelfMapper;
 
-    // 登录接口
+    /** 用户名 + 密码登录 */
     @PostMapping("/login")
     public Result<SysUser> login(@RequestBody UserDto userDto) {
         try {
@@ -37,67 +41,42 @@ public class SysUserController {
         }
     }
 
-    // 注册接口
-    @PostMapping("/register")
-    public Result<?> register(@RequestBody UserDto userDto) {
-        try {
-            sysUserService.register(userDto);
-            return Result.success();
-        } catch (Exception e) {
-            return Result.error("500", e.getMessage());
-        }
-    }
-    /**
-     * 更新用户信息 (用于修改昵称、头像)
-     */
+    /** 更新用户基本信息（昵称、头像等，不含密码和用户名） */
     @PostMapping("/update")
     public Result<?> update(@RequestBody SysUser user) {
-        // 安全起见，不允许通过此接口修改密码，密码走单独接口
         user.setPassword(null);
-        user.setUsername(null); // 用户名通常也不允许改
-
+        user.setUsername(null);
         sysUserService.updateById(user);
-
-        // 更新后，返回最新的用户信息给前端，方便前端刷新缓存
         SysUser currentUser = sysUserService.getById(user.getId());
         return Result.success(currentUser);
     }
 
-    /**
-     * 修改密码
-     */
+    /** 修改密码 */
     @PostMapping("/password")
     public Result<?> updatePassword(@RequestBody SysUser user) {
-        // 前端传过来 id 和 password (新密码)
         if (StrUtil.isBlank(user.getPassword())) {
             return Result.error("500", "新密码不能为空");
         }
-        // 将新密码加密后保存
         user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
         sysUserService.updateById(user);
         return Result.success();
     }
-    /**
-     * [管理员] 获取用户列表 (分页 + 搜索)
-     */
+
+    /** 用户列表（管理员，分页 + 搜索） */
     @GetMapping("/list")
     public Result<?> getUserList(@RequestParam(defaultValue = "1") Integer pageNum,
                                  @RequestParam(defaultValue = "10") Integer pageSize,
                                  @RequestParam(defaultValue = "") String username) {
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         QueryWrapper<SysUser> query = new QueryWrapper<>();
-
         if (!username.isEmpty()) {
             query.like("username", username).or().like("nickname", username);
         }
-
-        query.orderByDesc("id"); // 最新注册的在前面
+        query.orderByDesc("id");
         return Result.success(sysUserService.page(page, query));
     }
 
-    /**
-     * 查看用户公开资料 (含公开书架)
-     */
+    /** 查看用户公开资料（含书架，管理员可越权查看私密资料） */
     @GetMapping("/profile/{id}")
     public Result<?> getUserProfile(@PathVariable Long id, @RequestParam(required = false) Long viewerId) {
         SysUser user = sysUserService.getById(id);
@@ -105,7 +84,6 @@ public class SysUserController {
             return Result.error("404", "用户不存在");
         }
 
-        // 鉴权逻辑：是否为管理员查看
         boolean isAdmin = false;
         if (viewerId != null) {
             SysUser viewer = sysUserService.getById(viewerId);
@@ -114,7 +92,6 @@ public class SysUserController {
             }
         }
 
-        // 默认可见性判断
         boolean showInfo = (user.getInfoVisible() == null || user.getInfoVisible() == 1) || isAdmin;
         boolean showShelf = (user.getShelfVisible() == null || user.getShelfVisible() == 1) || isAdmin;
 
@@ -125,16 +102,12 @@ public class SysUserController {
         profile.put("createTime", user.getCreateTime());
         profile.put("infoVisible", user.getInfoVisible() == null ? 1 : user.getInfoVisible());
         profile.put("shelfVisible", user.getShelfVisible() == null ? 1 : user.getShelfVisible());
-        // 告知前端是否使用了管理员权限查看
         profile.put("viewedByAdmin", isAdmin);
 
-        // 如果资料可见，且有年龄/偏好数据，则返回
         if (showInfo) {
             profile.put("age", user.getAge());
             profile.put("preferences", user.getPreferences());
         }
-
-        // 如果书架可见，返回书架列表
         if (showShelf) {
             List<Map<String, Object>> shelf = shelfMapper.selectMyShelf(id);
             profile.put("shelfList", shelf);
@@ -143,16 +116,28 @@ public class SysUserController {
         return Result.success(profile);
     }
 
-    /**
-     * [管理员] 删除用户
-     */
+    /** 删除用户（管理员，超级管理员 ID=1 不可删除） */
     @DeleteMapping("/{id}")
     public Result<?> deleteUser(@PathVariable Long id) {
-        // 保护机制：防止删除 ID 为 1 的超级管理员
         if (id == 1L) {
             return Result.error("500", "无法删除超级管理员");
         }
         sysUserService.removeById(id);
         return Result.success();
+    }
+
+    /** 封禁/解封用户（管理员） */
+    @PostMapping("/ban/{id}")
+    public Result<?> banUser(@PathVariable Long id, @RequestParam Boolean banned) {
+        if (id == 1L) {
+            return Result.error("500", "无法封禁超级管理员");
+        }
+        SysUser user = sysUserService.getById(id);
+        if (user == null) {
+            return Result.error("404", "用户不存在");
+        }
+        user.setIsBanned(banned ? 1 : 0);
+        sysUserService.updateById(user);
+        return Result.success(banned ? "已封禁该用户" : "已解封该用户");
     }
 }

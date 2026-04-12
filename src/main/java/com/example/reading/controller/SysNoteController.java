@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 阅读笔记控制器
+ * 提供笔记的新增、按书籍查询及删除功能。
+ */
 @RestController
 @RequestMapping("/sysNote")
 public class SysNoteController {
@@ -17,9 +21,7 @@ public class SysNoteController {
     @Autowired
     private ISysNoteService sysNoteService;
 
-    /**
-     * 新增笔记
-     */
+    /** 新增笔记 */
     @PostMapping("/add")
     public Result<?> add(@RequestBody SysNote note) {
         note.setCreateTime(LocalDateTime.now());
@@ -27,9 +29,7 @@ public class SysNoteController {
         return Result.success();
     }
 
-    /**
-     * 获取某本书下的所有笔记
-     */
+    /** 获取指定书籍下的笔记列表（可按用户筛选） */
     @GetMapping("/list/{bookId}")
     public Result<List<SysNote>> list(@PathVariable Long bookId, @RequestParam(required = false) Long userId) {
         QueryWrapper<SysNote> query = new QueryWrapper<>();
@@ -41,9 +41,7 @@ public class SysNoteController {
         return Result.success(sysNoteService.list(query));
     }
 
-    /**
-     * 删除笔记
-     */
+    /** 删除笔记 */
     @DeleteMapping("/{id}")
     public Result<?> delete(@PathVariable Long id) {
         sysNoteService.removeById(id);

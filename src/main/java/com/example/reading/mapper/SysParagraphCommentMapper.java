@@ -27,4 +27,12 @@ public interface SysParagraphCommentMapper extends BaseMapper<SysParagraphCommen
     // 查询某用户在这本书的所有评论
     @Select("SELECT * FROM sys_paragraph_comment WHERE user_id = #{userId} AND book_id = #{bookId} ORDER BY create_time DESC")
     List<SysParagraphComment> selectUserComments(@Param("userId") Long userId, @Param("bookId") Long bookId);
+
+    // === 新增：查询某用户的所有段落评论（带书名） ===
+    @Select("SELECT c.*, b.title as bookTitle " +
+            "FROM sys_paragraph_comment c " +
+            "LEFT JOIN sys_book b ON c.book_id = b.id " +
+            "WHERE c.user_id = #{userId} " +
+            "ORDER BY c.create_time DESC")
+    List<SysParagraphComment> selectAllUserParagraphComments(@Param("userId") Long userId);
 }

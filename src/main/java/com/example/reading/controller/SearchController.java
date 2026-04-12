@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * Elasticsearch 全文搜索控制器
+ * 全文搜索控制器
+ * 基于 Elasticsearch 提供书籍元数据和章节内容的全文检索，以及 MySQL → ES 的全量同步入口。
  */
 @RestController
 @RequestMapping("/search")
@@ -17,10 +18,7 @@ public class SearchController {
     @Autowired
     private BookSearchService bookSearchService;
 
-    /**
-     * 全文搜索接口
-     * GET /api/search?keyword=xxx&category=xxx&pageNum=1&pageSize=12
-     */
+    /** 全文搜索（支持关键词 + 分类筛选 + 分页） */
     @GetMapping
     public Result<?> search(
             @RequestParam(defaultValue = "") String keyword,
@@ -36,10 +34,7 @@ public class SearchController {
         return Result.success(result);
     }
 
-    /**
-     * 全量同步 MySQL → Elasticsearch（管理员手动触发）
-     * POST /api/search/sync
-     */
+    /** 全量同步 MySQL 数据到 Elasticsearch（管理员手动触发） */
     @PostMapping("/sync")
     public Result<?> syncAll() {
         int count = bookSearchService.syncAllBooksToEs();

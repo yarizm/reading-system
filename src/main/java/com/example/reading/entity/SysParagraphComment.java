@@ -28,4 +28,7 @@ public class SysParagraphComment {
 
     @TableField(exist = false)
     private Boolean isLiked;   // 当前用户是否点赞过 (前端展示用)
+
+    @TableField(exist = false)
+    private String bookTitle;  // 评论所属书籍名称 (返回前端展示用)
 }

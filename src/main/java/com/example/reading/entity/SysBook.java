@@ -10,12 +10,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * <p>
  * 书籍信息表
- * </p>
- *
- * @author CodingAssistant
- * @since 2026-01-31
+ * status: 0=私有(用户上传未公开), 1=待审核, 2=已公开(默认), 3=已驳回
  */
 @Getter
 @Setter
@@ -24,63 +20,50 @@ public class SysBook implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 主键ID
-     */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    /**
-     * 书名
-     */
     @TableField("title")
     private String title;
 
-    /**
-     * 作者
-     */
     @TableField("author")
     private String author;
 
-    /**
-     * 书籍简介/摘要
-     */
     @TableField("description")
     private String description;
 
-    /**
-     * 封面图片链接
-     */
     @TableField("cover_url")
     private String coverUrl;
 
-    /**
-     * 书籍文件存储路径(PDF/TXT)
-     */
     @TableField("file_path")
     private String filePath;
 
-    /**
-     * 分类(如: 小说, 文献)
-     */
     @TableField("category")
     private String category;
 
-    /**
-     * AI分析出的标签(用于推荐匹配)
-     */
     @TableField("tags")
     private String tags;
 
-    /**
-     * 上架时间
-     */
     @TableField("create_time")
     private LocalDateTime createTime;
-    // === 新增字段 (数据库里没有这一列，只是为了传给前端) ===
+
+    /** 上传用户ID，NULL 表示管理员上传 */
+    @TableField("uploader_id")
+    private Long uploaderId;
+
+    /** 状态：0=私有, 1=待审核, 2=已公开, 3=已驳回 */
+    @TableField("status")
+    private Integer status;
+
+    /** 虚拟字段：平均评分（不落库） */
     @TableField(exist = false)
     private Double avgRating;
-    // === 新增：热度值 (数据库不存在此列，仅用于查询返回) ===
+
+    /** 虚拟字段：热度值（不落库） */
     @TableField(exist = false)
     private Long heat;
+
+    /** 虚拟字段：上传者昵称（不落库，审核列表用） */
+    @TableField(exist = false)
+    private String uploaderNickname;
 }

@@ -18,7 +18,7 @@ const recommendLoading = ref(false)
 const tableData = ref([])
 const total = ref(0)
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(20)
 const isSearchMode = ref(false)
 const userInfo = ref({})
 const loading = ref(false)
@@ -48,11 +48,11 @@ const loadRankBooks = async () => {
   } catch (e) { console.error(e) }
 }
 
-const loadRecommendBooks = async () => {
+const loadRecommendBooks = async (refresh = false) => {
   recommendLoading.value = true
   try {
     const res = await axios.get('/api/sysBook/recommend', {
-      params: { userId: userInfo.value.id }
+      params: { userId: userInfo.value.id, refresh }
     })
     if (res.data.code === '200') {
       recommendBooks.value = res.data.data || []
@@ -208,7 +208,7 @@ const goToLogin = () => router.push('/login')
       <div v-if="!isSearchMode" class="recommend-section">
         <div class="m-section-title">
           <span>✨ 猜你喜欢</span>
-          <van-button size="mini" plain round @click="loadRecommendBooks" :loading="recommendLoading" style="margin-left: auto;">
+          <van-button size="mini" plain round @click="loadRecommendBooks(true)" :loading="recommendLoading" style="margin-left: auto;">
             换一批
           </van-button>
         </div>

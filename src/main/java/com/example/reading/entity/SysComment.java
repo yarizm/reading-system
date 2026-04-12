@@ -37,4 +37,7 @@ public class SysComment {
 
     @TableField(exist = false)
     private List<SysComment> children; // 子评论列表 (楼中楼)
+
+    @TableField(exist = false)
+    private String bookName; // 书籍名称 (前端展示用)
 }

@@ -29,4 +29,12 @@ public interface SysCommentMapper extends BaseMapper<SysComment> {
             "FROM sys_comment " +
             "WHERE book_id = #{bookId} AND rating > 0") // 加上 AND rating > 0
     Double getAvgRating(@Param("bookId") Long bookId);
+
+    // === 新增：查询某用户所有的书籍评论（带书名） ===
+    @Select("SELECT c.*, b.title as bookName " +
+            "FROM sys_comment c " +
+            "LEFT JOIN sys_book b ON c.book_id = b.id " +
+            "WHERE c.user_id = #{userId} " +
+            "ORDER BY c.create_time DESC")
+    List<SysComment> selectUserAllComments(@Param("userId") Long userId);
 }
