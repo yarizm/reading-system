@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能书籍阅读系统 - 项目演示</title>
+  <meta name="description" content="一个集成AI阅读助手、社交互动、多端适配的智能书籍阅读与社交平台。" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* =============================================
+       CSS RESET & BASE TOKENS
+    ============================================= */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-primary: #0c0a09;
+      --bg-card: #1c1917;
+      --bg-card-hover: #292524;
+      --bg-surface: #171412;
+      --text-primary: #fafaf9;
+      --text-secondary: #a8a29e;
+      --text-muted: #78716c;
+      --accent: #d97706;
+      --accent-dim: rgba(217, 119, 6, 0.15);
+      --accent-glow: rgba(217, 119, 6, 0.3);
+      --border: rgba(168, 162, 158, 0.1);
+      --border-hover: rgba(168, 162, 158, 0.2);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --shadow-card: 0 4px 24px rgba(0,0,0,0.3);
+      --shadow-glow: 0 0 60px rgba(217, 119, 6, 0.08);
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: var(--accent); text-decoration: none; transition: color var(--transition); }
+    a:hover { color: #f59e0b; }
+    img { max-width: 100%; display: block; }
+
+    /* =============================================
+       ANIMATED BACKGROUND
+    ============================================= */
+    .bg-grid {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(217, 119, 6, 0.06), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(217, 119, 6, 0.04), transparent);
+    }
+    .bg-grid::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, black 40%, transparent 100%);
+    }
+
+    /* =============================================
+       NAVIGATION
+    ============================================= */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: rgba(12, 10, 9, 0.7);
+      backdrop-filter: blur(20px) saturate(1.6);
+      -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+    .nav-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 64px;
+    }
+    .nav-logo {
+      font-family: 'Noto Serif SC', serif; font-weight: 900;
+      font-size: 20px; color: var(--text-primary);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-logo .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), #f59e0b);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a {
+      color: var(--text-secondary); font-size: 14px; font-weight: 500;
+      position: relative; padding: 4px 0;
+    }
+    .nav-links a:hover { color: var(--text-primary); }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 2px;
+      background: var(--accent); border-radius: 1px; transition: width var(--transition);
+    }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-cta {
+      padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), #f59e0b);
+      color: #0c0a09; border: none; cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+
+    /* =============================================
+       HERO
+    ============================================= */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 120px 28px 80px; position: relative;
+    }
+    .hero-inner { max-width: 900px; text-align: center; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 20px;
+      background: var(--accent-dim); border: 1px solid rgba(217, 119, 6, 0.2);
+      font-size: 13px; color: var(--accent); font-weight: 500;
+      margin-bottom: 32px;
+      animation: fadeInUp 0.6s ease-out;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.5); }
+    }
+    .hero h1 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900; line-height: 1.15;
+      margin-bottom: 24px;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(135deg, var(--accent), #fbbf24, #f59e0b);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero .subtitle {
+      font-size: 18px; color: var(--text-secondary); max-width: 640px;
+      margin: 0 auto 40px; line-height: 1.7;
+      animation: fadeInUp 0.6s ease-out 0.2s both;
+    }
+    .hero-buttons {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+      animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+    .btn-primary {
+      padding: 14px 32px; border-radius: 28px; font-size: 15px; font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), #f59e0b);
+      color: #0c0a09; border: none; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+    .btn-outline {
+      padding: 14px 32px; border-radius: 28px; font-size: 15px; font-weight: 600;
+      background: transparent; color: var(--text-primary);
+      border: 1px solid var(--border-hover); cursor: pointer;
+      transition: all var(--transition);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .hero-stats {
+      display: flex; gap: 48px; justify-content: center; margin-top: 64px;
+      animation: fadeInUp 0.6s ease-out 0.4s both;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat .num {
+      font-size: 32px; font-weight: 800; color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+    }
+    .hero-stat .label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* =============================================
+       SECTION COMMON
+    ============================================= */
+    .section { padding: 100px 28px; }
+    .section-inner { max-width: 1200px; margin: 0 auto; }
+    .section-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 14px; border-radius: 16px;
+      background: var(--accent-dim); border: 1px solid rgba(217, 119, 6, 0.15);
+      font-size: 12px; color: var(--accent); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      font-weight: 800; margin-bottom: 16px;
+    }
+    .section-desc {
+      font-size: 16px; color: var(--text-secondary);
+      max-width: 600px; line-height: 1.7;
+    }
+    .section-header { margin-bottom: 56px; }
+    .section-header.center { text-align: center; }
+    .section-header.center .section-desc { margin: 0 auto; }
+
+    /* =============================================
+       TECH STACK RIBBON
+    ============================================= */
+    .tech-ribbon {
+      padding: 40px 28px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .tech-ribbon-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: center;
+      gap: 48px; flex-wrap: wrap;
+    }
+    .tech-item {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+      transition: color var(--transition);
+    }
+    .tech-item:hover { color: var(--text-secondary); }
+    .tech-item .tech-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    /* =============================================
+       ARCHITECTURE DIAGRAM
+    ============================================= */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-top: 48px;
+    }
+    .arch-cell {
+      background: var(--bg-card);
+      padding: 32px 24px;
+      text-align: center;
+      transition: background var(--transition);
+    }
+    .arch-cell:hover { background: var(--bg-card-hover); }
+    .arch-cell .arch-icon { font-size: 28px; margin-bottom: 12px; }
+    .arch-cell .arch-name { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+    .arch-cell .arch-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .arch-cell.span-full { grid-column: 1 / -1; }
+
+    /* =============================================
+       FEATURES BENTO GRID
+    ============================================= */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+    .bento-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .bento-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+      opacity: 0; transition: opacity var(--transition);
+    }
+    .bento-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-glow);
+    }
+    .bento-card:hover::before { opacity: 1; }
+    .bento-card .card-icon {
+      width: 48px; height: 48px;
+      background: var(--accent-dim);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    .bento-card .card-title {
+      font-size: 18px; font-weight: 700; margin-bottom: 8px;
+      font-family: 'Noto Serif SC', serif;
+    }
+    .bento-card .card-desc {
+      font-size: 14px; color: var(--text-secondary); line-height: 1.6;
+    }
+    .bento-card .card-tags {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px;
+    }
+    .bento-card .card-tag {
+      padding: 3px 10px; border-radius: 10px;
+      background: rgba(168, 162, 158, 0.08); border: 1px solid var(--border);
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+    }
+    /* Grid spans */
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+    .span-12 { grid-column: span 12; }
+
+    /* Feature visual mockups */
+    .card-visual {
+      margin-top: 24px;
+      border-radius: var(--radius-md);
+      overflow: hidden; position: relative;
+    }
+
+    /* =============================================
+       SIMULATOR PHONE / DESKTOP MOCK
+    ============================================= */
+    .mock-browser {
+      background: #1a1816;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .mock-browser-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+    }
+    .mock-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .mock-dot.red { background: #ef4444; }
+    .mock-dot.yellow { background: #f59e0b; }
+    .mock-dot.green { background: #22c55e; }
+    .mock-url {
+      flex: 1;
+      margin-left: 12px;
+      padding: 4px 12px; border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      font-size: 11px; color: var(--text-muted);
+    }
+    .mock-body { padding: 20px; }
+
+    /* Mini mockups for bento cards */
+    .mini-book-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .mini-book {
+      aspect-ratio: 3/4;
+      border-radius: 6px;
+      position: relative; overflow: hidden;
+    }
+    .mini-book::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.6));
+    }
+    .mini-book-title {
+      position: absolute; bottom: 6px; left: 6px; right: 6px;
+      font-size: 9px; color: #fff; font-weight: 600; z-index: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .mini-chat {
+      display: flex; flex-direction: column; gap: 8px; padding: 4px 0;
+    }
+    .mini-bubble {
+      max-width: 75%; padding: 8px 12px; border-radius: 12px;
+      font-size: 11px; line-height: 1.4;
+    }
+    .mini-bubble.left {
+      align-self: flex-start; background: rgba(255,255,255,0.06);
+      color: var(--text-secondary); border-bottom-left-radius: 4px;
+    }
+    .mini-bubble.right {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--accent), #f59e0b);
+      color: #0c0a09; border-bottom-right-radius: 4px;
+    }
+
+    .mini-ai-stream {
+      font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+      font-family: 'Noto Serif SC', serif;
+    }
+    .mini-ai-stream .cursor-blink {
+      display: inline-block; width: 2px; height: 14px;
+      background: var(--accent); margin-left: 2px;
+      animation: blink 1s step-end infinite; vertical-align: text-bottom;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .mini-reading-view {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 12px; line-height: 1.8;
+      color: var(--text-secondary);
+    }
+    .mini-reading-view .paragraph {
+      padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;
+      transition: background var(--transition);
+    }
+    .mini-reading-view .paragraph.active {
+      background: var(--accent-dim);
+      border-left: 3px solid var(--accent);
+    }
+    .mini-reading-view .paragraph-tools {
+      display: flex; gap: 6px; margin-top: 4px;
+    }
+    .mini-reading-view .mini-tool-btn {
+      padding: 2px 8px; border-radius: 8px;
+      background: rgba(217, 119, 6, 0.2);
+      font-size: 9px; color: var(--accent); font-weight: 600;
+    }
+
+    /* Admin table mock */
+    .mini-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 11px;
+    }
+    .mini-table th {
+      text-align: left; padding: 6px 8px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted); font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .mini-table td {
+      padding: 8px; border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .mini-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 8px;
+      font-size: 10px; font-weight: 600;
+    }
+    .mini-tag.success { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+    .mini-tag.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .mini-tag.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+    /* Mobile phone mockup */
+    .phone-mock {
+      width: 220px; margin: 0 auto;
+      background: #0e0d0c;
+      border-radius: 28px;
+      padding: 12px 8px;
+      border: 2px solid rgba(255,255,255,0.08);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .phone-notch {
+      width: 80px; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      margin: 4px auto 10px;
+    }
+    .phone-screen {
+      background: var(--bg-card);
+      border-radius: 18px;
+      padding: 12px;
+      min-height: 360px;
+      overflow: hidden;
+    }
+
+    /* =============================================
+       API TABLE
+    ============================================= */
+    .api-table-wrapper { overflow-x: auto; margin-top: 32px; }
+    .api-table {
+      width: 100%; border-collapse: collapse;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      font-size: 13px;
+    }
+    .api-table th {
+      text-align: left; padding: 14px 18px;
+      background: rgba(255,255,255,0.03);
+      color: var(--text-muted); font-weight: 600; font-size: 12px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+    .api-table td {
+      padding: 12px 18px; border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .api-table tr:last-child td { border-bottom: none; }
+    .api-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .api-table code {
+      padding: 2px 8px; border-radius: 6px;
+      background: rgba(217, 119, 6, 0.1);
+      color: var(--accent); font-size: 12px;
+      font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+    }
+
+    /* =============================================
+       MULTI-TERMINAL SHOWCASE
+    ============================================= */
+    .terminal-showcase {
+      display: grid; grid-template-columns: 1.4fr 0.6fr; gap: 32px;
+      align-items: center;
+    }
+
+    /* =============================================
+       FOOTER
+    ============================================= */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 28px;
+      text-align: center;
+    }
+    .footer-inner {
+      max-width: 1200px; margin: 0 auto;
+    }
+    .footer .footer-logo {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px; font-weight: 800;
+      margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .footer p { font-size: 13px; color: var(--text-muted); }
+    .footer-links {
+      display: flex; gap: 24px; justify-content: center;
+      margin-top: 16px; flex-wrap: wrap;
+    }
+    .footer-links a { font-size: 13px; color: var(--text-muted); }
+    .footer-links a:hover { color: var(--text-primary); }
+
+    /* =============================================
+       SCROLL ANIMATIONS
+    ============================================= */
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* =============================================
+       RESPONSIVE
+    ============================================= */
+    @media (max-width: 900px) {
+      .bento-grid { grid-template-columns: 1fr; }
+      .span-8, .span-7, .span-6, .span-5, .span-4, .span-12 { grid-column: span 1; }
+      .arch-grid { grid-template-columns: 1fr; }
+      .terminal-showcase { grid-template-columns: 1fr; }
+      .hero-stats { gap: 24px; }
+      .nav-links { display: none; }
+      .tech-ribbon-inner { gap: 20px; }
+    }
+
+    /* =============================================
+       FLOW DIAGRAM
+    ============================================= */
+    .flow-container {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; flex-wrap: wrap; margin-top: 40px;
+    }
+    .flow-node {
+      padding: 14px 24px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border);
+      font-size: 13px; font-weight: 600; text-align: center;
+      min-width: 120px;
+      transition: all var(--transition);
+    }
+    .flow-node:hover { border-color: var(--accent); box-shadow: var(--shadow-glow); }
+    .flow-node .flow-emoji { font-size: 20px; display: block; margin-bottom: 6px; }
+    .flow-arrow {
+      color: var(--text-muted); font-size: 18px;
+      animation: arrowPulse 2s ease-in-out infinite;
+    }
+    @keyframes arrowPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* =============================================
+       FEATURE LIST ITEMS
+    ============================================= */
+    .feature-list { list-style: none; padding: 0; }
+    .feature-list li {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0;
+      font-size: 14px; color: var(--text-secondary);
+    }
+    .feature-list .check {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(34, 197, 94, 0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: #22c55e;
+      flex-shrink: 0; margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <!-- ============ NAVIGATION ============ -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <div class="logo-icon">📖</div>
+        智能阅读系统
+      </div>
+      <ul class="nav-links">
+        <li><a href="#features">核心功能</a></li>
+        <li><a href="#architecture">系统架构</a></li>
+        <li><a href="#reading">阅读体验</a></li>
+        <li><a href="#social">社交互动</a></li>
+        <li><a href="#admin">后台管理</a></li>
+        <li><a href="#api">接口清单</a></li>
+      </ul>
+      <a href="https://github.com" target="_blank"><button class="nav-cta">GitHub →</button></a>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        Spring Boot 3 + Vue 3 · 全栈项目
+      </div>
+      <h1>
+        让阅读更<span class="grad">智能</span>，<br />让交流更<span class="grad">有温度</span>
+      </h1>
+      <p class="subtitle">
+        一个集成大语言模型 AI 助手、Elasticsearch 全文检索、WebSocket 即时通讯、
+        段落级社交互动的多端智能书籍阅读平台。
+      </p>
+      <div class="hero-buttons">
+        <a href="#features"><button class="btn-primary">探索功能 ↓</button></a>
+        <a href="#architecture"><button class="btn-outline">系统架构</button></a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="num">15+</div>
+          <div class="label">后端 Controller</div>
+        </div>
+        <div class="hero-stat">
+          <div class="num">12</div>
+          <div class="label">桌面端视图</div>
+        </div>
+        <div class="hero-stat">
+          <div class="num">10</div>
+          <div class="label">移动端视图</div>
+        </div>
+        <div class="hero-stat">
+          <div class="num">16</div>
+          <div class="label">数据实体</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TECH RIBBON ============ -->
+  <div class="tech-ribbon">
+    <div class="tech-ribbon-inner">
+      <div class="tech-item"><div class="tech-icon">☕</div>Java 17</div>
+      <div class="tech-item"><div class="tech-icon">🍃</div>Spring Boot 3.2</div>
+      <div class="tech-item"><div class="tech-icon">🗄️</div>MyBatis-Plus</div>
+      <div class="tech-item"><div class="tech-icon">🟩</div>Vue 3</div>
+      <div class="tech-item"><div class="tech-icon">⚡</div>Vite</div>
+      <div class="tech-item"><div class="tech-icon">🔍</div>Elasticsearch</div>
+      <div class="tech-item"><div class="tech-icon">🧠</div>Dify / 通义千问</div>
+      <div class="tech-item"><div class="tech-icon">🔌</div>WebSocket</div>
+      <div class="tech-item"><div class="tech-icon">📦</div>Redis</div>
+      <div class="tech-item"><div class="tech-icon">🐬</div>MySQL 8</div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURES BENTO ============ -->
+  <section class="section" id="features">
+    <div class="section-inner">
+      <div class="section-header center reveal">
+        <div class="section-label">🧩 Core Features</div>
+        <div class="section-title">覆盖阅读全链路的功能矩阵</div>
+        <p class="section-desc">
+          从书籍推荐与全文检索，到 AI 辅助阅读、段落级社交互动、多端无缝同步，
+          再到完善的后台管控体系——每一个环节都经过精心设计。
+        </p>
+      </div>
+
+      <div class="bento-grid">
+        <!-- Card 1: AI Reading -->
+        <div class="bento-card span-8 reveal">
+          <div class="card-icon">🤖</div>
+          <div class="card-title">流式 AI 阅读助手</div>
+          <div class="card-desc">
+            集成阿里云通义千问 / Dify 大语言模型。后端通过 Spring WebFlux + WebClient 异步调用，
+            前端基于 SSE (Server-Sent Events) 协议实现打字机效果的流式实时输出。
+            支持释疑解惑、内容摘要、文本续写、多轮上下文对话。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">Spring WebFlux</span>
+            <span class="card-tag">SseEmitter</span>
+            <span class="card-tag">fetch-event-source</span>
+            <span class="card-tag">多轮对话</span>
+          </div>
+          <div class="card-visual">
+            <div class="mock-browser">
+              <div class="mock-browser-bar">
+                <span class="mock-dot red"></span>
+                <span class="mock-dot yellow"></span>
+                <span class="mock-dot green"></span>
+                <span class="mock-url">localhost:5173/read/1</span>
+              </div>
+              <div class="mock-body">
+                <div class="mini-chat">
+                  <div class="mini-bubble left">🧑 请解释一下这段话的深层含义</div>
+                  <div class="mini-bubble right">
+                    <div class="mini-ai-stream">
+                      这段话运用了隐喻的手法，将「时间」比作流水，暗示岁月的不可逆转性。
+                      作者通过对季节变换的描写，传达了对生命短暂的感悟<span class="cursor-blink"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Search -->
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">🔍</div>
+          <div class="card-title">全文检索引擎</div>
+          <div class="card-desc">
+            深度集成 Elasticsearch 8.x + IK 中文分词器，
+            支持书名、作者、简介、正文内容的毫秒级全文聚合搜索，并返回匹配度评分。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">Elasticsearch 8.x</span>
+            <span class="card-tag">IK 分词</span>
+            <span class="card-tag">倒排索引</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Paragraph Comment -->
+        <div class="bento-card span-5 reveal">
+          <div class="card-icon">💬</div>
+          <div class="card-title">段落级精准批注</div>
+          <div class="card-desc">
+            独创的段落定位评论系统。用户可以对任意一个段落发表评论、点赞互动。
+            评论携带 bookId + chapterIndex + paragraphIndex 三级坐标定位。
+          </div>
+          <div class="card-visual">
+            <div class="mini-reading-view">
+              <div class="paragraph">那一年的春天来得格外迟缓，仿佛整个世界都在等待着什么。</div>
+              <div class="paragraph active">
+                他站在窗前，目光穿过了远处的山峦，心中涌起一股难以名状的感慨。
+                <div class="paragraph-tools">
+                  <span class="mini-tool-btn">💬 评论</span>
+                  <span class="mini-tool-btn">↗ 分享</span>
+                </div>
+              </div>
+              <div class="paragraph">风轻轻吹过，带来了一丝若有若无的花香。</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Social -->
+        <div class="bento-card span-7 reveal">
+          <div class="card-icon">👥</div>
+          <div class="card-title">以书会友·社交互动</div>
+          <div class="card-desc">
+            完整的好友系统：搜索添加、请求审批、即时双工 WebSocket 私聊、书籍分享、段落分享。
+            收到新消息/好友请求/书籍分享时，通知铃铛实时提醒并闪烁动画。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">WebSocket 双工通信</span>
+            <span class="card-tag">实时通知推送</span>
+            <span class="card-tag">好友请求/审批</span>
+            <span class="card-tag">书籍分享</span>
+            <span class="card-tag">段落分享</span>
+          </div>
+          <div class="card-visual">
+            <div class="mock-browser">
+              <div class="mock-browser-bar">
+                <span class="mock-dot red"></span>
+                <span class="mock-dot yellow"></span>
+                <span class="mock-dot green"></span>
+                <span class="mock-url">localhost:5173/chat/2</span>
+              </div>
+              <div class="mock-body">
+                <div class="mini-chat">
+                  <div class="mini-bubble left">你看到第三章了吗？太精彩了！</div>
+                  <div class="mini-bubble right">刚好看到那里！给你分享一个段落 📖</div>
+                  <div class="mini-bubble right" style="background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); padding: 10px 14px;">
+                    <div style="font-size:10px; color: var(--accent); font-weight:700; margin-bottom: 4px;">📖 段落分享</div>
+                    <div style="font-size:11px; font-weight:600;">《三体》第3章 · 第12段</div>
+                    <div style="font-size:10px; color: var(--text-muted); margin-top: 4px;">"宇宙就是一座黑暗森林..."</div>
+                    <div style="font-size:9px; color: var(--accent); margin-top: 6px;">点击前往阅读页 →</div>
+                  </div>
+                  <div class="mini-bubble left">太酷了，我马上去看！</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5: Bookshelf -->
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">📚</div>
+          <div class="card-title">智能书架管理</div>
+          <div class="card-desc">
+            个人书架系统，支持多端阅读进度自动追踪与同步。
+            书单分组、书架公开/私密切换、阅读完成度百分比进度条。
+          </div>
+          <ul class="feature-list">
+            <li><span class="check">✓</span> 多端进度自动同步</li>
+            <li><span class="check">✓</span> 创建/管理书单分组</li>
+            <li><span class="check">✓</span> 书架公开/私密可切换</li>
+            <li><span class="check">✓</span> 阅读完成度追踪</li>
+          </ul>
+        </div>
+
+        <!-- Card 6: Recommendation -->
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">⭐</div>
+          <div class="card-title">智能推荐 & 排行榜</div>
+          <div class="card-desc">
+            首页热门轮播、热度排行榜、"猜你喜欢"个性化推荐。
+            推荐引擎综合用户历史阅读偏好与书籍热度智能生成推荐列表。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">个性化推荐</span>
+            <span class="card-tag">热度排行榜</span>
+            <span class="card-tag">轮播推广</span>
+          </div>
+        </div>
+
+        <!-- Card 7: Upload + Review -->
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">📤</div>
+          <div class="card-title">UGC 上传 & 审核</div>
+          <div class="card-desc">
+            用户可自行上传书籍资源(TXT)。默认私有，可申请公开。
+            管理员审核通过后自动同步 Elasticsearch 索引，驳回可留原因。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">私有/公开双状态</span>
+            <span class="card-tag">审核流转</span>
+            <span class="card-tag">ES 自动同步</span>
+          </div>
+        </div>
+
+        <!-- Card 8: Multi-terminal -->
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">📱</div>
+          <div class="card-title">多端适配</div>
+          <div class="card-desc">
+            桌面端基于 Vue3 + Element-Plus，移动端基于 Vue3 + Vant4。
+            两套独立前端项目共享同一套后端 API，代码完全隔离，互不干扰。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">Element-Plus 桌面端</span>
+            <span class="card-tag">Vant4 移动端</span>
+            <span class="card-tag">共享 API 层</span>
+          </div>
+        </div>
+
+        <!-- Card 9: Reading Settings -->
+        <div class="bento-card span-8 reveal">
+          <div class="card-icon">⚙️</div>
+          <div class="card-title">沉浸式阅读体验 & 无障碍</div>
+          <div class="card-desc">
+            四种阅读主题（默认/护眼/暗夜/高对比度适老模式），可调节字号与行间距。
+            集成 Web Speech API 整章朗读 + AI TTS 选段精准语音播报（支持多音色）。
+            青少年强制护眼模式——系统检测年龄＜18自动开启定时休息提醒且不可关闭。
+          </div>
+          <div class="card-tags">
+            <span class="card-tag">4 种阅读主题</span>
+            <span class="card-tag">Web Speech TTS</span>
+            <span class="card-tag">AI 多音色语音</span>
+            <span class="card-tag">青少年保护</span>
+            <span class="card-tag">定时护眼提醒</span>
+            <span class="card-tag">字号/行间距调节</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section class="section" id="architecture" style="background: var(--bg-surface);">
+    <div class="section-inner">
+      <div class="section-header center reveal">
+        <div class="section-label">🏗️ Architecture</div>
+        <div class="section-title">系统架构全景</div>
+        <p class="section-desc">
+          采用经典的前后端分离架构，Spring Boot 提供统一 RESTful API 层，
+          Vue 3 双前端消费同一套接口。
+        </p>
+      </div>
+
+      <div class="flow-container reveal">
+        <div class="flow-node"><span class="flow-emoji">🖥️</span>桌面端<br/><small style="color:var(--text-muted)">Vue3 + Element-Plus</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node"><span class="flow-emoji">📱</span>移动端<br/><small style="color:var(--text-muted)">Vue3 + Vant4</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node" style="border-color:var(--accent);"><span class="flow-emoji">🍃</span>Spring Boot 3<br/><small style="color:var(--text-muted)">API Gateway</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node"><span class="flow-emoji">🗄️</span>MySQL 8<br/><small style="color:var(--text-muted)">MyBatis-Plus</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node"><span class="flow-emoji">📦</span>Redis<br/><small style="color:var(--text-muted)">缓存中间件</small></div>
+      </div>
+      <div class="flow-container reveal" style="margin-top: 12px;">
+        <div class="flow-node"><span class="flow-emoji">🔍</span>Elasticsearch<br/><small style="color:var(--text-muted)">全文检索</small></div>
+        <span class="flow-arrow">⇆</span>
+        <div class="flow-node" style="border-color:var(--accent);"><span class="flow-emoji">🍃</span>Spring Boot 3<br/><small style="color:var(--text-muted)">服务编排</small></div>
+        <span class="flow-arrow">⇆</span>
+        <div class="flow-node"><span class="flow-emoji">🧠</span>Dify / LLM<br/><small style="color:var(--text-muted)">AI 助手引擎</small></div>
+        <span class="flow-arrow">⇆</span>
+        <div class="flow-node"><span class="flow-emoji">🔌</span>WebSocket<br/><small style="color:var(--text-muted)">实时通信</small></div>
+      </div>
+
+      <div class="arch-grid reveal">
+        <div class="arch-cell"><div class="arch-icon">📂</div><div class="arch-name">src/</div><div class="arch-desc">Spring Boot 后端源码<br/>Controller / Service / Entity / Mapper</div></div>
+        <div class="arch-cell"><div class="arch-icon">🖥️</div><div class="arch-name">reading-ui/</div><div class="arch-desc">桌面端前台应用<br/>Vue3 + Vite + Element-Plus + Pinia</div></div>
+        <div class="arch-cell"><div class="arch-icon">📱</div><div class="arch-name">reading-mobile-ui/</div><div class="arch-desc">移动端 H5 应用<br/>Vue3 + Vite + Vant4</div></div>
+        <div class="arch-cell"><div class="arch-icon">🔧</div><div class="arch-name">config/</div><div class="arch-desc">WebSocket · Security<br/>Elasticsearch · CORS 配置</div></div>
+        <div class="arch-cell"><div class="arch-icon">🐍</div><div class="arch-name">工具脚本</div><div class="arch-desc">download_books.py 爬虫<br/>import_books.py 批量导入</div></div>
+        <div class="arch-cell"><div class="arch-icon">📄</div><div class="arch-name">docs/</div><div class="arch-desc">项目文档与报告<br/>论文记录 & 演示页面</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ READING EXPERIENCE ============ -->
+  <section class="section" id="reading">
+    <div class="section-inner">
+      <div class="section-header reveal">
+        <div class="section-label">📖 Reading Experience</div>
+        <div class="section-title">沉浸式阅读体验</div>
+        <p class="section-desc">
+          阅读页面支持章节目录导航、段落级交互、多种阅读主题、AI 辅助分析、
+          选中文本唤出快捷操作菜单（释疑/摘要/续写/朗读）等丰富功能。
+        </p>
+      </div>
+      <div class="terminal-showcase reveal">
+        <div class="mock-browser">
+          <div class="mock-browser-bar">
+            <span class="mock-dot red"></span>
+            <span class="mock-dot yellow"></span>
+            <span class="mock-dot green"></span>
+            <span class="mock-url">localhost:5173/read/1 — 《三体》第3章</span>
+          </div>
+          <div class="mock-body" style="display: flex; gap: 16px;">
+            <div style="flex: 1;">
+              <div style="font-size:16px; font-weight: 700; margin-bottom: 16px; font-family: 'Noto Serif SC', serif; color: var(--accent);">第三章 红岸之二</div>
+              <div class="mini-reading-view">
+                <div class="paragraph">叶文洁看着雷达屏幕上跳动的光点，手指不自觉地攥紧了椅子的扶手。</div>
+                <div class="paragraph active">
+                  那个信号来自四光年之外。它在宇宙的真空中穿越了漫长的岁月，带着一个文明的问候——或者，是一个警告。
+                  <div class="paragraph-tools">
+                    <span class="mini-tool-btn">💬 评论 (3)</span>
+                    <span class="mini-tool-btn">↗ 分享段落</span>
+                  </div>
+                </div>
+                <div class="paragraph">她深吸一口气，缓缓按下了回复按钮。</div>
+                <div class="paragraph">这一刻，人类的命运迎来了前所未有的转折。</div>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 20px;">
+                <button style="padding: 6px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; cursor: pointer;">← 上一章</button>
+                <button style="padding: 6px 16px; border-radius: 8px; background: var(--accent-dim); border: 1px solid rgba(217,119,6,0.3); color: var(--accent); font-size: 12px; cursor: pointer;">下一章 →</button>
+              </div>
+            </div>
+            <div style="width: 180px; border-left: 1px solid var(--border); padding-left: 16px;">
+              <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 12px;">🧰 工具栏</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="padding: 8px; border-radius: 8px; background: var(--accent-dim); text-align: center; font-size: 11px; color: var(--accent); cursor: pointer;">🤖 AI 助手</div>
+                <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.04); text-align: center; font-size: 11px; color: var(--text-secondary); cursor: pointer;">🎧 听本章</div>
+                <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.04); text-align: center; font-size: 11px; color: var(--text-secondary); cursor: pointer;">📚 收藏</div>
+                <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.04); text-align: center; font-size: 11px; color: var(--text-secondary); cursor: pointer;">📝 足迹</div>
+                <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.04); text-align: center; font-size: 11px; color: var(--text-secondary); cursor: pointer;">↗ 分享</div>
+              </div>
+              <div style="margin-top: 24px; font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">⚙️ 阅读设置</div>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <span style="padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.04); font-size: 9px; color: var(--text-muted);">默认</span>
+                <span style="padding: 3px 8px; border-radius: 6px; background: rgba(34,197,94,0.15); font-size: 9px; color: #22c55e;">护眼</span>
+                <span style="padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.08); font-size: 9px; color: var(--text-secondary);">暗夜</span>
+                <span style="padding: 3px 8px; border-radius: 6px; background: rgba(239,68,68,0.1); font-size: 9px; color: #ef4444;">适老</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="phone-mock">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div style="font-size:10px; color: var(--text-muted); text-align:center; margin-bottom: 12px; font-weight: 600;">📱 移动端阅读</div>
+              <div style="font-size:13px; font-weight:700; font-family: 'Noto Serif SC', serif; margin-bottom: 10px; color: var(--accent);">第三章</div>
+              <div style="font-size:11px; line-height: 1.8; color: var(--text-secondary); font-family: 'Noto Serif SC', serif;">
+                <p style="margin-bottom: 8px;">叶文洁看着雷达屏幕上跳动的光点...</p>
+                <p style="margin-bottom: 8px; padding: 6px; background: var(--accent-dim); border-radius: 6px; border-left: 2px solid var(--accent);">
+                  那个信号来自四光年之外。
+                  <span style="display: flex; gap: 4px; margin-top: 4px;">
+                    <span style="font-size:8px; background: rgba(217,119,6,0.2); padding: 1px 6px; border-radius: 4px; color: var(--accent);">💬</span>
+                    <span style="font-size:8px; background: rgba(217,119,6,0.2); padding: 1px 6px; border-radius: 4px; color: var(--accent);">↗</span>
+                  </span>
+                </p>
+                <p>她深吸一口气，缓缓按下了回复按钮。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SOCIAL ============ -->
+  <section class="section" id="social" style="background: var(--bg-surface);">
+    <div class="section-inner">
+      <div class="section-header center reveal">
+        <div class="section-label">💬 Social</div>
+        <div class="section-title">全方位社交互动体系</div>
+        <p class="section-desc">
+          好友系统 · 即时聊天 · 书籍分享 · 段落分享 · 书评树形评论 · 实时推送通知
+        </p>
+      </div>
+
+      <div class="bento-grid">
+        <div class="bento-card span-6 reveal">
+          <div class="card-icon">🔔</div>
+          <div class="card-title">WebSocket 实时通知</div>
+          <div class="card-desc">全局通知中心：新消息💬、好友请求👥、书籍分享📚 均实时推送。铃铛图标闪烁动画提醒，点击通知自动跳转至对应页面。</div>
+          <div style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--border);">
+            <div style="font-size:12px; font-weight:700; margin-bottom: 10px;">🔔 消息通知 <span style="background: #ef4444; color: #fff; padding: 1px 6px; border-radius: 8px; font-size:10px; margin-left: 6px;">3</span></div>
+            <div style="display:flex; gap:8px; align-items:center; padding: 8px 0; border-bottom: 1px solid var(--border);">
+              <span style="font-size:16px;">💬</span>
+              <div>
+                <div style="font-size:12px; font-weight:600;">新消息</div>
+                <div style="font-size:10px; color: var(--text-muted);">你好，最近在看什么书？</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; padding: 8px 0; border-bottom: 1px solid var(--border);">
+              <span style="font-size:16px;">👥</span>
+              <div>
+                <div style="font-size:12px; font-weight:600;">好友请求</div>
+                <div style="font-size:10px; color: var(--text-muted);">张三 想加你为好友</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; padding: 8px 0;">
+              <span style="font-size:16px;">📚</span>
+              <div>
+                <div style="font-size:12px; font-weight:600;">书籍分享</div>
+                <div style="font-size:10px; color: var(--text-muted);">收到分享：《人类简史》</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bento-card span-6 reveal">
+          <div class="card-icon">📖</div>
+          <div class="card-title">树形评论 & 评分系统</div>
+          <div class="card-desc">
+            整书级别的评论系统，支持嵌套回复。后端通过 HashMap + parentId 遍历，
+            在内存中组装成完整的树形层级结构后下发前端展示。
+          </div>
+          <div style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display:flex; gap:8px; margin-bottom: 12px;">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-dim);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;">A</div>
+              <div>
+                <div style="font-size:12px;font-weight:600;">读者Alice</div>
+                <div style="font-size:11px; color: var(--text-secondary); margin-top: 4px;">这本书对人工智能的描述太超前了！强烈推荐。⭐⭐⭐⭐⭐</div>
+                <div style="margin-left: 20px; margin-top: 10px; padding-left: 12px; border-left: 2px solid var(--border);">
+                  <div style="display:flex; gap:8px; margin-bottom: 6px;">
+                    <div style="width:22px;height:22px;border-radius:50%;background:rgba(34,197,94,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;">B</div>
+                    <div>
+                      <div style="font-size:11px;font-weight:600;">Bob</div>
+                      <div style="font-size:10px; color: var(--text-secondary); margin-top: 2px;">同意！第三章的推理特别精彩</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section class="section" id="admin">
+    <div class="section-inner">
+      <div class="section-header center reveal">
+        <div class="section-label">🛡️ Admin</div>
+        <div class="section-title">后台管理控制台</div>
+        <p class="section-desc">
+          图书管理 · 用户管理(封禁/解封) · 书籍审核上架 · 评论内容治理
+        </p>
+      </div>
+
+      <div class="mock-browser reveal">
+        <div class="mock-browser-bar">
+          <span class="mock-dot red"></span>
+          <span class="mock-dot yellow"></span>
+          <span class="mock-dot green"></span>
+          <span class="mock-url">localhost:5173/admin</span>
+        </div>
+        <div class="mock-body">
+          <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <span style="padding: 6px 16px; border-radius: 8px; background: var(--accent-dim); border: 1px solid rgba(217,119,6,0.3); color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer;">📚 图书管理</span>
+            <span style="padding: 6px 16px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; cursor: pointer;">👥 用户管理</span>
+            <span style="padding: 6px 16px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; cursor: pointer;">✅ 书籍审核</span>
+          </div>
+          <table class="mini-table">
+            <thead>
+              <tr><th>ID</th><th>书名</th><th>作者</th><th>分类</th><th>来源</th><th>状态</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td><td>三体</td><td>刘慈欣</td><td>科幻</td>
+                <td><span class="mini-tag success">官方发布</span></td>
+                <td><span class="mini-tag success">已公开</span></td>
+                <td><span style="color:var(--accent);font-size:11px;cursor:pointer;">编辑</span> <span style="color:#ef4444;font-size:11px;cursor:pointer;margin-left:8px;">删除</span></td>
+              </tr>
+              <tr>
+                <td>5</td><td>我的第一本书</td><td>小明</td><td>文学</td>
+                <td><span class="mini-tag warning">用户提供</span></td>
+                <td><span class="mini-tag warning">审核中</span></td>
+                <td><span style="color:#22c55e;font-size:11px;cursor:pointer;">通过</span> <span style="color:#ef4444;font-size:11px;cursor:pointer;margin-left:8px;">驳回</span></td>
+              </tr>
+              <tr>
+                <td>8</td><td>人类简史</td><td>赫拉利</td><td>历史</td>
+                <td><span class="mini-tag success">官方发布</span></td>
+                <td><span class="mini-tag success">已公开</span></td>
+                <td><span style="color:var(--accent);font-size:11px;cursor:pointer;">编辑</span> <span style="color:#ef4444;font-size:11px;cursor:pointer;margin-left:8px;">删除</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top: 16px; font-size: 11px; color: var(--text-muted);">
+            用户管理面板支持：编辑信息 · 查看发言记录(书评/段落评论) · 封禁/解封(超级管理员不可操作) · 删除账号
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ API TABLE ============ -->
+  <section class="section" id="api" style="background: var(--bg-surface);">
+    <div class="section-inner">
+      <div class="section-header center reveal">
+        <div class="section-label">🔌 API Endpoints</div>
+        <div class="section-title">后端核心控制器接口清单</div>
+        <p class="section-desc">
+          系统共计 15 个 Controller，严格遵循 RESTful 架构风格
+        </p>
+      </div>
+
+      <div class="api-table-wrapper reveal">
+        <table class="api-table">
+          <thead>
+            <tr><th>控制器</th><th>路由</th><th>职能</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>SysBookController</code></td><td><code>/sysBook/</code></td><td>图书上传、审核、推荐、分类查询、热度排行</td></tr>
+            <tr><td><code>SysUserController</code></td><td><code>/sysUser/</code></td><td>用户登录鉴权、个人信息管理、封禁/解封</td></tr>
+            <tr><td><code>AuthController</code></td><td><code>/auth/</code></td><td>验证码发送、注册、验证码登录、密码重置</td></tr>
+            <tr><td><code>UserBookshelfController</code></td><td><code>/bookshelf/</code></td><td>书架增删、阅读进度同步、书架可见性切换</td></tr>
+            <tr><td><code>SearchController</code></td><td><code>/search/</code></td><td>Elasticsearch 全文检索代理层</td></tr>
+            <tr><td><code>DifyAiController</code></td><td><code>/difyreading/</code></td><td>AI 大模型流式中继（SSE 长连接）</td></tr>
+            <tr><td><code>AiController</code></td><td><code>/ai/</code></td><td>AI TTS 语音合成服务</td></tr>
+            <tr><td><code>SysCommentController</code></td><td><code>/comment/</code></td><td>整书级树形评论体系管理</td></tr>
+            <tr><td><code>ParagraphCommentController</code></td><td><code>/paragraphComment/</code></td><td>段落级精准批注、点赞、权限控制</td></tr>
+            <tr><td><code>FriendController</code></td><td><code>/friend/</code></td><td>好友搜索、请求/审批、列表管理</td></tr>
+            <tr><td><code>ChatController</code></td><td><code>/chat/</code></td><td>即时消息投递、已读标记、历史记录</td></tr>
+            <tr><td><code>BookShareController</code></td><td><code>/bookShare/</code></td><td>书籍分享推送 + WebSocket 通知</td></tr>
+            <tr><td><code>ParagraphShareController</code></td><td><code>/paragraphShare/</code></td><td>段落级分享（携带坐标定位）</td></tr>
+            <tr><td><code>BooklistController</code></td><td><code>/booklist/</code></td><td>书单 CRUD、分享链接生成</td></tr>
+            <tr><td><code>SysNoteController</code></td><td><code>/sysNote/</code></td><td>个人笔记管理 (AI 对话记录保存)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUICK START ============ -->
+  <section class="section" id="quickstart">
+    <div class="section-inner">
+      <div class="section-header center reveal">
+        <div class="section-label">🚀 Quick Start</div>
+        <div class="section-title">快速运行指南</div>
+      </div>
+
+      <div class="bento-grid">
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">1️⃣</div>
+          <div class="card-title">环境准备</div>
+          <ul class="feature-list">
+            <li><span class="check">✓</span> JDK 17+</li>
+            <li><span class="check">✓</span> Node.js v18+</li>
+            <li><span class="check">✓</span> MySQL 8.x</li>
+            <li><span class="check">✓</span> Redis</li>
+            <li><span class="check">✓</span> Elasticsearch 8.x</li>
+          </ul>
+        </div>
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">2️⃣</div>
+          <div class="card-title">启动后端</div>
+          <div class="card-desc" style="font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; margin-top: 12px; line-height: 2;">
+            <span style="color: var(--text-muted);"># 配置 application.yml</span><br/>
+            <span style="color: var(--accent);">mvn</span> clean install<br/>
+            <span style="color: var(--accent);">mvn</span> spring-boot:run
+          </div>
+        </div>
+        <div class="bento-card span-4 reveal">
+          <div class="card-icon">3️⃣</div>
+          <div class="card-title">启动前端</div>
+          <div class="card-desc" style="font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; margin-top: 12px; line-height: 2;">
+            <span style="color: var(--text-muted);"># 桌面端</span><br/>
+            <span style="color: var(--accent);">cd</span> reading-ui && <span style="color: var(--accent);">npm</span> i && <span style="color: var(--accent);">npm</span> run dev<br/>
+            <span style="color: var(--text-muted);"># 移动端</span><br/>
+            <span style="color: var(--accent);">cd</span> reading-mobile-ui && <span style="color: var(--accent);">npm</span> i && <span style="color: var(--accent);">npm</span> run dev
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <span>📖</span> 智能书籍阅读系统
+      </div>
+      <p>
+        Java 17 · Spring Boot 3.2 · Vue 3 · Elasticsearch · WebSocket · AI LLM
+      </p>
+      <p style="margin-top: 8px;">
+        Built with ❤️ as a full-stack academic project
+      </p>
+      <div class="footer-links">
+        <a href="#features">核心功能</a>
+        <a href="#architecture">系统架构</a>
+        <a href="#reading">阅读体验</a>
+        <a href="#social">社交互动</a>
+        <a href="#admin">后台管理</a>
+        <a href="#api">接口清单</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ SCROLL REVEAL SCRIPT ============ -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const reveals = document.querySelectorAll('.reveal');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+      reveals.forEach(el => observer.observe(el));
+
+      // Smooth nav background
+      const nav = document.querySelector('.nav');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+          nav.style.background = 'rgba(12, 10, 9, 0.92)';
+        } else {
+          nav.style.background = 'rgba(12, 10, 9, 0.7)';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
