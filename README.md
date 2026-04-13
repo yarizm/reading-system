@@ -59,7 +59,6 @@ reading-system/
 ├── pom.xml               # 后端 Maven 依赖配置主文件
 ├── download_books.py     # 工具库：网络小说/书籍下载爬虫脚本
 ├── import_books.py       # 工具库：电子书元数据的解析与数据库批量导入脚本
-└── docs/                 # 项目文档与报告目录 (如论文记录)
 ```
 
 ## 🚀 快速运行 (Quick Start)
