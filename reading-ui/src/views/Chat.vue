@@ -22,7 +22,17 @@
         <el-avatar v-if="msg.senderId !== userInfo.id" :size="32"
                    :src="friendInfo.avatar || defaultAvatar" class="msg-avatar" />
         <div class="bubble-content">
-          <div class="bubble-text">{{ msg.content }}</div>
+          <template v-if="getParagraphShare(msg)">
+            <div class="paragraph-share-card" @click="openSharedParagraph(msg)">
+              <div class="paragraph-share-label">段落分享</div>
+              <div class="paragraph-share-title">《{{ getParagraphShare(msg).bookTitle || '当前书籍' }}》</div>
+              <div class="paragraph-share-meta">第 {{ getParagraphShare(msg).chapterIndex + 1 }} 章 · 第 {{ getParagraphShare(msg).paragraphIndex + 1 }} 段</div>
+              <div class="paragraph-share-quote">“{{ getParagraphShare(msg).quote }}”</div>
+              <div v-if="getParagraphShare(msg).message" class="paragraph-share-note">留言：{{ getParagraphShare(msg).message }}</div>
+              <div class="paragraph-share-link">点击前往阅读页</div>
+            </div>
+          </template>
+          <div v-else class="bubble-text">{{ msg.content }}</div>
           <div class="bubble-time">{{ formatTime(msg.createTime) }}</div>
         </div>
         <el-avatar v-if="msg.senderId === userInfo.id" :size="32"
@@ -81,6 +91,7 @@ const messages = ref([])
 const inputMessage = ref('')
 const messagesArea = ref(null)
 let pollTimer = null
+const PARAGRAPH_SHARE_PREFIX = '__PARAGRAPH_SHARE__'
 
 // 分享书籍
 const shareDialogVisible = ref(false)
@@ -196,6 +207,29 @@ const confirmShare = async () => {
   }
 }
 
+const parseParagraphShare = (content) => {
+  if (!content || !content.startsWith(PARAGRAPH_SHARE_PREFIX)) return null
+  try {
+    return JSON.parse(content.slice(PARAGRAPH_SHARE_PREFIX.length))
+  } catch (e) {
+    return null
+  }
+}
+
+const getParagraphShare = (msg) => parseParagraphShare(msg.content)
+
+const openSharedParagraph = (msg) => {
+  const share = getParagraphShare(msg)
+  if (!share?.bookId) return
+  router.push({
+    path: `/read/${share.bookId}`,
+    query: {
+      chapterIndex: share.chapterIndex,
+      paragraphIndex: share.paragraphIndex
+    }
+  })
+}
+
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
   const d = new Date(timeStr)
@@ -297,6 +331,49 @@ const formatTime = (timeStr) => {
 }
 .mine .bubble-time {
   text-align: right;
+}
+.paragraph-share-card {
+  min-width: 250px;
+  max-width: 360px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(139, 111, 82, 0.22);
+  background: rgba(245, 240, 232, 0.92);
+  cursor: pointer;
+}
+.mine .paragraph-share-card {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.paragraph-share-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.paragraph-share-title {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.paragraph-share-meta,
+.paragraph-share-link {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.82;
+}
+.paragraph-share-quote {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.paragraph-share-note {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 /* 输入区域 */

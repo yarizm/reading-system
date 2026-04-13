@@ -25,6 +25,13 @@ const showCatalog = ref(false)
 const showSettings = ref(false)
 const showAiDrawer = ref(false)
 const showToolbar = ref(false)
+const showSharePopup = ref(false)
+const shareMode = ref('book')
+const shareFriends = ref([])
+const selectedShareFriendId = ref(null)
+const shareMessage = ref('')
+const isLoadingShareFriends = ref(false)
+const isSubmittingShare = ref(false)
 
 // AI Chat
 const chatList = ref([])
@@ -45,6 +52,38 @@ const readingConfig = reactive({
   fontSize: 18, lineHeight: 1.8, theme: 'default', voice: 'cherry'
 })
 
+const selectedShareQuote = computed(() => {
+  const index = selectedParagraphIndex.value
+  if (index < 0 || index >= lines.value.length) return ''
+  return lines.value[index] || ''
+})
+
+const getRouteReadTarget = () => {
+  const rawChapter = route.query.chapterIndex
+  const rawParagraph = route.query.paragraphIndex
+  const chapter = rawChapter === undefined ? null : Number(rawChapter)
+  const paragraph = rawParagraph === undefined ? null : Number(rawParagraph)
+
+  return {
+    chapterIndex: Number.isInteger(chapter) ? chapter : null,
+    paragraphIndex: Number.isInteger(paragraph) ? paragraph : null
+  }
+}
+
+const applyRouteReadTarget = () => {
+  const target = getRouteReadTarget()
+  if (target.chapterIndex === null && target.paragraphIndex === null) return
+
+  if (target.chapterIndex !== null && catalog.value.length > 0) {
+    chapterIndex.value = Math.min(Math.max(target.chapterIndex, 0), catalog.value.length - 1)
+  }
+  if (target.paragraphIndex !== null) {
+    const safeParagraph = Math.max(target.paragraphIndex, 0)
+    currentLine.value = safeParagraph
+    selectedParagraphIndex.value = safeParagraph
+  }
+}
+
 // Selected text for AI
 const selectedText = ref('')
 const showAiActions = ref(false)
@@ -64,6 +103,7 @@ onMounted(async () => {
   await loadBookInfo()
   await loadCatalog()
   await loadProgress()
+  applyRouteReadTarget()
   await loadCurrentChapter()
   checkShelf()
   fetchNotes()
@@ -128,6 +168,14 @@ const loadCurrentChapter = async () => {
           if (el) el.scrollIntoView({ behavior: 'auto', block: 'center' })
         } else {
           window.scrollTo(0, 0)
+        }
+
+        const target = getRouteReadTarget()
+        if (target.paragraphIndex !== null) {
+          const safeParagraph = Math.max(target.paragraphIndex, 0)
+          selectedParagraphIndex.value = safeParagraph
+          const el = document.getElementById(`m-line-${safeParagraph}`)
+          if (el) el.scrollIntoView({ behavior: 'auto', block: 'center' })
         }
       })
     }
@@ -215,18 +263,88 @@ const submitParagraphComment = async () => {
   } catch (e) { showFailToast('评论失败') }
 }
 
-const shareParagraph = () => {
-  if (navigator.clipboard) {
-    const t = lines.value[selectedParagraphIndex.value]
-    navigator.clipboard.writeText(`"${t}" -- 《${bookInfo.value.title}》`)
-    showSuccessToast('已复制该段落内容')
+const ensureShareReady = () => {
+  if (!userInfo.value.id) {
+    showToast('请先登录')
+    return false
+  }
+  return true
+}
+
+const loadShareFriends = async () => {
+  isLoadingShareFriends.value = true
+  try {
+    const res = await axios.get(`/api/friend/list/${userInfo.value.id}`)
+    shareFriends.value = res.data.data || []
+    return true
+  } catch (e) {
+    shareFriends.value = []
+    showFailToast('加载好友失败')
+    return false
+  } finally {
+    isLoadingShareFriends.value = false
   }
 }
 
-const shareBook = () => {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(`推荐好书《${bookInfo.value.title}》：${window.location.href}`)
-    showSuccessToast('书籍链接已复制')
+const openSharePopup = async (mode) => {
+  if (!ensureShareReady()) return
+  shareMode.value = mode
+  selectedShareFriendId.value = null
+  shareMessage.value = ''
+
+  const loaded = await loadShareFriends()
+  if (!loaded) return
+
+  showSharePopup.value = true
+}
+
+const shareParagraph = () => openSharePopup('paragraph')
+
+const shareBook = () => openSharePopup('book')
+
+const submitShare = async () => {
+  if (!selectedShareFriendId.value) return showToast('请选择好友')
+
+  isSubmittingShare.value = true
+  try {
+    if (shareMode.value === 'book') {
+      const res = await axios.post('/api/bookShare/send', {
+        senderId: userInfo.value.id,
+        receiverId: selectedShareFriendId.value,
+        bookId: Number(bookId),
+        message: shareMessage.value.trim()
+      })
+      if (res.data.code !== '200') {
+        showFailToast(res.data.msg || '分享失败')
+        return
+      }
+      showSuccessToast('书籍已分享')
+    } else {
+      if (!selectedShareQuote.value) {
+        showToast('当前段落为空')
+        return
+      }
+      const res = await axios.post('/api/paragraphShare/send', {
+        senderId: userInfo.value.id,
+        receiverId: selectedShareFriendId.value,
+        bookId: Number(bookId),
+        chapterIndex: chapterIndex.value,
+        paragraphIndex: selectedParagraphIndex.value,
+        quote: selectedShareQuote.value,
+        message: shareMessage.value.trim()
+      })
+      if (res.data.code !== '200') {
+        showFailToast(res.data.msg || '分享失败')
+        return
+      }
+      showSuccessToast('段落已分享')
+    }
+
+    showSharePopup.value = false
+  } catch (e) {
+    showFailToast('分享失败')
+  } finally {
+    isSubmittingShare.value = false
   }
 }
 
@@ -407,6 +525,60 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
         <div class="p-input-box">
           <van-field v-model="newParagraphComment" placeholder="发条评论支持一下..." rows="1" autosize type="textarea" />
           <van-button type="primary" size="small" round style="white-space: nowrap;" @click="submitParagraphComment">发表</van-button>
+        </div>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="showSharePopup" position="bottom" round :style="{ minHeight: '42%' }">
+      <div class="share-popup">
+        <div class="share-popup-header">
+          <div class="share-popup-title">{{ shareMode === 'book' ? '分享书籍给好友' : '分享段落给好友' }}</div>
+          <van-icon name="cross" @click="showSharePopup = false" />
+        </div>
+        <div v-if="shareMode === 'book'" class="share-preview-card">
+          <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="share-preview-cover" />
+          <div class="share-preview-main">
+            <div class="share-preview-title">{{ bookInfo.title }}</div>
+            <div class="share-preview-meta">{{ bookInfo.author || '未知作者' }}</div>
+          </div>
+        </div>
+        <div v-else class="share-preview-card is-paragraph">
+          <div class="share-preview-main">
+            <div class="share-preview-title">{{ bookInfo.title }}</div>
+            <div class="share-preview-meta">第 {{ chapterIndex + 1 }} 章 · 第 {{ selectedParagraphIndex + 1 }} 段</div>
+            <div class="share-preview-quote">“{{ selectedShareQuote }}”</div>
+          </div>
+        </div>
+
+        <div v-if="isLoadingShareFriends" class="share-loading">正在加载好友列表...</div>
+        <van-empty v-else-if="shareFriends.length === 0" description="你还没有好友，先去好友中心添加吧" image-size="72" />
+        <template v-else>
+          <div class="share-friend-list">
+            <div
+              v-for="friend in shareFriends"
+              :key="friend.friendUserId"
+              :class="['share-friend-item', selectedShareFriendId === friend.friendUserId ? 'active' : '']"
+              @click="selectedShareFriendId = friend.friendUserId"
+            >
+              <div class="share-friend-name">{{ friend.nickname || friend.username }}</div>
+              <div class="share-friend-sub">@{{ friend.username }}</div>
+            </div>
+          </div>
+          <van-field
+            v-model="shareMessage"
+            type="textarea"
+            rows="2"
+            autosize
+            maxlength="200"
+            show-word-limit
+            placeholder="给好友捎一句话（可选）"
+            class="share-message-field"
+          />
+        </template>
+
+        <div class="share-popup-actions">
+          <van-button round plain @click="showSharePopup = false">取消</van-button>
+          <van-button round type="primary" :loading="isSubmittingShare" :disabled="shareFriends.length === 0" @click="submitShare">确认分享</van-button>
         </div>
       </div>
     </van-popup>
@@ -599,6 +771,104 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 .theme-dark .ai-inline-actions { background: rgba(220, 220, 220, 0.95); color: #000; }
 .ai-btn { color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
 .theme-dark .ai-btn { color: #333; }
+
+/* Share Popup */
+.share-popup { padding: 18px 16px calc(18px + var(--safe-bottom)); }
+.share-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.share-popup-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.share-preview-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(139, 111, 82, 0.08);
+}
+.share-preview-card.is-paragraph { align-items: flex-start; }
+.share-preview-cover {
+  width: 56px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.share-preview-main {
+  flex: 1;
+  min-width: 0;
+}
+.share-preview-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.share-preview-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.share-preview-quote {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.share-loading {
+  padding: 20px 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.share-friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.share-friend-item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-light);
+  background: #fff;
+}
+.share-friend-item.active {
+  border-color: var(--color-primary);
+  background: rgba(139, 111, 82, 0.08);
+}
+.share-friend-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.share-friend-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.share-message-field {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.share-popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
 
 /* Paragraph Comment Drawer */
 .p-comment-drawer { display: flex; flex-direction: column; height: 100%; border-radius: 12px 12px 0 0; }

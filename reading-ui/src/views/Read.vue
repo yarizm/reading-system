@@ -33,6 +33,18 @@ const isLoading = ref(false)     // 加载中状态
 
 // === 弹窗状态 ===
 const showBookInfoDialog = ref(false)
+const showBookShareDialog = ref(false)
+const showParagraphShareDialog = ref(false)
+
+const shareFriendOptions = ref([])
+const isLoadingShareFriends = ref(false)
+const bookShareFriendId = ref(null)
+const bookShareMessage = ref('')
+const isSubmittingBookShare = ref(false)
+const paragraphShareFriendId = ref(null)
+const paragraphShareMessage = ref('')
+const paragraphShareIndex = ref(-1)
+const isSubmittingParagraphShare = ref(false)
 
 // === 收藏状态 ===
 const isAddedToShelf = ref(false)
@@ -87,6 +99,38 @@ const isTeenager = computed(() => {
   return age !== undefined && age !== null && age < 18
 })
 
+const selectedParagraphText = computed(() => {
+  const index = paragraphShareIndex.value
+  if (index < 0 || index >= lines.value.length) return ''
+  return lines.value[index] || ''
+})
+
+const getRouteReadTarget = () => {
+  const rawChapter = route.query.chapterIndex
+  const rawParagraph = route.query.paragraphIndex
+  const chapter = rawChapter === undefined ? null : Number(rawChapter)
+  const paragraph = rawParagraph === undefined ? null : Number(rawParagraph)
+
+  return {
+    chapterIndex: Number.isInteger(chapter) ? chapter : null,
+    paragraphIndex: Number.isInteger(paragraph) ? paragraph : null
+  }
+}
+
+const applyRouteReadTarget = () => {
+  const target = getRouteReadTarget()
+  if (target.chapterIndex === null && target.paragraphIndex === null) return
+
+  if (target.chapterIndex !== null && catalog.value.length > 0) {
+    chapterIndex.value = Math.min(Math.max(target.chapterIndex, 0), catalog.value.length - 1)
+  }
+  if (target.paragraphIndex !== null) {
+    const safeParagraph = Math.max(target.paragraphIndex, 0)
+    currentLine.value = safeParagraph
+    selectedParagraphIndex.value = safeParagraph
+  }
+}
+
 // === 初始化 ===
 onMounted(async () => {
   const userStr = localStorage.getItem('user')
@@ -97,6 +141,7 @@ onMounted(async () => {
   await loadBookInfo()
   await loadCatalog()
   await loadProgress()
+  applyRouteReadTarget()
   await loadCurrentChapter()
   initObserver()
   checkShelfStatus()
@@ -268,6 +313,13 @@ const loadCurrentChapter = async () => {
           document.documentElement.scrollTop = 0
           document.body.scrollTop = 0
         }
+
+        const target = getRouteReadTarget()
+        if (target.paragraphIndex !== null) {
+          const safeParagraph = Math.max(target.paragraphIndex, 0)
+          selectedParagraphIndex.value = safeParagraph
+          scrollToLine(safeParagraph)
+        }
         initObserver()
       })
     }
@@ -397,36 +449,110 @@ const openCommentDrawer = (index) => {
   fetchParagraphComments(index)
 }
 
-// NEW: 分享段落
-const shareParagraph = (index) => {
-  const text = lines.value[index]
-  const shareContent = `“${text.substring(0, 100)}${text.length>100?'...':''}”\n\n—— 出自《${bookInfo.value.title}》\n正在阅读：${window.location.href}`
-  copyToClipboard(shareContent)
+const ensureShareReady = () => {
+  if (!userInfo.value.id) {
+    ElMessage.warning('请先登录')
+    return false
+  }
+  return true
 }
 
-// NEW: 分享书籍
-const shareBook = () => {
-  const shareContent = `我正在智慧阅读阅读《${bookInfo.value.title}》，推荐给你！\n书籍链接：${window.location.href}`
-  copyToClipboard(shareContent)
+const loadShareFriends = async () => {
+  isLoadingShareFriends.value = true
+  try {
+    const res = await axios.get(`/api/friend/list/${userInfo.value.id}`)
+    shareFriendOptions.value = res.data.data || []
+    return true
+  } catch (error) {
+    shareFriendOptions.value = []
+    ElMessage.error('获取好友列表失败，请稍后再试')
+    return false
+  } finally {
+    isLoadingShareFriends.value = false
+  }
 }
 
-// NEW: 复制工具函数
-const copyToClipboard = (text) => {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(() => {
-      ElMessage.success('分享内容已复制到剪贴板')
-    }).catch(() => {
-      ElMessage.error('复制失败，请手动复制')
+const openBookShareDialog = async () => {
+  if (!ensureShareReady()) return
+  bookShareFriendId.value = null
+  bookShareMessage.value = ''
+
+  const loaded = await loadShareFriends()
+  if (!loaded) return
+
+  showBookShareDialog.value = true
+}
+
+const openParagraphShareDialog = async (index) => {
+  if (!ensureShareReady()) return
+  paragraphShareIndex.value = index
+  paragraphShareFriendId.value = null
+  paragraphShareMessage.value = ''
+
+  const loaded = await loadShareFriends()
+  if (!loaded) return
+
+  showParagraphShareDialog.value = true
+}
+
+const submitBookShare = async () => {
+  if (!bookShareFriendId.value) {
+    ElMessage.warning('请选择要分享的好友')
+    return
+  }
+
+  isSubmittingBookShare.value = true
+  try {
+    const res = await axios.post('/api/bookShare/send', {
+      senderId: userInfo.value.id,
+      receiverId: bookShareFriendId.value,
+      bookId: Number(bookId),
+      message: bookShareMessage.value.trim()
     })
-  } else {
-    // 降级方案
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    ElMessage.success('分享内容已复制到剪贴板')
+    if (res.data.code === '200') {
+      ElMessage.success('书籍已分享给好友')
+      showBookShareDialog.value = false
+    } else {
+      ElMessage.warning(res.data.msg || '书籍分享失败')
+    }
+  } catch (error) {
+    ElMessage.error('书籍分享失败')
+  } finally {
+    isSubmittingBookShare.value = false
+  }
+}
+
+const submitParagraphShare = async () => {
+  if (!paragraphShareFriendId.value) {
+    ElMessage.warning('请选择要分享的好友')
+    return
+  }
+  if (!selectedParagraphText.value) {
+    ElMessage.warning('当前段落内容为空，暂时无法分享')
+    return
+  }
+
+  isSubmittingParagraphShare.value = true
+  try {
+    const res = await axios.post('/api/paragraphShare/send', {
+      senderId: userInfo.value.id,
+      receiverId: paragraphShareFriendId.value,
+      bookId: Number(bookId),
+      chapterIndex: chapterIndex.value,
+      paragraphIndex: paragraphShareIndex.value,
+      quote: selectedParagraphText.value,
+      message: paragraphShareMessage.value.trim()
+    })
+    if (res.data.code === '200') {
+      ElMessage.success('段落已分享给好友')
+      showParagraphShareDialog.value = false
+    } else {
+      ElMessage.warning(res.data.msg || '段落分享失败')
+    }
+  } catch (error) {
+    ElMessage.error('段落分享失败')
+  } finally {
+    isSubmittingParagraphShare.value = false
   }
 }
 
@@ -861,7 +987,7 @@ const goToUserProfile = (userId) => {
             <el-icon class="tool-icon" @click.stop="openCommentDrawer(index)"><ChatDotRound /></el-icon>
           </el-tooltip>
           <el-tooltip content="分享段落" placement="top">
-            <el-icon class="tool-icon" @click.stop="shareParagraph(index)"><Share /></el-icon>
+            <el-icon class="tool-icon" @click.stop="openParagraphShareDialog(index)"><Share /></el-icon>
           </el-tooltip>
         </div>
       </div>
@@ -901,7 +1027,7 @@ const goToUserProfile = (userId) => {
       <span class="toggle-text">足迹</span>
     </div>
 
-    <div class="sidebar-toggle share-book-toggle" @click.stop="shareBook">
+    <div class="sidebar-toggle share-book-toggle" @click.stop="openBookShareDialog">
       <el-icon size="24"><Share /></el-icon>
       <span class="toggle-text">分享</span>
     </div>
@@ -947,6 +1073,80 @@ const goToUserProfile = (userId) => {
         <div class="info-desc"><h4>简介：</h4><p>{{ bookInfo.description || '暂无简介' }}</p></div>
         <div style="margin-top: 20px; width: 100%;"><el-button type="primary" round style="width: 100%" @click="goToBookDetail"><el-icon style="margin-right: 5px"><MoreFilled /></el-icon> 查看书籍详情 & 评分</el-button></div>
       </div>
+    </el-dialog>
+
+    <el-dialog v-model="showBookShareDialog" title="分享书籍给好友" width="430px">
+      <div v-loading="isLoadingShareFriends" class="share-dialog-body">
+        <el-empty v-if="!isLoadingShareFriends && shareFriendOptions.length === 0" description="你还没有好友，先去好友中心添加吧" :image-size="72" />
+        <template v-else>
+          <div class="share-preview-card">
+            <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="share-preview-cover" />
+            <div class="share-preview-main">
+              <div class="share-preview-title">{{ bookInfo.title }}</div>
+              <div class="share-preview-meta">{{ bookInfo.author || '未知作者' }}</div>
+            </div>
+          </div>
+          <div class="share-dialog-form">
+            <el-select v-model="bookShareFriendId" placeholder="请选择好友" filterable clearable style="width: 100%">
+              <el-option
+                  v-for="friend in shareFriendOptions"
+                  :key="friend.friendUserId"
+                  :label="friend.nickname || friend.username"
+                  :value="friend.friendUserId"
+              />
+            </el-select>
+            <el-input
+                v-model="bookShareMessage"
+                type="textarea"
+                :rows="3"
+                maxlength="200"
+                show-word-limit
+                placeholder="给好友捎一句话（可选）"
+            />
+          </div>
+        </template>
+      </div>
+      <template #footer>
+        <el-button @click="showBookShareDialog = false">取消</el-button>
+        <el-button type="primary" :loading="isSubmittingBookShare" :disabled="shareFriendOptions.length === 0" @click="submitBookShare">确认分享</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showParagraphShareDialog" title="分享段落给好友" width="460px">
+      <div v-loading="isLoadingShareFriends" class="share-dialog-body">
+        <el-empty v-if="!isLoadingShareFriends && shareFriendOptions.length === 0" description="你还没有好友，先去好友中心添加吧" :image-size="72" />
+        <template v-else>
+          <div class="share-preview-card is-paragraph">
+            <div class="share-preview-main">
+              <div class="share-preview-title">{{ bookInfo.title }}</div>
+              <div class="share-position-meta">第 {{ chapterIndex + 1 }} 章 · 第 {{ paragraphShareIndex + 1 }} 段</div>
+              <div class="share-preview-quote">“{{ selectedParagraphText }}”</div>
+            </div>
+          </div>
+          <div class="share-dialog-form">
+            <el-select v-model="paragraphShareFriendId" placeholder="请选择好友" filterable clearable style="width: 100%">
+              <el-option
+                  v-for="friend in shareFriendOptions"
+                  :key="friend.friendUserId"
+                  :label="friend.nickname || friend.username"
+                  :value="friend.friendUserId"
+              />
+            </el-select>
+            <el-input
+                v-model="paragraphShareMessage"
+                type="textarea"
+                :rows="3"
+                maxlength="200"
+                show-word-limit
+                placeholder="可以补充你为什么想分享这段（可选）"
+            />
+          </div>
+        </template>
+      </div>
+      <template #footer>
+        <el-button @click="showParagraphShareDialog = false">取消</el-button>
+        <el-button type="primary" :loading="isSubmittingParagraphShare" :disabled="shareFriendOptions.length === 0" @click="submitParagraphShare">确认分享</el-button>
+      </template>
     </el-dialog>
 
     <el-drawer v-model="showCatalog" title="目录" direction="rtl" size="300px" @open="scrollToCatalogActive">
@@ -1157,6 +1357,58 @@ const goToUserProfile = (userId) => {
 .info-desc { margin-top: 20px; width: 100%; text-align: left; }
 .info-desc h4 { margin-bottom: 10px; color: #1d1d1f; font-size: 16px; }
 .info-desc p { color: #515154; line-height: 1.8; font-size: 15px; }
+
+.share-dialog-body { min-height: 180px; }
+.share-preview-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0, 102, 204, 0.05);
+  border: 1px solid rgba(0, 102, 204, 0.12);
+}
+.share-preview-card.is-paragraph {
+  align-items: flex-start;
+}
+.share-preview-cover {
+  width: 64px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.share-preview-main {
+  flex: 1;
+  min-width: 0;
+}
+.share-preview-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin-bottom: 6px;
+}
+.share-preview-meta,
+.share-position-meta {
+  font-size: 13px;
+  color: #86868b;
+}
+.share-preview-quote {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #515154;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.share-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
 
 /* === Comments Drawer === */
 .comment-drawer .el-drawer__body { display: flex; flex-direction: column; padding: 0; }
