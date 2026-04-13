@@ -96,5 +96,3 @@ npm install
 npm run dev
 ```
 
----
-*注：本项目作为学术化系统的工程落地实践，其技术架构详见 `chapter5_full_implementation.md`。不仅实现了书籍的资源级管控，更为“社交化阅读”及“AI融合阅读”提供了稳健的全链路代码支撑。*
