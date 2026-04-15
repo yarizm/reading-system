@@ -42,7 +42,7 @@ const importBooklist = async () => {
       <h3>📋 {{ booklistInfo.name }}</h3>
       <p v-if="booklistInfo.description" style="color: var(--color-text-muted); margin: 6px 0 12px;">{{ booklistInfo.description }}</p>
       <div v-for="b in booklistInfo.books" :key="b.id" class="book-row" @click="$router.push(`/book/${b.id}`)">
-        <img :src="b.coverUrl || defaultCover" class="book-thumb" />
+        <img :src="b.coverUrl || defaultCover" class="book-thumb"  alt=""/>
         <div class="book-info"><div class="book-t">{{ b.title }}</div><div class="book-a">{{ b.author }}</div></div>
       </div>
       <van-button type="primary" block round :loading="importing" @click="importBooklist" style="margin-top: 16px;">

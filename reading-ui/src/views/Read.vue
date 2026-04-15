@@ -2,10 +2,9 @@
 import { ref, onMounted, onBeforeUnmount, nextTick, reactive, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLeft, Microphone, EditPen, ChatLineRound, DocumentCopy, Close,
-  Delete, DocumentAdd, Notebook, UserFilled, Service, Position, Operation,
-  InfoFilled, Collection, CollectionTag, ChatDotRound, Star, StarFilled, Comment, Loading,
-  Setting, Timer, MoreFilled, Share // NEW: 引入 Share 图标
+  ArrowLeft, Microphone, EditPen, ChatLineRound, DocumentCopy, Delete, DocumentAdd, Notebook, UserFilled, Service, Position, Operation,
+  InfoFilled, Collection, ChatDotRound, Star, StarFilled, Comment, Loading,
+  Setting, MoreFilled, Share // NEW: 引入 Share 图标
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
@@ -1201,7 +1200,7 @@ const goToUserProfile = (userId) => {
 
     <el-dialog v-model="showBookInfoDialog" title="书籍信息" width="400px" center class="book-info-dialog">
       <div class="book-info-content">
-        <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="book-cover-large" />
+        <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="book-cover-large"  alt=""/>
         <h3 class="info-title">{{ bookInfo.title }}</h3>
         <p class="info-meta"><el-icon><UserFilled /></el-icon> 作者：{{ bookInfo.author }}</p>
         <div class="info-desc"><h4>简介：</h4><p>{{ bookInfo.description || '暂无简介' }}</p></div>
@@ -1214,7 +1213,7 @@ const goToUserProfile = (userId) => {
         <el-empty v-if="!isLoadingShareFriends && shareFriendOptions.length === 0" description="你还没有好友，先去好友中心添加吧" :image-size="72" />
         <template v-else>
           <div class="share-preview-card">
-            <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="share-preview-cover" />
+            <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="share-preview-cover"  alt=""/>
             <div class="share-preview-main">
               <div class="share-preview-title">{{ bookInfo.title }}</div>
               <div class="share-preview-meta">{{ bookInfo.author || '未知作者' }}</div>
@@ -1434,18 +1433,15 @@ const goToUserProfile = (userId) => {
 
 /* === Themes === */
 /* Default: Elegant paper-like reading experience */
-.theme-default { background-color: #fdfcf8; color: #2c2925; }
 .theme-default .read-header { background: rgba(253, 252, 248, 0.85); border-bottom: 1px solid rgba(0,0,0,0.04); color: #2c2925; }
 .theme-default .text-paragraph { color: #2c2925; }
 
 /* Eye-care (Green): Soothing pastel mint */
-.theme-green { background-color: #dcedc8; color: #2e4a2d; }
 .theme-green .read-header { background: rgba(220, 237, 200, 0.85); border-bottom: 1px solid rgba(46,74,45,0.1); color: #2e4a2d; }
 .theme-green .text-paragraph { color: #2e4a2d; }
 .theme-green .text-paragraph:hover { background-color: rgba(46, 74, 45, 0.04); }
 
 /* Dark: Deep slate for OLED / night reading */
-.theme-dark { background-color: #181a1b; color: #d0d0d0; }
 .theme-dark .read-header { background: rgba(24, 26, 27, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); color: #e8e8e8; }
 .theme-dark .text-paragraph { color: #d0d0d0; }
 .theme-dark .chapter-title { color: #e8e8e8; }
@@ -1453,7 +1449,6 @@ const goToUserProfile = (userId) => {
 .theme-dark .book-title { color: #e8e8e8; }
 
 /* High-contrast: Maximum readability */
-.theme-high-contrast { background-color: #000000; color: #ffffff; }
 .theme-high-contrast .read-header { background: #000; border-bottom: 2px solid #555; color: #fff; }
 .theme-high-contrast .text-paragraph { color: #ffffff; font-weight: 500; }
 .theme-high-contrast .chapter-title { color: #ffffff; text-decoration: underline; }
@@ -1642,7 +1637,6 @@ const goToUserProfile = (userId) => {
 }
 
 /* === Comments Drawer === */
-.comment-drawer .el-drawer__body { display: flex; flex-direction: column; padding: 0; }
 .paragraph-quote { padding: 16px; background: rgba(0,0,0,0.02); border-bottom: 1px solid rgba(0,0,0,0.05); font-style: italic; color: #515154; font-size: 14px; line-height: 1.6; max-height: 120px; overflow-y: auto; }
 .comment-list { flex: 1; overflow-y: auto; padding: 16px; }
 .comment-list::-webkit-scrollbar { width: 6px; }
@@ -1700,7 +1694,6 @@ const goToUserProfile = (userId) => {
 
 /* === Chapter Nav === */
 .chapter-nav { display: flex; justify-content: center; gap: 32px; margin-top: 64px; padding: 24px 0; border-top: 1px solid rgba(0,0,0,0.05); }
-.chapter-nav .el-button { border-radius: 20px; padding: 10px 32px; font-weight: 500; font-size: 15px; }
 
 .empty-tip { text-align: center; color: #a1a1a6; padding: 80px 0; font-size: 16px; font-weight: 500; }
 .clickable-user { cursor: pointer; transition: opacity 0.2s; }

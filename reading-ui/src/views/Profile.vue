@@ -21,7 +21,7 @@
                 :src="userInfo.avatar || defaultAvatar"
                 @error="() => true"
             >
-              <img :src="defaultAvatar"/>
+              <img :src="defaultAvatar" alt=""/>
             </el-avatar>
             <h2 class="username">{{ userInfo.username }}</h2>
             <el-tag :type="userInfo.role === 1 ? 'danger' : 'success'">
@@ -81,7 +81,7 @@
                       :on-success="handleAvatarSuccess"
                       :before-upload="beforeAvatarUpload"
                   >
-                    <img v-if="form.avatar" :src="form.avatar" class="avatar" />
+                    <img v-if="form.avatar" :src="form.avatar" class="avatar"  alt=""/>
                     <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
 
                     <div class="upload-tip" v-if="!form.avatar">点击上传头像</div>
@@ -126,7 +126,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { User, Calendar, HomeFilled, Plus } from '@element-plus/icons-vue' // 引入新图标
+import {User, Calendar, Plus, ArrowLeft} from '@element-plus/icons-vue' // 引入新图标
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
@@ -325,12 +325,6 @@ const formatTime = (timeStr) => {
   padding-bottom: 10px;
 }
 
-.info-item .el-icon {
-  margin-right: 10px;
-  font-size: 16px;
-  color: #8b6f52;
-}
-
 /* === 右侧设置卡片 === */
 .box-card {
   border: 1px solid #e8e0d6;
@@ -409,17 +403,7 @@ const formatTime = (timeStr) => {
   font-size: 22px;
   font-weight: 600;
 }
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 4px 0 0 0;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+
 /* === 标准统一头部 === */
 .page-header {
   display: flex;
@@ -452,15 +436,5 @@ const formatTime = (timeStr) => {
   font-size: 22px;
   font-weight: 600;
 }
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 4px 0 0 0;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+
 </style>

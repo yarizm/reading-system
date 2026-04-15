@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
 import axios from 'axios'
 
 const router = useRouter()
@@ -172,7 +171,7 @@ const goToLogin = () => router.push('/login')
         <van-swipe :autoplay="4000" :loop="true" indicator-color="#8b6f52" class="hot-swipe">
           <van-swipe-item v-for="book in hotBooks" :key="book.id" @click="goToDetail(book.id)">
             <div class="swipe-card">
-              <img :src="book.coverUrl || defaultCover" class="swipe-cover" @error="(e) => e.target.src = defaultCover" />
+              <img :src="book.coverUrl || defaultCover" class="swipe-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
               <div class="swipe-overlay">
                 <div class="swipe-title">{{ book.title }}</div>
                 <div class="swipe-meta">
@@ -219,7 +218,7 @@ const goToLogin = () => router.push('/login')
             class="recommend-card"
             @click="goToDetail(book.id)"
           >
-            <img :src="book.coverUrl || defaultCover" class="recommend-cover cover-aspect" @error="(e) => e.target.src = defaultCover" />
+            <img :src="book.coverUrl || defaultCover" class="recommend-cover cover-aspect" @error="(e) => e.target.src = defaultCover"  alt=""/>
             <div class="recommend-title">{{ book.title }}</div>
             <div class="recommend-author">{{ book.author }}</div>
           </div>
@@ -250,7 +249,7 @@ const goToLogin = () => router.push('/login')
             class="book-grid-item"
             @click="goToDetail(book.id)"
           >
-            <img :src="book.coverUrl || defaultCover" class="grid-cover cover-aspect" @error="(e) => e.target.src = defaultCover" />
+            <img :src="book.coverUrl || defaultCover" class="grid-cover cover-aspect" @error="(e) => e.target.src = defaultCover"  alt=""/>
             <div class="grid-info">
               <div class="grid-title">{{ book.title }}</div>
               <div class="grid-author">{{ book.author }}</div>
@@ -297,10 +296,6 @@ const goToLogin = () => router.push('/login')
 .search-section {
   padding: 8px 4px 0;
 }
-.search-section :deep(.van-search__content) {
-  background: var(--color-bg-card);
-  box-shadow: 0 2px 8px rgba(60, 40, 20, 0.05);
-}
 
 /* Categories */
 .category-scroll {
@@ -324,12 +319,6 @@ const goToLogin = () => router.push('/login')
   border: 1px solid var(--color-border);
   transition: all 0.25s;
   flex-shrink: 0;
-}
-.cat-chip.active {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
-  font-weight: 600;
 }
 
 /* Carousel */
@@ -363,7 +352,7 @@ const goToLogin = () => router.push('/login')
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 4px;
-  font-family: var(--font-serif);
+  font-family: var(--font-serif),serif;
 }
 .swipe-meta {
   font-size: 12px;
@@ -415,10 +404,7 @@ const goToLogin = () => router.push('/login')
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
-.rank-num.top {
-  background: linear-gradient(135deg, #f5a623, #d97706);
-  color: #fff;
-}
+
 .rank-name {
   flex: 1;
   font-size: 14px;

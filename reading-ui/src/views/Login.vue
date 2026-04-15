@@ -122,7 +122,6 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
-import { User, Lock, Postcard, Iphone, Key } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const mode = ref('login') // login, register, reset
@@ -350,11 +349,8 @@ const handleReset = async () => {
 .login-method-tabs {
   margin-bottom: 18px;
 }
-:deep(.el-tabs__item.is-active) { color: #8b6f52; }
-:deep(.el-tabs__active-bar) { background-color: #8b6f52; }
 
 .code-row { display: flex; gap: 10px; }
-.code-row .el-button { width: 110px; }
 
 .forget-pass {
   text-align: right;

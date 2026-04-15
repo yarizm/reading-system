@@ -3,7 +3,7 @@
     <el-card class="info-card" shadow="never">
       <div class="info-wrapper">
         <div class="cover-box">
-          <img :src="bookInfo.coverUrl || defaultCover" class="book-cover" />
+          <img :src="bookInfo.coverUrl || defaultCover" class="book-cover"  alt=""/>
         </div>
 
         <div class="details-box">
@@ -214,7 +214,7 @@ const checkShelf = async () => {
   if (!userInfo.value.id) return
   const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
   if (res.data.code === '200') {
-    inShelf.value = res.data.data.some(b => b.bookId == bookId)
+    inShelf.value = res.data.data.some(b => b.bookId === bookId)
   }
 }
 
@@ -329,7 +329,7 @@ const goToUserProfile = (userId) => {
 
 /* === 书籍卡片 === */
 .info-card { border-radius: 6px; margin-bottom: 28px; border: 1px solid #e8e0d6; }
-.info-card :deep(.el-card__body) { padding: 28px 32px; }
+
 .info-wrapper { display: flex; gap: 32px; }
 .cover-box { width: 180px; flex-shrink: 0; }
 .book-cover { width: 100%; border-radius: 4px; box-shadow: 0 2px 8px rgba(60, 40, 20, 0.1); }
@@ -349,10 +349,6 @@ const goToUserProfile = (userId) => {
 .book-desc h3 { font-size: 14px; margin: 0 0 8px; color: #6b5e53; font-weight: 600; }
 .book-desc p { margin: 0; font-size: 14px; }
 .action-btns { display: flex; gap: 12px; }
-.action-btns :deep(.el-button--primary) { background-color: #5a4435; border-color: #5a4435; }
-.action-btns :deep(.el-button--primary:hover) { background-color: #6b5040; border-color: #6b5040; }
-.action-btns :deep(.el-button--warning) { background-color: #b8944e; border-color: #b8944e; }
-.action-btns :deep(.el-button--warning:hover) { background-color: #c09a5c; border-color: #c09a5c; }
 
 /* === 评论区 === */
 .comment-section {

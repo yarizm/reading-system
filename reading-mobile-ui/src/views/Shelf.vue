@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { showToast, showSuccessToast, showConfirmDialog } from 'vant'
 import axios from 'axios'
 
 const router = useRouter()
@@ -81,12 +81,6 @@ const copyShareLink = (bl) => {
   navigator.clipboard?.writeText(link).then(() => showSuccessToast('链接已复制'))
     .catch(() => showToast(link))
 }
-
-const addBookToList = async (booklistId, bookId) => {
-  const res = await axios.post('/api/booklist/addBook', { booklistId, bookId })
-  if (res.data.code === '200') showSuccessToast('已添加')
-  else showToast(res.data.msg)
-}
 </script>
 
 <template>
@@ -111,7 +105,7 @@ const addBookToList = async (booklistId, bookId) => {
     <div class="shelf-grid">
       <div v-for="item in shelfList" :key="item.id" class="shelf-card" @click="continueRead(item.bookId)">
         <div class="card-cover-box">
-          <img :src="item.coverUrl || 'https://via.placeholder.com/120x160'" class="card-cover cover-aspect" />
+          <img :src="item.coverUrl || 'https://via.placeholder.com/120x160'" class="card-cover cover-aspect"  alt=""/>
           <van-tag v-if="calcPercent(item) >= 100" type="success" class="done-tag">已读完</van-tag>
         </div>
         <div class="card-info">
@@ -162,7 +156,7 @@ const addBookToList = async (booklistId, bookId) => {
         <p v-if="detailBooklist.description" style="color: var(--color-text-muted); margin-bottom: 12px;">{{ detailBooklist.description }}</p>
         <van-empty v-if="!detailBooklist.books?.length" description="书单为空" />
         <div v-for="b in detailBooklist.books" :key="b.id" class="detail-book-row">
-          <img :src="b.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover" />
+          <img :src="b.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover"  alt=""/>
           <div class="detail-info"><div class="detail-title">{{ b.title }}</div><div class="detail-author">{{ b.author }}</div></div>
           <van-icon name="delete-o" color="#ee4d38" @click="removeBookFromList(detailBooklist.id, b.id)" />
         </div>
@@ -174,7 +168,7 @@ const addBookToList = async (booklistId, bookId) => {
 <style scoped>
 .shelf-page { padding: 16px 16px 70px; }
 .shelf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.shelf-header h2 { font-family: var(--font-serif); font-size: 20px; margin: 0; }
+.shelf-header h2 { font-family: var(--font-serif),serif; font-size: 20px; margin: 0; }
 .shelf-actions { display: flex; align-items: center; gap: 6px; }
 .vis-text { font-size: 12px; color: var(--color-text-muted); }
 .shelf-tools { display: flex; gap: 8px; margin-bottom: 16px; }

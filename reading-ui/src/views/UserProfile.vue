@@ -58,7 +58,7 @@
                 :key="item.bookId"
                 @click="$router.push(`/book/${item.bookId}`)"
             >
-              <img :src="item.coverUrl || 'https://via.placeholder.com/120x160'" class="book-cover" />
+              <img :src="item.coverUrl || 'https://via.placeholder.com/120x160'" class="book-cover"  alt=""/>
               <div class="book-info">
                 <div class="book-title">{{ item.bookName }}</div>
                 <div class="book-author">{{ item.author }}</div>

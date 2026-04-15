@@ -50,7 +50,7 @@
           clearable>
           <template #default="{ item }">
             <div class="suggest-item">
-              <img :src="item.coverUrl || defaultCover" class="suggest-cover" @error="(e) => e.target.src=defaultCover" />
+              <img :src="item.coverUrl || defaultCover" class="suggest-cover" @error="(e) => e.target.src=defaultCover"  alt=""/>
               <div class="suggest-info">
                 <div class="suggest-title" :title="item.title">{{ item.title }}</div>
                 <div class="suggest-author">{{ item.author }}</div>
@@ -71,7 +71,7 @@
       <el-col :span="16">
         <el-carousel trigger="click" height="360px" class="promo-carousel">
           <el-carousel-item v-for="book in hotBooks" :key="book.id" @click="goToDetail(book.id)">
-            <img :src="book.coverUrl || defaultCover" class="carousel-img" @error="(e) => e.target.src = defaultCover" />
+            <img :src="book.coverUrl || defaultCover" class="carousel-img" @error="(e) => e.target.src = defaultCover"  alt=""/>
             <div class="carousel-info">
               <h3>{{ book.title }}</h3>
               <p class="author-text">{{ book.author }}</p>
@@ -106,7 +106,7 @@
       <el-col :span="6" v-for="book in recommendBooks" :key="book.id">
         <div class="book-card-simple" @click="goToDetail(book.id)">
           <div class="cover-wrapper">
-            <img :src="book.coverUrl || defaultCover" class="simple-cover" @error="(e) => e.target.src = defaultCover" />
+            <img :src="book.coverUrl || defaultCover" class="simple-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
             <div class="hover-mask">点击阅读</div>
           </div>
           <div class="simple-info">
@@ -127,7 +127,7 @@
     <div class="section-title" v-else><el-icon><Reading /></el-icon> 探索书库</div>
     <div class="book-grid">
       <el-card v-for="book in tableData" :key="book.id" class="book-card" shadow="hover" :body-style="{ padding: '0px' }" @click="goToDetail(book.id)">
-        <img :src="book.coverUrl || defaultCover" class="book-cover" @error="(e) => e.target.src = defaultCover" />
+        <img :src="book.coverUrl || defaultCover" class="book-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
         <div class="book-info">
           <div class="book-title" :title="book.title">{{ book.title }}</div>
           <div class="book-author">{{ book.author }}</div>
@@ -174,7 +174,17 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // === 修改点 2: 引入 Refresh 图标 ===
-import { Search, StarFilled, Reading, Collection, CaretBottom, Refresh, User, Bell } from '@element-plus/icons-vue'
+import {
+  Search,
+  StarFilled,
+  Reading,
+  Collection,
+  CaretBottom,
+  Refresh,
+  User,
+  Bell,
+  ArrowLeft
+} from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -509,9 +519,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 .notification-bell {
   position: relative;
 }
-.notification-bell.blinking :deep(.el-icon) {
-  animation: bell-blink 0.5s ease-in-out infinite alternate;
-}
+
 @keyframes bell-blink {
   0% { color: #5a5048; transform: scale(1); }
   100% { color: #ff3b30; transform: scale(1.2) rotate(15deg); }
@@ -544,7 +552,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   font-size: 15px;
   color: #2e2520;
 }
-.notify-panel-header .el-button { margin-left: 8px; }
+
 .notify-panel-body {
   flex: 1;
   overflow-y: auto;
@@ -582,15 +590,6 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.slide-notify-enter-active,
-.slide-notify-leave-active {
-  transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-.slide-notify-enter-from,
-.slide-notify-leave-to {
-  opacity: 0;
-  transform: translateY(-10px) scale(0.98);
-}
 
 /* === Search & Filters === */
 .header-section {
@@ -602,21 +601,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   width: 600px;
   margin: 0 auto 24px;
 }
-.search-box :deep(.el-input__wrapper) {
-  border-radius: 24px;
-  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.06);
-  background: #fffdf9;
-  padding: 4px 20px;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
-}
-.search-box :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-}
-.search-box :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px rgba(139, 111, 82, 0.2);
-  border-color: #8b6f52;
-}
+
 .category-tags {
   display: flex;
   justify-content: center;
@@ -640,13 +625,6 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   border-color: rgba(139, 111, 82, 0.3);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(139, 111, 82, 0.08);
-}
-.tag-item.active {
-  background-color: #8b6f52;
-  color: #fffdf9;
-  font-weight: 600;
-  border-color: #8b6f52;
-  box-shadow: 0 4px 12px rgba(139, 111, 82, 0.3);
 }
 
 /* === Carousel + Rank Section === */
@@ -724,11 +702,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   box-shadow: 0 8px 24px rgba(60, 40, 20, 0.04);
   background: #fffdf9;
 }
-.rank-card :deep(.el-card__header) {
-  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
-  padding: 16px 20px;
-  background: rgba(245,240,232,0.5);
-}
+
 .card-header span {
   font-weight: 700;
   font-size: 16px;
@@ -775,11 +749,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   flex-shrink: 0;
   font-weight: 700;
 }
-.rank-num.top-three {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
-}
+
 .rank-name {
   flex: 1;
   width: 0;
@@ -933,6 +903,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

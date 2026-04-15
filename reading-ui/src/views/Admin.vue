@@ -35,7 +35,7 @@
           </el-table-column>
           <el-table-column label="封面" width="80">
             <template #default="scope">
-              <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px"/>
+              <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px" alt=""/>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="200">
@@ -99,7 +99,7 @@
           <el-table-column prop="uploaderNickname" label="上传者" width="120" />
           <el-table-column label="封面" width="80">
             <template #default="scope">
-              <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 36px; height: 48px; object-fit: cover; border-radius: 3px"/>
+              <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 36px; height: 48px; object-fit: cover; border-radius: 3px" alt=""/>
               <span v-else style="color: #c4b9ab; font-size: 12px">无</span>
             </template>
           </el-table-column>
@@ -148,7 +148,7 @@
               :show-file-list="false"
               class="avatar-uploader"
           >
-            <img v-if="bookForm.coverUrl" :src="bookForm.coverUrl" class="upload-img-preview"/>
+            <img v-if="bookForm.coverUrl" :src="bookForm.coverUrl" class="upload-img-preview" alt=""/>
             <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
             <div v-if="!bookForm.coverUrl" class="el-upload__text">点击上传</div>
           </el-upload>
@@ -244,11 +244,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, reactive } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' // 引入路由
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { HomeFilled, Plus } from '@element-plus/icons-vue' // 引入图标
+import {ArrowLeft, Plus} from '@element-plus/icons-vue' // 引入图标
 
 const router = useRouter()
 const activeTab = ref('book')
@@ -383,7 +383,7 @@ const deleteUser = (id) => {
 // 封禁/解封
 const toggleBan = async (row) => {
   if (row.id === 1) return ElMessage.warning('无法封禁超级管理员账号')
-  const newBanStatus = row.isBanned === 1 ? false : true
+  const newBanStatus = row.isBanned !== 1
   const actionName = newBanStatus ? '封禁' : '解封'
   try {
     await ElMessageBox.confirm(`确定要${actionName}该用户吗？`, '提示', { type: 'warning' })
@@ -517,26 +517,8 @@ onMounted(() => {
 .toolbar { margin-bottom: 18px; }
 
 /* === 表格微调 === */
-:deep(.el-table) {
-  border: 1px solid #e8e0d6;
-  border-radius: 4px;
-}
-:deep(.el-table th.el-table__cell) {
-  background-color: #f5f0e8;
-  color: #4a3828;
-  font-weight: 600;
-}
-:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
-  background-color: #fcfaf6;
-}
 
 /* === Tab 微调 === */
-:deep(.el-tabs--border-card) {
-  border-color: #e8e0d6;
-}
-:deep(.el-tabs__item.is-active) {
-  color: #5a4435;
-}
 
 /* === 上传图片 === */
 .avatar-uploader {

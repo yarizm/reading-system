@@ -82,7 +82,7 @@ public class ChapterParser {
         for (String line : lines) {
             String trimmed = line.trim();
             if (trimmed.isEmpty()) {
-                if (paragraph.length() > 0) {
+                if (!paragraph.isEmpty()) {
                     result.append("　　").append(paragraph).append("\n");
                     paragraph.setLength(0);
                 }
@@ -93,7 +93,7 @@ public class ChapterParser {
             boolean hasIndent = line.startsWith("  ") || line.startsWith("　") || line.startsWith("\t");
 
             if (hasIndent) {
-                if (paragraph.length() > 0) {
+                if (!paragraph.isEmpty()) {
                     result.append("　　").append(paragraph).append("\n");
                     paragraph.setLength(0);
                 }
@@ -110,7 +110,7 @@ public class ChapterParser {
                 paragraph.setLength(0);
             }
         }
-        if (paragraph.length() > 0) {
+        if (!paragraph.isEmpty()) {
             result.append("　　").append(paragraph).append("\n");
         }
         return result.toString();

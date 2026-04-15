@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { showToast, showSuccessToast, showConfirmDialog } from 'vant'
 import axios from 'axios'
 
 const router = useRouter()
@@ -148,7 +148,7 @@ const confirmShare = async () => {
     <!-- Received Shares -->
     <div v-if="receivedShares.length > 0" class="m-section-title">📚 收到的分享</div>
     <div v-for="s in receivedShares" :key="s.shareId" class="share-row m-card" style="margin: 0 16px 8px;" @click="goToBook(s)">
-      <img :src="s.coverUrl || defaultCover" class="share-cover" />
+      <img :src="s.coverUrl || defaultCover" class="share-cover"  alt=""/>
       <div class="share-info">
         <div class="share-title">{{ s.bookTitle }}</div>
         <div class="share-from">{{ s.senderNickname }} 分享</div>
@@ -165,7 +165,7 @@ const confirmShare = async () => {
         <van-empty v-if="myShelf.length === 0" description="书架为空" />
         <div v-else class="share-grid">
           <div v-for="b in myShelf" :key="b.bookId" :class="['share-book-card', selectedBookId === b.bookId ? 'sel' : '']" @click="selectedBookId = b.bookId">
-            <img :src="b.coverUrl || defaultCover" class="share-book-cover" />
+            <img :src="b.coverUrl || defaultCover" class="share-book-cover"  alt=""/>
             <div class="share-book-name">{{ b.bookName }}</div>
           </div>
         </div>
@@ -178,11 +178,10 @@ const confirmShare = async () => {
 
 <style scoped>
 .friends-page { padding: 16px 0 70px; }
-.page-title { font-family: var(--font-serif); font-size: 20px; padding: 0 16px; margin: 0 0 8px; }
+.page-title { font-family: var(--font-serif),serif; font-size: 20px; padding: 0 16px; margin: 0 0 8px; }
 
 .friend-row { display: flex; align-items: center; }
 .friend-left { display: flex; align-items: center; gap: 12px; flex: 1; }
-.friend-text {}
 .friend-name { font-size: 15px; font-weight: 600; }
 .friend-since { font-size: 12px; color: var(--color-text-muted); }
 .friend-actions { display: flex; gap: 6px; margin-top: 10px; }
@@ -196,7 +195,6 @@ const confirmShare = async () => {
 
 .share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; max-height: 250px; overflow-y: auto; }
 .share-book-card { cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 4px; text-align: center; transition: 0.2s; }
-.share-book-card.sel { border-color: var(--color-primary); background: var(--color-bg-warm); }
 .share-book-cover { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; }
 .share-book-name { font-size: 11px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

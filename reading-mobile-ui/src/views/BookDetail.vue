@@ -47,7 +47,7 @@ const loadComments = async () => {
 const checkShelf = async () => {
   if (!userInfo.value.id) return
   const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
-  if (res.data.code === '200') inShelf.value = res.data.data.some(b => b.bookId == bookId)
+  if (res.data.code === '200') inShelf.value = res.data.data.some(b => b.bookId === bookId)
 }
 
 const toggleShelf = async () => {
@@ -121,7 +121,7 @@ const shareBook = () => {
 
     <!-- Book Info Card -->
     <div class="book-info-card">
-      <img :src="bookInfo.coverUrl || defaultCover" class="book-cover" />
+      <img :src="bookInfo.coverUrl || defaultCover" class="book-cover"  alt=""/>
       <div class="info-right">
         <h2 class="book-title">{{ bookInfo.title || bookInfo.name }}</h2>
         <p class="book-author">✍ {{ bookInfo.author }}</p>
@@ -248,7 +248,7 @@ const shareBook = () => {
 }
 .book-cover { width: 100px; border-radius: 8px; box-shadow: 0 4px 12px rgba(60,40,20,0.12); object-fit: cover; aspect-ratio: 3/4; }
 .info-right { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.book-title { font-size: 20px; font-weight: 700; margin: 0; font-family: var(--font-serif); }
+.book-title { font-size: 20px; font-weight: 700; margin: 0; font-family: var(--font-serif),serif; }
 .book-author, .book-cat { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
 .rating-text { font-size: 13px; color: #f5a623; font-weight: 600; margin-left: 4px; }
 
@@ -280,6 +280,4 @@ const shareBook = () => {
 .popup-title { font-weight: 600; font-size: 16px; }
 
 /* Custom Action Bar colors */
-:deep(.van-action-bar) { background: rgba(255,253,249,0.98); backdrop-filter: blur(10px); border-top: 1px solid var(--color-border-light); }
-:deep(.van-action-bar-button--primary) { background: var(--color-primary); }
 </style>

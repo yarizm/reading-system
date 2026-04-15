@@ -89,18 +89,13 @@ public class AiController {
 
             if (isChapterRequest(request)) {
                 outputFile = buildChapterCacheFile(request.getChapterId(), voiceKey);
-                if (outputFile.exists()) {
-                    cached = true;
-                } else {
-                    synthesizeTextToFile(text, getVoiceConstant(voiceKey), outputFile);
-                }
             } else {
                 outputFile = buildSnippetFile(voiceKey, text);
-                if (outputFile.exists()) {
-                    cached = true;
-                } else {
-                    synthesizeTextToFile(text, getVoiceConstant(voiceKey), outputFile);
-                }
+            }
+            if (outputFile.exists()) {
+                cached = true;
+            } else {
+                synthesizeTextToFile(text, getVoiceConstant(voiceKey), outputFile);
             }
 
             AudioGenerateResponse response = new AudioGenerateResponse();

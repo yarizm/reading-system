@@ -111,7 +111,7 @@
           <template #header><div class="card-title">📚 收到的分享</div></template>
           <el-empty v-if="receivedShares.length === 0" description="暂无收到的分享" :image-size="60" />
           <div v-for="share in receivedShares" :key="share.shareId" class="share-item" @click="goToBook(share)">
-            <img :src="share.coverUrl || defaultCover" class="share-cover" />
+            <img :src="share.coverUrl || defaultCover" class="share-cover"  alt=""/>
             <div class="share-info">
               <div class="share-book-title">{{ share.bookTitle }}</div>
               <div class="share-from">
@@ -139,7 +139,7 @@
         <div v-for="book in myShelf" :key="book.bookId" class="share-book-item"
              :class="{ selected: selectedBookId === book.bookId }"
              @click="selectedBookId = book.bookId">
-          <img :src="book.coverUrl || defaultCover" class="share-book-cover" />
+          <img :src="book.coverUrl || defaultCover" class="share-book-cover"  alt=""/>
           <div class="share-book-name">{{ book.bookName }}</div>
           <el-icon v-if="selectedBookId === book.bookId" class="check-icon"><Select /></el-icon>
         </div>
@@ -394,11 +394,7 @@ const formatDate = (timeStr) => {
   border: 1px solid #e8e0d6;
   border-radius: 8px;
 }
-.section-card :deep(.el-card__header) {
-  padding: 14px 20px;
-  border-bottom: 1px solid #f0ece4;
-  background: #fdfbf8;
-}
+
 .card-title {
   font-weight: 600;
   font-size: 15px;
@@ -637,11 +633,6 @@ const formatDate = (timeStr) => {
   font-size: 22px;
   font-weight: 600;
 }
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 4px 0 0 0;
-}
 .header-right {
   display: flex;
   align-items: center;
@@ -680,11 +671,7 @@ const formatDate = (timeStr) => {
   font-size: 22px;
   font-weight: 600;
 }
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 4px 0 0 0;
-}
+
 .header-right {
   display: flex;
   align-items: center;

@@ -281,7 +281,7 @@ const formatTime = (timeStr) => {
             :class="['share-card', selectedBookId === book.bookId ? 'sel' : '']"
             @click="selectedBookId = book.bookId"
           >
-            <img :src="book.coverUrl || defaultCover" class="s-cover" />
+            <img :src="book.coverUrl || defaultCover" class="s-cover"  alt=""/>
             <div class="s-name">{{ book.bookName }}</div>
           </div>
         </div>
@@ -323,15 +323,6 @@ const formatTime = (timeStr) => {
   align-items: flex-start;
   gap: 8px;
   max-width: 82%;
-}
-
-.msg-row.mine {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-
-.msg-row.theirs {
-  align-self: flex-start;
 }
 
 .msg-avatar {
@@ -456,11 +447,6 @@ const formatTime = (timeStr) => {
   padding: 4px;
   text-align: center;
   cursor: pointer;
-}
-
-.share-card.sel {
-  border-color: var(--color-primary);
-  background: var(--color-bg-warm);
 }
 
 .s-cover {

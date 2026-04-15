@@ -34,13 +34,6 @@ public interface SysBookMapper extends BaseMapper<SysBook> {
             "LIMIT 10")
     List<SysBook> selectRankBooks();
 
-    /** 按关键词模糊匹配书籍 */
-    @Select("SELECT * FROM sys_book " +
-            "WHERE title LIKE CONCAT('%', #{keyword}, '%') " +
-            "OR author LIKE CONCAT('%', #{keyword}, '%') " +
-            "LIMIT 1")
-    SysBook selectOneByKeyword(@Param("keyword") String keyword);
-
     /** 随机推荐（仅已公开） */
     @Select("SELECT * FROM sys_book WHERE (status = 2 OR status IS NULL) ORDER BY RAND() LIMIT 8")
     List<SysBook> selectRandomBooks();

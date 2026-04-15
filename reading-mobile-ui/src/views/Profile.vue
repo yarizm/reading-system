@@ -121,7 +121,7 @@ const logout = () => {
 }
 .user-card-accent { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #8b6f52, #c09a5c); }
 .user-avatar { margin-bottom: 10px; }
-.user-name { font-family: var(--font-serif); font-size: 20px; margin: 0 0 6px; }
+.user-name { font-family: var(--font-serif),serif; font-size: 20px; margin: 0 0 6px; }
 
 .setting-tabs { margin: 0 16px; }
 .form-section { padding-top: 10px; }

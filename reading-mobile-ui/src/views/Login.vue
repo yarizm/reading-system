@@ -180,7 +180,7 @@ const handleReset = async () => {
   margin: 0 auto 20px;
 }
 .brand-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-serif),serif;
   font-size: 28px;
   font-weight: 700;
   color: var(--color-text);
@@ -229,10 +229,6 @@ const handleReset = async () => {
 }
 .method-tabs {
   margin-bottom: 16px;
-}
-.van-field {
-  margin-bottom: 8px;
-  border-radius: 8px;
 }
 
 .forget-link {

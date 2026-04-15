@@ -18,7 +18,7 @@
 
         <div class="book-list">
           <div class="book-item" v-for="book in booklist.books" :key="book.id">
-            <img :src="book.coverUrl || 'https://via.placeholder.com/60x80'" class="mini-cover" />
+            <img :src="book.coverUrl || 'https://via.placeholder.com/60x80'" class="mini-cover"  alt=""/>
             <div class="book-info">
               <div class="book-title">{{ book.title }}</div>
               <div class="book-author">{{ book.author }}</div>
@@ -167,18 +167,7 @@ const doImport = async () => {
 .import-actions {
   text-align: center;
 }
-.import-actions :deep(.el-button--primary) {
-  background-color: #5a4435;
-  border-color: #5a4435;
-  width: 100%;
-  height: 44px;
-  font-size: 15px;
-  letter-spacing: 2px;
-}
-.import-actions :deep(.el-button--primary:hover) {
-  background-color: #6b5040;
-  border-color: #6b5040;
-}
+
 .login-hint {
   margin-top: 10px;
   color: #9b8e82;

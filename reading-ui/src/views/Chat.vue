@@ -97,7 +97,7 @@
           :class="{ selected: selectedBookId === book.bookId }"
           @click="selectedBookId = book.bookId"
         >
-          <img :src="book.coverUrl || defaultCover" class="share-cover" />
+          <img :src="book.coverUrl || defaultCover" class="share-cover"  alt=""/>
           <div class="share-name">{{ book.bookName }}</div>
         </div>
       </div>
@@ -362,15 +362,6 @@ const formatTime = (timeStr) => {
   align-items: flex-start;
   gap: 10px;
   max-width: 75%;
-}
-
-.message-bubble.mine {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-
-.message-bubble.theirs {
-  align-self: flex-start;
 }
 
 .msg-avatar {

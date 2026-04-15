@@ -51,7 +51,7 @@
           :key="item.id"
       >
         <div class="cover-box" @click="continueRead(item.bookId)">
-          <img :src="item.coverUrl || 'https://via.placeholder.com/150'" class="book-cover" />
+          <img :src="item.coverUrl || 'https://via.placeholder.com/150'" class="book-cover"  alt=""/>
           <div class="hover-mask">
             <el-icon size="30"><VideoPlay /></el-icon>
             <span>继续阅读</span>
@@ -163,7 +163,7 @@
         <p class="detail-desc" v-if="detailBooklist.description">{{ detailBooklist.description }}</p>
         <div class="detail-book-list">
           <div class="detail-book-item" v-for="book in detailBooklist.books" :key="book.id">
-            <img :src="book.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover" />
+            <img :src="book.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover"  alt=""/>
             <div class="detail-info">
               <div class="detail-title">{{ book.title }}</div>
               <div class="detail-author">{{ book.author }}</div>
@@ -206,7 +206,7 @@
               :show-file-list="false"
               class="avatar-uploader"
           >
-            <img v-if="uploadForm.coverUrl" :src="uploadForm.coverUrl" class="upload-img-preview"/>
+            <img v-if="uploadForm.coverUrl" :src="uploadForm.coverUrl" class="upload-img-preview" alt=""/>
             <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
           </el-upload>
         </el-form-item>
@@ -236,7 +236,7 @@
       <div class="booklist-list" v-else>
         <div class="upload-item" v-for="book in myUploads" :key="book.id">
           <div class="upload-item-left">
-            <img :src="book.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover" />
+            <img :src="book.coverUrl || 'https://via.placeholder.com/40x55'" class="detail-cover"  alt=""/>
             <div class="detail-info">
               <div class="detail-title">{{ book.title }}</div>
               <div class="detail-author">{{ book.author || '未知作者' }}</div>
@@ -261,7 +261,18 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { VideoPlay, Delete, HomeFilled, Plus, Collection, FolderAdd, Share, View, Upload, Document } from '@element-plus/icons-vue'
+import {
+  VideoPlay,
+  Delete,
+  Plus,
+  Collection,
+  FolderAdd,
+  Share,
+  View,
+  Upload,
+  Document,
+  ArrowLeft
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const shelfList = ref([])

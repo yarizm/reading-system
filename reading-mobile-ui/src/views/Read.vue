@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick, reactive, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast, showSuccessToast, showFailToast, showConfirmDialog, showDialog } from 'vant'
+import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
 import axios from 'axios'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 
@@ -24,7 +24,6 @@ const isAddedToShelf = ref(false)
 const showCatalog = ref(false)
 const showSettings = ref(false)
 const showAiDrawer = ref(false)
-const showToolbar = ref(false)
 const showSharePopup = ref(false)
 const shareMode = ref('book')
 const shareFriends = ref([])
@@ -724,7 +723,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
           <van-icon name="cross" @click="showSharePopup = false" />
         </div>
         <div v-if="shareMode === 'book'" class="share-preview-card">
-          <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="share-preview-cover" />
+          <img :src="bookInfo.coverUrl || 'https://via.placeholder.com/150'" class="share-preview-cover"  alt=""/>
           <div class="share-preview-main">
             <div class="share-preview-title">{{ bookInfo.title }}</div>
             <div class="share-preview-meta">{{ bookInfo.author || '未知作者' }}</div>
@@ -934,10 +933,6 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 .read-page { min-height: 100vh; transition: background 0.3s, color 0.3s; }
 
 /* Themes */
-.theme-default { background: #fdfcf8; color: #2c2925; }
-.theme-green { background: #dcedc8; color: #2e4a2d; }
-.theme-dark { background: #181a1b; color: #d0d0d0; }
-.theme-high-contrast { background: #000; color: #fff; }
 
 .theme-dark .read-nav { background: rgba(24,26,27,0.9) !important; color: #e8e8e8; }
 .theme-dark .bottom-bar { background: rgba(24,26,27,0.95) !important; color: #ccc; }
@@ -953,11 +948,11 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 }
 .chapter-title {
   text-align: center; font-size: 22px; margin-bottom: 28px;
-  font-family: var(--font-serif); font-weight: 700;
+  font-family: var(--font-serif),serif; font-weight: 700;
 }
 .text-line {
   text-indent: 2em; text-align: justify; margin-bottom: 16px;
-  font-family: var(--font-serif);
+  font-family: var(--font-serif),serif;
   user-select: text; -webkit-user-select: text;
   transition: background 0.2s;
   padding: 4px 0;
@@ -985,18 +980,17 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 
 /* Catalog */
 .catalog-popup { padding: 20px 16px; height: 100%; overflow-y: auto; }
-.catalog-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; font-family: var(--font-serif); }
+.catalog-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; font-family: var(--font-serif),serif; }
 .catalog-item { padding: 12px 8px; border-bottom: 1px solid var(--color-border-light); font-size: 14px; border-radius: 6px; }
-.catalog-item.active { color: var(--color-primary); font-weight: 600; background: rgba(139,111,82,0.06); }
 
 /* Settings */
 .settings-popup { padding: 24px 20px 40px; }
-.settings-popup h3 { margin-bottom: 20px; font-family: var(--font-serif); }
+.settings-popup h3 { margin-bottom: 20px; font-family: var(--font-serif),serif; }
 .s-group { margin-bottom: 20px; }
 .s-label { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
 .theme-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .t-btn { text-align: center; padding: 10px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
-.t-btn.sel { border-color: var(--color-primary); }
+
 .t-default { background: #fdfcf8; color: #2c2925; }
 .t-green { background: #dcedc8; color: #2e4a2d; }
 .t-dark { background: #181a1b; color: #d0d0d0; }
@@ -1004,14 +998,11 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 
 /* AI Popup */
 .ai-popup { height: 100%; display: flex; flex-direction: column; }
-.ai-popup .van-tabs { flex: 1; display: flex; flex-direction: column; }
-.ai-popup :deep(.van-tabs__content) { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-.ai-popup :deep(.van-tab__panel) { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 .chat-box { flex: 1; overflow-y: auto; padding: 16px; }
 .chat-empty { text-align: center; padding: 40px 0; color: var(--color-text-muted); }
 .chat-row { margin-bottom: 16px; }
-.chat-row.mine { text-align: right; }
+
 .chat-bubble {
   display: inline-block; max-width: 85%; padding: 10px 14px;
   border-radius: 14px; font-size: 14px; line-height: 1.6;
@@ -1087,6 +1078,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
   color: var(--color-text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 4;
+  line-clamp:4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1110,10 +1102,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
   border: 1px solid var(--color-border-light);
   background: #fff;
 }
-.share-friend-item.active {
-  border-color: var(--color-primary);
-  background: rgba(139, 111, 82, 0.08);
-}
+
 .share-friend-name {
   font-size: 14px;
   font-weight: 600;
