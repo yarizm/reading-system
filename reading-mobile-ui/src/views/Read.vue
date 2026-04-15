@@ -44,8 +44,26 @@ const noteList = ref([])
 const activeAiTab = ref('ai')
 
 // TTS
+const currentAudio = ref(null)
 const isChapterPlaying = ref(false)
-let speechUtterance = null
+const audioPlayerVisible = ref(false)
+const audioSharePopupVisible = ref(false)
+const isAudioLoading = ref(false)
+const isAudioPlaying = ref(false)
+const audioCurrentTime = ref(0)
+const audioDuration = ref(0)
+const audioShareFriendId = ref(null)
+const audioShareMessage = ref('')
+const isSubmittingAudioShare = ref(false)
+const audioPlayback = reactive({
+  audioUrl: '',
+  title: '',
+  sourceType: 'paragraph',
+  bookId: null,
+  chapterId: null,
+  chapterIndex: null,
+  paragraphIndex: null
+})
 
 // Reading settings
 const readingConfig = reactive({
@@ -56,6 +74,16 @@ const selectedShareQuote = computed(() => {
   const index = selectedParagraphIndex.value
   if (index < 0 || index >= lines.value.length) return ''
   return lines.value[index] || ''
+})
+
+const audioSourceLabel = computed(() => {
+  if (audioPlayback.sourceType === 'chapter' && audioPlayback.chapterIndex !== null) {
+    return `第 ${audioPlayback.chapterIndex + 1} 章`
+  }
+  if (audioPlayback.sourceType === 'paragraph' && audioPlayback.paragraphIndex !== null) {
+    return `第 ${audioPlayback.paragraphIndex + 1} 段`
+  }
+  return '朗读音频'
 })
 
 const getRouteReadTarget = () => {
@@ -112,7 +140,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  if (window.speechSynthesis) window.speechSynthesis.cancel()
+  stopAudioPlayback()
   window.removeEventListener('beforeunload', saveProgress)
   document.removeEventListener('selectionchange', handleTextSelect)
   saveProgress()
@@ -153,7 +181,7 @@ const loadProgress = async () => {
 const loadCurrentChapter = async () => {
   if (catalog.value.length === 0) return
   isLoading.value = true
-  if (window.speechSynthesis) { window.speechSynthesis.cancel(); isChapterPlaying.value = false }
+  stopAudioPlayback()
 
   const ch = catalog.value[chapterIndex.value]
   currentChapterTitle.value = ch.title
@@ -348,6 +376,154 @@ const submitShare = async () => {
   }
 }
 
+const resetAudioPlaybackMeta = () => {
+  audioPlayback.audioUrl = ''
+  audioPlayback.title = ''
+  audioPlayback.sourceType = 'paragraph'
+  audioPlayback.bookId = null
+  audioPlayback.chapterId = null
+  audioPlayback.chapterIndex = null
+  audioPlayback.paragraphIndex = null
+  audioCurrentTime.value = 0
+  audioDuration.value = 0
+}
+
+const stopAudioPlayback = (resetMeta = true) => {
+  if (currentAudio.value) {
+    currentAudio.value.pause()
+    currentAudio.value.removeAttribute('src')
+    currentAudio.value.load()
+  }
+  isAudioPlaying.value = false
+  isAudioLoading.value = false
+  isChapterPlaying.value = false
+  if (resetMeta) resetAudioPlaybackMeta()
+}
+
+const handleAudioLoadedMetadata = () => {
+  if (!currentAudio.value) return
+  audioDuration.value = Number.isFinite(currentAudio.value.duration) ? currentAudio.value.duration : 0
+}
+
+const handleAudioTimeUpdate = () => {
+  if (!currentAudio.value) return
+  audioCurrentTime.value = currentAudio.value.currentTime || 0
+}
+
+const handleAudioPlay = () => {
+  isAudioLoading.value = false
+  isAudioPlaying.value = true
+  isChapterPlaying.value = audioPlayback.sourceType === 'chapter'
+}
+
+const handleAudioPause = () => {
+  isAudioPlaying.value = false
+  isChapterPlaying.value = false
+}
+
+const handleAudioEnded = () => {
+  isAudioPlaying.value = false
+  isChapterPlaying.value = false
+}
+
+const openAudioPlayer = async (payload) => {
+  if (!payload.text?.trim()) return showToast('当前没有可朗读的内容')
+
+  stopAudioPlayback()
+  audioPlayerVisible.value = true
+  isAudioLoading.value = true
+
+  try {
+    const res = await axios.post('/api/ai/audio/generate', payload)
+    if (res.data.code !== '200' || !res.data.data?.audioUrl) {
+      audioPlayerVisible.value = false
+      stopAudioPlayback()
+      return showFailToast(res.data.msg || '生成音频失败')
+    }
+
+    Object.assign(audioPlayback, res.data.data)
+    await nextTick()
+    if (currentAudio.value) {
+      currentAudio.value.currentTime = 0
+      currentAudio.value.load()
+      await currentAudio.value.play()
+    }
+  } catch (e) {
+    audioPlayerVisible.value = false
+    stopAudioPlayback()
+    showFailToast('生成音频失败')
+  } finally {
+    isAudioLoading.value = false
+  }
+}
+
+const closeAudioPlayer = () => {
+  audioPlayerVisible.value = false
+  stopAudioPlayback()
+}
+
+const toggleDialogAudioPlayback = async () => {
+  if (!currentAudio.value || !audioPlayback.audioUrl) return
+  if (currentAudio.value.paused) await currentAudio.value.play()
+  else currentAudio.value.pause()
+}
+
+const formatAudioTime = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds < 0) return '00:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
+const downloadCurrentAudio = () => {
+  if (!audioPlayback.audioUrl) return
+  const link = document.createElement('a')
+  link.href = audioPlayback.audioUrl
+  link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.wav`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const openAudioSharePopup = async () => {
+  if (!audioPlayback.audioUrl) return showToast('请先生成音频')
+  const loaded = await loadShareFriends()
+  if (!loaded) return
+  audioShareFriendId.value = null
+  audioShareMessage.value = ''
+  audioSharePopupVisible.value = true
+}
+
+const submitAudioShare = async () => {
+  if (!audioShareFriendId.value) return showToast('请选择好友')
+  if (!audioPlayback.audioUrl) return showToast('当前没有可分享的音频')
+
+  isSubmittingAudioShare.value = true
+  try {
+    const res = await axios.post('/api/audioShare/send', {
+      senderId: userInfo.value.id,
+      receiverId: audioShareFriendId.value,
+      audioUrl: audioPlayback.audioUrl,
+      title: audioPlayback.title,
+      sourceType: audioPlayback.sourceType,
+      bookId: audioPlayback.bookId,
+      chapterIndex: audioPlayback.chapterIndex,
+      paragraphIndex: audioPlayback.paragraphIndex,
+      message: audioShareMessage.value.trim()
+    })
+    if (res.data.code !== '200') {
+      showFailToast(res.data.msg || '分享失败')
+      return
+    }
+    showSuccessToast('音频已分享')
+    audioSharePopupVisible.value = false
+  } catch (e) {
+    showFailToast('分享失败')
+  } finally {
+    isSubmittingAudioShare.value = false
+  }
+}
+
 const handleAiAction = (type) => {
   showAiActions.value = false
   showAiDrawer.value = true
@@ -362,11 +538,16 @@ const handleAiAction = (type) => {
 
 const handleTTS = async () => {
   showAiActions.value = false
-  showToast('正在生成语音...')
-  try {
-    const res = await axios.post('/api/ai/tts', { text: selectedText.value, type: 'TTS', voice: readingConfig.voice || 'cherry' })
-    if (res.data.code === '200') new Audio(res.data.data).play()
-  } catch (e) { showFailToast('语音失败') }
+  await openAudioPlayer({
+    text: selectedText.value,
+    voice: readingConfig.voice || 'cherry',
+    bookId: Number(bookId),
+    chapterId: catalog.value[chapterIndex.value]?.id,
+    chapterIndex: chapterIndex.value,
+    paragraphIndex: selectedParagraphIndex.value >= 0 ? selectedParagraphIndex.value : null,
+    title: `《${bookInfo.value.title}》片段朗读`,
+    sourceType: 'paragraph'
+  })
 }
 
 const sendChat = async (ctx, modeOverride, displayMsg) => {
@@ -419,27 +600,34 @@ const fetchNotes = async () => {
 
 const deleteNote = async (id) => { await axios.delete(`/api/sysNote/${id}`); fetchNotes() }
 
-const toggleChapterTts = () => {
-  const synth = window.speechSynthesis
-  if (!synth) return showFailToast('浏览器不支持语音')
-  if (synth.speaking && !synth.paused && isChapterPlaying.value) { synth.pause(); isChapterPlaying.value = false; return }
-  if (synth.paused && !isChapterPlaying.value) { synth.resume(); isChapterPlaying.value = true; return }
-  synth.cancel()
+const toggleChapterTts = async () => {
+  const chapter = catalog.value[chapterIndex.value]
   const fullText = lines.value.join('，')
-  if (!fullText) return showToast('无内容')
-  speechUtterance = new SpeechSynthesisUtterance(fullText)
-  speechUtterance.rate = 1.0
-  const voices = synth.getVoices()
-  const zh = voices.filter(v => v.lang.includes('zh') || v.lang.includes('cmn'))
-  if (zh.length) speechUtterance.voice = zh.find(v => v.name.includes('Xiaoxiao')) || zh[0]
-  speechUtterance.onstart = () => isChapterPlaying.value = true
-  speechUtterance.onend = () => isChapterPlaying.value = false
-  speechUtterance.onerror = () => isChapterPlaying.value = false
-  synth.speak(speechUtterance)
+  if (!chapter || !fullText) return showToast('当前章节暂无内容')
+
+  if (
+    audioPlayback.audioUrl &&
+    audioPlayback.sourceType === 'chapter' &&
+    audioPlayback.chapterId === chapter.id
+  ) {
+    audioPlayerVisible.value = true
+    return
+  }
+
+  await openAudioPlayer({
+    text: fullText,
+    voice: readingConfig.voice || 'cherry',
+    bookId: Number(bookId),
+    chapterId: chapter.id,
+    chapterIndex: chapterIndex.value,
+    paragraphIndex: null,
+    title: `《${bookInfo.value.title}》第 ${chapterIndex.value + 1} 章`,
+    sourceType: 'chapter'
+  })
 }
 
 const goBack = async () => {
-  if (window.speechSynthesis) window.speechSynthesis.cancel()
+  stopAudioPlayback()
   await saveProgress(); router.push('/shelf')
 }
 
@@ -480,8 +668,8 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
       <div class="bar-item" @click="showSettings = true"><van-icon name="setting-o" size="20" /><span>设置</span></div>
       <div class="bar-item" @click="showCatalog = true"><van-icon name="bars" size="20" /><span>目录</span></div>
       <div class="bar-item" @click="toggleChapterTts">
-        <van-icon :name="isChapterPlaying ? 'pause-circle-o' : 'music-o'" size="20" :color="isChapterPlaying ? '#52c41a' : ''" />
-        <span>听书</span>
+        <van-icon :name="(isAudioLoading && audioPlayback.sourceType === 'chapter') ? 'underway-o' : (isChapterPlaying ? 'pause-circle-o' : 'music-o')" size="20" :color="isChapterPlaying ? '#52c41a' : ''" />
+        <span>{{ (isAudioLoading && audioPlayback.sourceType === 'chapter') ? '生成中' : '听书' }}</span>
       </div>
       <div class="bar-item" @click="showAiDrawer = true"><van-icon name="chat-o" size="20" /><span>助手</span></div>
       <div class="bar-item" @click="toggleShelf">
@@ -579,6 +767,84 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
         <div class="share-popup-actions">
           <van-button round plain @click="showSharePopup = false">取消</van-button>
           <van-button round type="primary" :loading="isSubmittingShare" :disabled="shareFriends.length === 0" @click="submitShare">确认分享</van-button>
+        </div>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="audioPlayerVisible" position="bottom" round :style="{ minHeight: '36%' }" @closed="closeAudioPlayer">
+      <div class="audio-popup">
+        <div class="audio-popup-header">
+          <div>
+            <div class="audio-popup-title">{{ audioPlayback.title || '朗读音频' }}</div>
+            <div class="audio-popup-meta">{{ audioSourceLabel }}</div>
+          </div>
+          <van-icon name="cross" @click="closeAudioPlayer" />
+        </div>
+        <div v-if="isAudioLoading" class="share-loading">正在生成音频...</div>
+        <template v-else>
+          <audio
+            ref="currentAudio"
+            class="audio-player-element"
+            :src="audioPlayback.audioUrl || undefined"
+            controls
+            preload="metadata"
+            @loadedmetadata="handleAudioLoadedMetadata"
+            @timeupdate="handleAudioTimeUpdate"
+            @play="handleAudioPlay"
+            @pause="handleAudioPause"
+            @ended="handleAudioEnded"
+          />
+          <div class="audio-popup-time">
+            <span>{{ formatAudioTime(audioCurrentTime) }}</span>
+            <span>{{ formatAudioTime(audioDuration) }}</span>
+          </div>
+          <div class="audio-popup-actions">
+            <van-button round plain size="small" :disabled="!audioPlayback.audioUrl" @click="toggleDialogAudioPlayback">
+              {{ isAudioPlaying ? '暂停播放' : '继续播放' }}
+            </van-button>
+            <van-button round plain size="small" :disabled="!audioPlayback.audioUrl" @click="downloadCurrentAudio">保存本地</van-button>
+            <van-button round type="primary" size="small" :disabled="!audioPlayback.audioUrl" @click="openAudioSharePopup">分享给好友</van-button>
+          </div>
+        </template>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="audioSharePopupVisible" position="bottom" round :style="{ minHeight: '36%' }">
+      <div class="share-popup">
+        <div class="share-popup-header">
+          <div class="share-popup-title">分享音频给好友</div>
+          <van-icon name="cross" @click="audioSharePopupVisible = false" />
+        </div>
+        <div class="share-preview-card is-paragraph">
+          <div class="share-preview-main">
+            <div class="share-preview-title">{{ audioPlayback.title || '朗读音频' }}</div>
+            <div class="share-preview-meta">{{ audioSourceLabel }}</div>
+          </div>
+        </div>
+        <div class="share-friend-list">
+          <div
+            v-for="friend in shareFriends"
+            :key="friend.friendUserId"
+            :class="['share-friend-item', audioShareFriendId === friend.friendUserId ? 'active' : '']"
+            @click="audioShareFriendId = friend.friendUserId"
+          >
+            <div class="share-friend-name">{{ friend.nickname || friend.username }}</div>
+            <div class="share-friend-sub">@{{ friend.username }}</div>
+          </div>
+        </div>
+        <van-field
+          v-model="audioShareMessage"
+          type="textarea"
+          rows="2"
+          autosize
+          maxlength="200"
+          show-word-limit
+          placeholder="给好友捎一句话（可选）"
+          class="share-message-field"
+        />
+        <div class="share-popup-actions">
+          <van-button round plain @click="audioSharePopupVisible = false">取消</van-button>
+          <van-button round type="primary" :loading="isSubmittingAudioShare" :disabled="shareFriends.length === 0" @click="submitAudioShare">确认分享</van-button>
         </div>
       </div>
     </van-popup>
@@ -868,6 +1134,50 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
   justify-content: flex-end;
   gap: 10px;
   margin-top: 16px;
+}
+
+.audio-popup {
+  padding: 18px 16px calc(18px + var(--safe-bottom));
+}
+
+.audio-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.audio-popup-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.audio-popup-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.audio-player-element {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.audio-popup-time {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.audio-popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 /* Paragraph Comment Drawer */
