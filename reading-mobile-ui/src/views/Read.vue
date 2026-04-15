@@ -437,7 +437,7 @@ const openAudioPlayer = async (payload) => {
     if (res.data.code !== '200' || !res.data.data?.audioUrl) {
       audioPlayerVisible.value = false
       stopAudioPlayback()
-      return showFailToast(res.data.msg || '生成音频失败')
+      return showFailToast(res.data.msg || '当前听书服务不可用，请稍后再试')
     }
 
     Object.assign(audioPlayback, res.data.data)
@@ -450,7 +450,7 @@ const openAudioPlayer = async (payload) => {
   } catch (e) {
     audioPlayerVisible.value = false
     stopAudioPlayback()
-    showFailToast('生成音频失败')
+    showFailToast('当前听书服务不可用，请稍后再试')
   } finally {
     isAudioLoading.value = false
   }
@@ -476,9 +476,10 @@ const formatAudioTime = (seconds) => {
 
 const downloadCurrentAudio = () => {
   if (!audioPlayback.audioUrl) return
+  const ext = audioPlayback.audioUrl.split('.').pop()?.split('?')[0] || 'mp3'
   const link = document.createElement('a')
   link.href = audioPlayback.audioUrl
-  link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.wav`
+  link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.${ext}`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -930,12 +931,61 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 </template>
 
 <style scoped>
-.read-page { min-height: 100vh; transition: background 0.3s, color 0.3s; }
+.read-page {
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+  background: linear-gradient(180deg, #f7f2e8 0%, #fdfcf8 38%, #f6f1e7 100%);
+  color: #2c2925;
+}
 
 /* Themes */
+.read-page.theme-default {
+  background: linear-gradient(180deg, #f7f2e8 0%, #fdfcf8 38%, #f6f1e7 100%);
+  color: #2c2925;
+}
+
+.read-page.theme-green {
+  background: linear-gradient(180deg, #dceccf 0%, #eaf5df 38%, #d7e8c7 100%);
+  color: #2e4a2d;
+}
+
+.read-page.theme-dark {
+  background: linear-gradient(180deg, #111315 0%, #181a1b 38%, #0d0f10 100%);
+  color: #d0d0d0;
+}
+
+.read-page.theme-high-contrast {
+  background: #000000;
+  color: #ffffff;
+}
+
+.theme-default .read-nav,
+.theme-green .read-nav,
+.theme-high-contrast .read-nav {
+  color: inherit;
+}
+
+.theme-green .read-nav {
+  background: rgba(220, 237, 200, 0.9) !important;
+}
+
+.theme-high-contrast .read-nav {
+  background: rgba(0, 0, 0, 0.96) !important;
+  color: #ffffff !important;
+}
+
+.theme-green .bottom-bar {
+  background: rgba(220, 237, 200, 0.95) !important;
+  color: #2e4a2d;
+}
 
 .theme-dark .read-nav { background: rgba(24,26,27,0.9) !important; color: #e8e8e8; }
 .theme-dark .bottom-bar { background: rgba(24,26,27,0.95) !important; color: #ccc; }
+.theme-high-contrast .bottom-bar {
+  background: rgba(0, 0, 0, 0.98) !important;
+  color: #ffffff;
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
 
 .read-nav {
   background: rgba(253,252,248,0.9) !important;
@@ -946,10 +996,16 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
   padding: 16px 18px 80px;
   max-width: 100%;
 }
+.theme-green .text-line { color: #2e4a2d; }
+.theme-dark .text-line { color: #d0d0d0; }
+.theme-high-contrast .text-line { color: #ffffff; }
 .chapter-title {
   text-align: center; font-size: 22px; margin-bottom: 28px;
   font-family: var(--font-serif),serif; font-weight: 700;
 }
+.theme-green .chapter-title { color: #2e4a2d; }
+.theme-dark .chapter-title { color: #e8e8e8; }
+.theme-high-contrast .chapter-title { color: #ffffff; }
 .text-line {
   text-indent: 2em; text-align: justify; margin-bottom: 16px;
   font-family: var(--font-serif),serif;

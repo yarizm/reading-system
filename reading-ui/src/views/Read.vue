@@ -749,7 +749,7 @@ const openAudioPlayer = async (payload) => {
   try {
     const res = await axios.post('/api/ai/audio/generate', payload)
     if (res.data.code !== '200' || !res.data.data?.audioUrl) {
-      ElMessage.error(res.data.msg || '生成音频失败')
+      ElMessage.error(res.data.msg || '当前听书服务不可用，请稍后再试')
       audioPlayerVisible.value = false
       stopAudioPlayback()
       return
@@ -763,7 +763,7 @@ const openAudioPlayer = async (payload) => {
       await currentAudio.value.play()
     }
   } catch (error) {
-    ElMessage.error('生成音频失败')
+    ElMessage.error('当前听书服务不可用，请稍后再试')
     audioPlayerVisible.value = false
     stopAudioPlayback()
   } finally {
@@ -795,9 +795,10 @@ const formatAudioTime = (seconds) => {
 
 const downloadCurrentAudio = () => {
   if (!audioPlayback.audioUrl) return
+  const ext = audioPlayback.audioUrl.split('.').pop()?.split('?')[0] || 'mp3'
   const link = document.createElement('a')
   link.href = audioPlayback.audioUrl
-  link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.wav`
+  link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.${ext}`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -1429,19 +1430,33 @@ const goToUserProfile = (userId) => {
   min-height: 100vh; 
   transition: background-color 0.4s ease, color 0.4s ease;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(180deg, #f7f2e8 0%, #fdfcf8 38%, #f6f1e7 100%);
+  color: #2c2925;
 }
 
 /* === Themes === */
 /* Default: Elegant paper-like reading experience */
+.read-container.theme-default {
+  background: linear-gradient(180deg, #f7f2e8 0%, #fdfcf8 38%, #f6f1e7 100%);
+  color: #2c2925;
+}
 .theme-default .read-header { background: rgba(253, 252, 248, 0.85); border-bottom: 1px solid rgba(0,0,0,0.04); color: #2c2925; }
 .theme-default .text-paragraph { color: #2c2925; }
 
 /* Eye-care (Green): Soothing pastel mint */
+.read-container.theme-green {
+  background: linear-gradient(180deg, #dceccf 0%, #eaf5df 38%, #d7e8c7 100%);
+  color: #2e4a2d;
+}
 .theme-green .read-header { background: rgba(220, 237, 200, 0.85); border-bottom: 1px solid rgba(46,74,45,0.1); color: #2e4a2d; }
 .theme-green .text-paragraph { color: #2e4a2d; }
 .theme-green .text-paragraph:hover { background-color: rgba(46, 74, 45, 0.04); }
 
 /* Dark: Deep slate for OLED / night reading */
+.read-container.theme-dark {
+  background: linear-gradient(180deg, #111315 0%, #181a1b 38%, #0d0f10 100%);
+  color: #d0d0d0;
+}
 .theme-dark .read-header { background: rgba(24, 26, 27, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); color: #e8e8e8; }
 .theme-dark .text-paragraph { color: #d0d0d0; }
 .theme-dark .chapter-title { color: #e8e8e8; }
@@ -1449,6 +1464,10 @@ const goToUserProfile = (userId) => {
 .theme-dark .book-title { color: #e8e8e8; }
 
 /* High-contrast: Maximum readability */
+.read-container.theme-high-contrast {
+  background: #000000;
+  color: #ffffff;
+}
 .theme-high-contrast .read-header { background: #000; border-bottom: 2px solid #555; color: #fff; }
 .theme-high-contrast .text-paragraph { color: #ffffff; font-weight: 500; }
 .theme-high-contrast .chapter-title { color: #ffffff; text-decoration: underline; }

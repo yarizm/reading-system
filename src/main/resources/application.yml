@@ -52,6 +52,13 @@ ai:
   dashscope:
     api-key: ${QWEN_API_KEY}
   enable-recommendation: true  # 平时设为 false (省钱)，答辩演示时改为 true
+tts:
+  provider: lightweight
+  lightweight:
+    base-url: "http://localhost:8091"
+    timeout-ms: 60000
+  dashscope:
+    enabled: true
 dify:
   reading:
     api-url: "http://localhost/v1/chat-messages"
