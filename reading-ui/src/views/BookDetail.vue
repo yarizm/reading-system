@@ -34,7 +34,7 @@
             <el-button :type="inShelf ? 'info' : 'warning'" size="large" round @click="toggleShelf">
               <el-icon><Collection /></el-icon> {{ inShelf ? '移出书架' : '加入书架' }}
             </el-button>
-            <el-button plain size="large" round @click="goBack">返回</el-button>
+            <el-button plain size="large" round class="glass-btn" @click="goBack">返回</el-button>
           </div>
         </div>
       </div>
@@ -328,23 +328,32 @@ const goToUserProfile = (userId) => {
 .book-detail-container { max-width: 960px; margin: 24px auto; padding: 0 24px; }
 
 /* === 书籍卡片 === */
-.info-card { border-radius: 6px; margin-bottom: 28px; border: 1px solid #e8e0d6; }
+:deep(.el-card) {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
+}
+.info-card { border: none; margin-bottom: 28px; }
 
 .info-wrapper { display: flex; gap: 32px; }
 .cover-box { width: 180px; flex-shrink: 0; }
-.book-cover { width: 100%; border-radius: 4px; box-shadow: 0 2px 8px rgba(60, 40, 20, 0.1); }
-.details-box { flex: 1; }
-.book-title { font-size: 24px; color: #2e2520; margin: 0 0 12px 0; font-family: 'Noto Serif SC', serif; font-weight: 600; }
-.book-meta { display: flex; gap: 18px; color: #7a6e63; font-size: 13px; align-items: center; margin-bottom: 18px; }
+.book-cover { width: 100%; border-radius: 8px; box-shadow: 0 8px 24px rgba(60, 40, 20, 0.15); }
+.details-box { flex: 1; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8); }
+.book-title { font-size: 28px; color: #2e2520; margin: 0 0 12px 0; font-family: 'Noto Serif SC', serif; font-weight: 800; }
+.book-meta { display: flex; gap: 18px; color: #6b5e53; font-size: 13px; align-items: center; margin-bottom: 18px; font-weight: 500;}
 .meta-item { display: flex; align-items: center; gap: 5px; }
 .book-desc {
   color: #5a5048;
   line-height: 1.7;
   margin-bottom: 24px;
-  background: #faf5ed;
+  background: rgba(255, 255, 255, 0.3);
   padding: 16px 18px;
-  border-radius: 4px;
-  border-left: 3px solid #d4c4a8;
+  border-radius: 8px;
+  border-left: 4px solid rgba(139, 111, 82, 0.5);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.02);
 }
 .book-desc h3 { font-size: 14px; margin: 0 0 8px; color: #6b5e53; font-weight: 600; }
 .book-desc p { margin: 0; font-size: 14px; }
@@ -352,23 +361,27 @@ const goToUserProfile = (userId) => {
 
 /* === 评论区 === */
 .comment-section {
-  background: #fffdf9;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   padding: 28px 32px;
-  border-radius: 6px;
-  border: 1px solid #e8e0d6;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05);
 }
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
-  border-bottom: 1px solid #ede7de;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.06);
   padding-bottom: 12px;
 }
 .section-header h3 {
   font-family: 'Noto Serif SC', serif;
   color: #3d3632;
-  font-weight: 600;
+  font-weight: 800;
+  font-size: 20px;
 }
 
 /* === 评论列表 === */
@@ -388,7 +401,7 @@ const goToUserProfile = (userId) => {
 .delete-btn:hover { color: #a34040; }
 
 /* === 楼中楼 === */
-.sub-comments { margin-top: 14px; background: #faf5ed; padding: 14px; border-radius: 4px; }
+.sub-comments { margin-top: 14px; background: rgba(255, 255, 255, 0.4); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.5); }
 .sub-item { display: flex; gap: 10px; margin-bottom: 14px; }
 .sub-item:last-child { margin-bottom: 0; }
 .sub-content { flex: 1; }
@@ -401,7 +414,7 @@ const goToUserProfile = (userId) => {
 .sub-actions { font-size: 12px; }
 
 /* === 底部输入框 === */
-.post-comment-box { background: #fffdf9; padding: 18px; border-radius: 4px; border: 1px solid #e8e0d6; }
+.post-comment-box { background: rgba(255, 255, 255, 0.6); padding: 18px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 4px 12px rgba(60,40,20,0.03); }
 .reply-indicator { background: #f5f0e8; color: #8b6f52; padding: 5px 10px; border-radius: 3px; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px; font-size: 13px; }
 .close-reply { cursor: pointer; }
 .input-row { display: flex; gap: 14px; flex-direction: column; }

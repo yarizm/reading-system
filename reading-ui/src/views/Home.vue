@@ -1,5 +1,6 @@
 <template>
-  <div class="home-container">
+  <div class="home-wrapper">
+    <div class="home-container">
     <div class="nav-header">
       <div class="logo">📚 智能书籍管理系统</div>
       <div class="nav-right">
@@ -102,21 +103,19 @@
       </el-button>
     </div>
 
-    <el-row :gutter="20" class="recommend-section" v-loading="recommendLoading" element-loading-text="AI 正在分析你的阅读口味..." v-if="!isSearchMode">
-      <el-col :span="6" v-for="book in recommendBooks" :key="book.id">
-        <div class="book-card-simple" @click="goToDetail(book.id)">
-          <div class="cover-wrapper">
-            <img :src="book.coverUrl || defaultCover" class="simple-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
-            <div class="hover-mask">点击阅读</div>
-          </div>
-          <div class="simple-info">
-            <div class="simple-name" :title="book.title">{{ book.title }}</div>
-            <div class="simple-author">{{ book.author }}</div>
-          </div>
+    <div class="recommend-section recommend-grid" v-loading="recommendLoading" element-loading-text="AI 正在分析你的阅读口味..." v-if="!isSearchMode">
+      <div class="book-card-simple book-card" v-for="book in recommendBooks" :key="book.id" @click="goToDetail(book.id)">
+        <div class="cover-wrapper">
+          <img :src="book.coverUrl || defaultCover" class="simple-cover book-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
+          <div class="hover-mask">点击阅读</div>
         </div>
-      </el-col>
-      <el-empty v-if="recommendBooks.length === 0 && !recommendLoading" description="暂无推荐书籍" />
-    </el-row>
+        <div class="simple-info book-info">
+          <div class="simple-name book-title" :title="book.title">{{ book.title }}</div>
+          <div class="simple-author book-author">{{ book.author }}</div>
+        </div>
+      </div>
+      <el-empty v-if="recommendBooks.length === 0 && !recommendLoading" description="暂无推荐书籍" style="grid-column: 1 / -1" />
+    </div>
 
     <div class="section-title search-result-title" v-if="isSearchMode">
       <span>🔍 搜索 "{{ searchKeyword }}" 的结果 (共 {{ total }} 条)</span>
@@ -166,6 +165,7 @@
         </div>
       </div>
     </transition>
+    </div>
   </div>
 </template>
 
@@ -439,14 +439,20 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 /* ==================================================
    Modernized UI Styles for Home.vue
 ================================================== */
+.home-wrapper {
+  min-height: 100vh;
+  width: 100%;
+}
 .home-container {
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 24px 40px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: #3d3632;
-  background-color: #f0ece4;
+  background-color: rgba(255, 255, 255, 0.6); /* Semi-transparent white to show bg clearly */
+  backdrop-filter: blur(8px);
   min-height: 100vh;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
   
   /* Override Element Plus Primary Color to warm brown */
   --el-color-primary: #8b6f52;
@@ -851,6 +857,13 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   color: #9b8e82;
   font-size: 13px;
   font-weight: 500;
+}
+
+/* === Recommend Grid (4x2 for 8 items) === */
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
 }
 
 /* === Book Grid === */

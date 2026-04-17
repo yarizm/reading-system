@@ -1,8 +1,6 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <div class="brand-strip"></div>
-
       <div class="title">
         <h2>{{ pageTitle }}</h2>
         <p>智慧阅读 · 让每一页都有温度</p>
@@ -283,28 +281,33 @@ const handleReset = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f0ece4;
-  background-image:
-    radial-gradient(ellipse at 20% 50%, rgba(180,160,130,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(160,140,120,0.08) 0%, transparent 50%);
+  /* 背景依靠全局 style.css 的 home_bg.png */
 }
 
 .login-card {
   width: 420px;
-  background: #fffdf9;
-  padding: 0 38px 36px;
-  border-radius: 6px;
-  border: 1px solid #e4ddd3;
-  box-shadow: 0 1px 3px rgba(80, 60, 40, 0.06),
-              0 8px 30px rgba(80, 60, 40, 0.04);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  padding: 40px 38px 36px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 16px 40px rgba(80, 60, 40, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.login-card:hover {
+  box-shadow: 0 24px 50px rgba(80, 60, 40, 0.15);
+  transform: translateY(-2px);
 }
 
-.brand-strip {
-  width: 60px;
-  height: 4px;
-  background: #8b6f52;
-  margin: 36px auto 0;
-  border-radius: 2px;
+:deep(.el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 0 0 1px rgba(139, 111, 82, 0.2) inset !important;
+  transition: all 0.3s;
+}
+:deep(.el-input__wrapper.is-focus) {
+  background: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 0 0 1px rgba(139, 111, 82, 0.6) inset !important;
 }
 
 .title {
@@ -366,11 +369,17 @@ const handleReset = async () => {
   width: 100%;
   height: 42px;
   font-size: 15px;
-  background-color: #6b5040;
-  border-color: #6b5040;
+  background: linear-gradient(135deg, #8b6f52 0%, #6b5040 100%);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(107, 80, 64, 0.3);
   letter-spacing: 2px;
+  transition: all 0.3s;
 }
-.submit-btn:hover { background-color: #8b6f52; border-color: #8b6f52; }
+.submit-btn:hover { 
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(107, 80, 64, 0.4);
+}
 
 .back-login {
   text-align: center;

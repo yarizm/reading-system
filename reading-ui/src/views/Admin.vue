@@ -2,7 +2,7 @@
   <div class="admin-container">
     <div class="page-header">
       <div class="header-left">
-        <el-button link class="back-btn" @click="goHome">
+        <el-button plain round class="back-btn glass-btn" @click="goHome">
           <el-icon><ArrowLeft /></el-icon> 返回首页
         </el-button>
         <el-divider direction="vertical" />
@@ -24,21 +24,22 @@
           <el-table-column prop="title" label="书名" />
           <el-table-column prop="author" label="作者" />
           <el-table-column prop="category" label="分类" width="80" />
-          <el-table-column label="来源" width="130">
+          <el-table-column label="来源" width="140" align="center">
             <template #default="scope">
-              <div v-if="scope.row.uploaderId">
-                <el-tag type="warning" size="small">用户提供</el-tag>
-                <div style="font-size: 12px; color: #666; margin-top: 4px;">{{ scope.row.uploaderNickname || '未知' }}</div>
+              <div v-if="scope.row.uploaderId" style="display: flex; align-items: center; justify-content: center;">
+                <el-tag type="warning" size="small" style="display: flex; align-items: center;">
+                  <el-icon style="margin-right:4px"><User/></el-icon>{{ scope.row.uploaderNickname || '用户提供' }}
+                </el-tag>
               </div>
               <el-tag v-else type="success" size="small">官方发布</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="封面" width="80">
+          <el-table-column label="封面" width="80" align="center">
             <template #default="scope">
               <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px" alt=""/>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200">
+          <el-table-column label="操作" width="200" align="center">
             <template #default="scope">
               <el-button type="primary" size="small" @click="openEditBook(scope.row)">编辑</el-button>
               <el-button type="danger" size="small" @click="deleteBook(scope.row.id)">删除</el-button>
@@ -46,7 +47,7 @@
           </el-table-column>
         </el-table>
 
-        <el-pagination layout="prev, pager, next" :total="100" @current-change="loadBooks" />
+        <el-pagination layout="prev, pager, next" v-model:current-page="currentBookPage" :total="totalBooks" @current-change="loadBooks" style="margin-top: 15px;" />
       </el-tab-pane>
 
       <el-tab-pane label="用户管理" name="user">
@@ -54,21 +55,23 @@
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="username" label="用户名" />
           <el-table-column prop="nickname" label="昵称" />
-          <el-table-column prop="role" label="角色" width="80">
+          <el-table-column prop="role" label="角色" width="80" align="center">
             <template #default="scope">
               <el-tag :type="scope.row.role === 1 ? 'danger' : 'success'">
                 {{ scope.row.role === 1 ? '管理员' : '普通用户' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="isBanned" label="状态" width="80">
+          <el-table-column prop="isBanned" label="状态" width="90" align="center">
             <template #default="scope">
               <el-tag :type="scope.row.isBanned === 1 ? 'danger' : 'success'">
+                <el-icon style="margin-right: 2px" v-if="scope.row.isBanned === 1"><CircleClose /></el-icon>
+                <el-icon style="margin-right: 2px" v-else><CircleCheck /></el-icon>
                 {{ scope.row.isBanned === 1 ? '已封禁' : '正常' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="300" fixed="right">
+          <el-table-column label="操作" width="300" fixed="right" align="center">
             <template #default="scope">
               <el-button type="primary" size="small" @click="openEditUser(scope.row)">编辑</el-button>
               <el-button type="info" size="small" @click="openUserRecords(scope.row.id)" :disabled="scope.row.id === 1">发言记录</el-button>
@@ -87,6 +90,8 @@
             </template>
           </el-table-column>
         </el-table>
+
+        <el-pagination layout="prev, pager, next" v-model:current-page="currentUserPage" :total="totalUsers" @current-change="loadUsers" style="margin-top: 15px;" />
       </el-tab-pane>
 
       <el-tab-pane label="书籍审核" name="review">
@@ -180,11 +185,17 @@
         <el-form-item label="昵称">
           <el-input v-model="userForm.nickname" />
         </el-form-item>
+        <el-form-item label="年龄">
+          <el-input-number v-model="userForm.age" :min="1" :max="120" />
+        </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="userForm.role" placeholder="请选择角色" style="width: 100%">
+          <el-select v-model="userForm.role" placeholder="请选择角色" style="width: 100%" :disabled="userForm.id === currentLoggedUserId || currentLoggedUserId !== 1">
             <el-option label="普通用户" :value="0" />
             <el-option label="管理员" :value="1" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="注册时间">
+          <el-input :model-value="userForm.createTime ? new Date(userForm.createTime).toLocaleString() : ''" disabled />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -248,14 +259,24 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' // 引入路由
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {ArrowLeft, Plus} from '@element-plus/icons-vue' // 引入图标
+import {ArrowLeft, Plus, User, CircleCheck, CircleClose} from '@element-plus/icons-vue' // 引入图标
 
 const router = useRouter()
 const activeTab = ref('book')
 
+// 获取当前登录用户的ID，用于权限判断
+const userStr = localStorage.getItem('user')
+const currentLoggedUserId = ref(userStr ? JSON.parse(userStr).id : 0)
+
 // === 数据定义 ===
 const bookList = ref([])
 const userList = ref([])
+
+// 分页数据
+const currentBookPage = ref(1)
+const totalBooks = ref(0)
+const currentUserPage = ref(1)
+const totalUsers = ref(0)
 
 // 弹窗控制
 const showBookDialog = ref(false)
@@ -263,7 +284,7 @@ const showUserDialog = ref(false)
 
 // 表单数据对象
 const bookForm = ref({ id: null, title: '', author: '', category: '', coverUrl: '', filePath: '' })
-const userForm = ref({ id: null, username: '', nickname: '', role: 0 })
+const userForm = ref({ id: null, username: '', nickname: '', role: 0, age: null, createTime: null })
 const reviewList = ref([])
 
 // 发言记录与封禁状态
@@ -282,8 +303,10 @@ const goHome = () => {
 // === 2. 图书管理逻辑 ===
 const loadBooks = async (page=1) => {
   try {
+    currentBookPage.value = page
     const res = await axios.get('/api/sysBook/list', { params: { pageNum: page, pageSize: 10, isAdmin: true } })
     bookList.value = res.data.data.records
+    totalBooks.value = res.data.data.total || 0
   } catch (e) {
     console.error(e)
   }
@@ -317,7 +340,7 @@ const saveBook = async () => {
       ElMessage.success('添加成功')
     }
     showBookDialog.value = false
-    loadBooks()
+    loadBooks(currentBookPage.value)
   } catch (e) {
     ElMessage.error('操作失败')
   }
@@ -327,16 +350,18 @@ const deleteBook = (id) => {
   ElMessageBox.confirm('确定删除吗？').then(async () => {
     await axios.delete(`/api/sysBook/${id}`)
     ElMessage.success('删除成功')
-    loadBooks()
+    loadBooks(currentBookPage.value)
   })
 }
 
 // === 3. 用户管理逻辑 ===
 const loadUsers = async (page = 1) => {
   try {
+    currentUserPage.value = page
     const res = await axios.get('/api/sysUser/list', { params: { pageNum: page, pageSize: 10 } })
     if (res.data.code === '200') {
       userList.value = res.data.data.records
+      totalUsers.value = res.data.data.total || 0
     }
   } catch (e) {
     ElMessage.error('网络请求错误')
@@ -352,11 +377,15 @@ const openEditUser = (row) => {
 // 保存用户修改
 const saveUser = async () => {
   try {
-    // 调用更新接口 (复用之前的 /sysUser/update 接口)
-    await axios.post('/api/sysUser/update', userForm.value)
-    ElMessage.success('用户信息修改成功')
-    showUserDialog.value = false
-    loadUsers() // 刷新列表
+    // 调用更新接口 (带上操作人 ID)
+    const res = await axios.post(`/api/sysUser/adminUpdate?operatorId=${currentLoggedUserId.value}`, userForm.value)
+    if (res.data.code === '200') {
+      ElMessage.success('用户信息修改成功')
+      showUserDialog.value = false
+      loadUsers(currentUserPage.value) // 保留当前页刷新
+    } else {
+      ElMessage.error(res.data.msg)
+    }
   } catch (e) {
     ElMessage.error('修改失败')
   }
@@ -372,7 +401,7 @@ const deleteUser = (id) => {
         const res = await axios.delete(`/api/sysUser/${id}`)
         if (res.data.code === '200') {
           ElMessage.success('用户删除成功')
-          loadUsers()
+          loadUsers(currentUserPage.value)
         } else {
           ElMessage.error(res.data.msg)
         }
@@ -390,7 +419,7 @@ const toggleBan = async (row) => {
     const res = await axios.post(`/api/sysUser/ban/${row.id}?banned=${newBanStatus}`)
     if (res.data.code === '200') {
       ElMessage.success(res.data.data)
-      loadUsers()
+      loadUsers(currentUserPage.value)
     } else {
       ElMessage.error(res.data.msg)
     }
@@ -552,7 +581,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  border-bottom: 1px solid #e8e0d6;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.08); /* 柔化了边线 */
   padding-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
@@ -567,6 +596,40 @@ onMounted(() => {
   color: #6b5e53;
 }
 .back-btn:hover { color: #8b6f52; }
+
+/* === 玻璃拟态卡片覆写 === */
+:deep(.el-tabs--border-card) {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
+  overflow: hidden;
+}
+:deep(.el-tabs--border-card > .el-tabs__header) {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+:deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active) {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-right-color: rgba(255, 255, 255, 0.5) !important;
+  border-left-color: rgba(255, 255, 255, 0.5) !important;
+}
+:deep(.el-table) {
+  background: transparent !important;
+}
+:deep(.el-table tr) {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+:deep(.el-table th.el-table__cell) {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+:deep(.el-dialog) {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(30px) !important;
+  border-radius: 16px !important;
+}
 .header-title-box {
   display: flex;
   flex-direction: column;

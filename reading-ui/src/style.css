@@ -11,7 +11,11 @@ html, body {
     font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-image: url('./assets/home_bg.png');
     background-color: #faf8f5;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
     color: #3d3632;
     overflow-x: hidden;
 }
@@ -44,4 +48,20 @@ a {
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #9e9183;
+}
+
+/* 全局透明边缘按钮复写 */
+.glass-btn {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(139, 111, 82, 0.5) !important;
+    color: #6b5040 !important;
+    box-shadow: 0 4px 12px rgba(60, 40, 20, 0.05) !important;
+    transition: all 0.3s ease !important;
+}
+.glass-btn:hover {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-color: #8b6f52 !important;
+    transform: translateY(-2px);
 }

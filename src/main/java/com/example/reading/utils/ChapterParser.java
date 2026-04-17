@@ -20,10 +20,11 @@ public class ChapterParser {
         List<SysChapter> chapters = new ArrayList<>();
 
         try {
-            // 解决乱码问题：探测文件编码（UTF-8 或 GBK）
+            // 解决乱码问题：使用 UTF-8 进行初次解析
             byte[] bytes = Files.readAllBytes(file.toPath());
             String text = new String(bytes, StandardCharsets.UTF_8);
-            if (text.contains("")) {
+            // 如果解析后包含特殊的乱码替代符（\uFFFD），则说明原文件可能是 GBK 编码
+            if (text.contains("\uFFFD")) {
                 text = new String(bytes, Charset.forName("GBK"));
             }
 

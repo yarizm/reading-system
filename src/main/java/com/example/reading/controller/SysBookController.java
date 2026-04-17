@@ -76,7 +76,7 @@ public class SysBookController {
         }
         file.transferTo(new File(uploadPath + fileName));
 
-        String fileUrl = "http://localhost:8090/files/" + fileName;
+        String fileUrl = "/files/" + fileName;
         return Result.success(fileUrl);
     }
 

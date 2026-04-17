@@ -17,6 +17,10 @@ export default defineConfig({
         target: 'http://localhost:8090',
         changeOrigin: true,
         ws: true
+      },
+      '/files': {
+        target: 'http://localhost:8090',
+        changeOrigin: true
       }
     }
   },
@@ -34,6 +38,10 @@ export default defineConfig({
         target: 'http://localhost:8090',
         changeOrigin: true,
         ws: true
+      },
+      '/files': {
+        target: 'http://localhost:8090',
+        changeOrigin: true
       }
     }
   }

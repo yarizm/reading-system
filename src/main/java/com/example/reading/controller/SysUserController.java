@@ -51,6 +51,39 @@ public class SysUserController {
         return Result.success(currentUser);
     }
 
+    /** 管理员专用的用户信息修改接口（允许更高权限的字段更新） */
+    @PostMapping("/adminUpdate")
+    public Result<?> adminUpdate(@RequestBody SysUser user, @RequestParam(required = false) Long operatorId) {
+        if (user.getId() == null) {
+            return Result.error("500", "用户ID不能为空");
+        }
+        
+        SysUser originalUser = sysUserService.getById(user.getId());
+        if (originalUser == null) {
+            return Result.error("404", "被修改的用户不存在");
+        }
+
+        // 核心校验：拦截非法角色权限篡改
+        if (user.getRole() != null && !user.getRole().equals(originalUser.getRole())) {
+            // 只有顶级管理员 (id=1) 才能修改角色
+            if (operatorId == null || operatorId != 1L) {
+                return Result.error("403", "越权操作：只有最高管理员有权修改管理权限");
+            }
+            // 防止自己取消自己的管理员权限
+            if (user.getId().equals(operatorId)) {
+                return Result.error("403", "安全受限：不可修改自己的管理员权限");
+            }
+        }
+
+        // 管理员更新不修改原密码和用户名
+        user.setPassword(null);
+        user.setUsername(null);
+        
+        // 执行更新
+        sysUserService.updateById(user);
+        return Result.success(sysUserService.getById(user.getId()));
+    }
+
     /** 修改密码 */
     @PostMapping("/password")
     public Result<?> updatePassword(@RequestBody SysUser user) {

@@ -16,6 +16,10 @@ export default defineConfig({
         target: 'http://localhost:8090',
         changeOrigin: true,
         ws: true // 启用 WebSocket 代理
+      },
+      '/files': {
+        target: 'http://localhost:8090',
+        changeOrigin: true
       }
     }
   }

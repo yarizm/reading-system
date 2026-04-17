@@ -2,7 +2,7 @@
   <div class="profile-container">
     <div class="page-header">
       <div class="header-left">
-        <el-button link class="back-btn" @click="goHome">
+        <el-button plain round class="back-btn glass-btn" @click="goHome">
           <el-icon><ArrowLeft /></el-icon> 返回首页
         </el-button>
         <el-divider direction="vertical" />
@@ -17,9 +17,11 @@
         <el-card class="box-card user-card">
           <div class="user-header">
             <el-avatar
-                :size="100"
+                :size="110"
+                class="hover-float"
                 :src="userInfo.avatar || defaultAvatar"
                 @error="() => true"
+                style="border: 4px solid rgba(255, 255, 255, 0.4); box-shadow: 0 8px 24px rgba(0,0,0,0.1); margin-top: -20px;"
             >
               <img :src="defaultAvatar" alt=""/>
             </el-avatar>
@@ -299,8 +301,9 @@ const formatTime = (timeStr) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 18px;
-  padding-top: 8px;
+  margin-bottom: 24px;
+  padding-top: 12px;
+  position: relative;
 }
 
 .username {
@@ -326,8 +329,21 @@ const formatTime = (timeStr) => {
 }
 
 /* === 右侧设置卡片 === */
+:deep(.el-card) {
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
+  transition: all 0.3s ease;
+}
+:deep(.el-card):hover {
+  box-shadow: 0 16px 48px rgba(60, 40, 20, 0.08) !important;
+  transform: translateY(-2px);
+}
 .box-card {
-  border: 1px solid #e8e0d6;
+  border: none;
 }
 .card-header span {
   font-family: 'Noto Serif SC', serif;
@@ -404,37 +420,5 @@ const formatTime = (timeStr) => {
   font-weight: 600;
 }
 
-/* === 标准统一头部 === */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #e8e0d6;
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #6b5e53;
-}
-.back-btn:hover { color: #8b6f52; }
-.header-title-box {
-  display: flex;
-  flex-direction: column;
-}
-.header-title-box h2 {
-  margin: 0;
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
-  font-size: 22px;
-  font-weight: 600;
-}
 
 </style>

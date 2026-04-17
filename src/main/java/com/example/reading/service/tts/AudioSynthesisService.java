@@ -161,6 +161,6 @@ public class AudioSynthesisService {
     }
 
     private String buildFileUrl(String fileName) {
-        return "http://localhost:" + serverPort + "/files/" + fileName;
+        return "/files/" + fileName;
     }
 }

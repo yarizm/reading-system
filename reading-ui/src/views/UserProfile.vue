@@ -4,7 +4,7 @@
     <div v-if="error" class="error-state">
       <el-icon size="48" color="#c4b9ab"><WarningFilled /></el-icon>
       <h3>用户不存在</h3>
-      <el-button @click="$router.go(-1)">返回</el-button>
+      <el-button plain round class="glass-btn" @click="$router.go(-1)">返回</el-button>
     </div>
 
     <template v-if="profile && !error">
@@ -69,7 +69,7 @@
       </div>
 
       <div class="back-row">
-        <el-button plain @click="$router.go(-1)">← 返回</el-button>
+        <el-button plain round class="glass-btn" @click="$router.go(-1)">← 返回</el-button>
       </div>
     </template>
   </div>
@@ -130,14 +130,18 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 24px;
   padding: 28px 32px;
-  background: #fffdf9;
-  border: 1px solid #e8e0d6;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05);
   margin-bottom: 28px;
 }
 .user-avatar {
   flex-shrink: 0;
-  border: 2px solid #e8e0d6;
+  border: 4px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .user-nickname {
   font-family: 'Noto Serif SC', serif;
@@ -168,7 +172,7 @@ const formatDate = (timeStr) => {
   gap: 12px;
   margin-bottom: 18px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e8e0d6;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
 }
 .section-header h3 {
   font-family: 'Noto Serif SC', serif;
@@ -210,15 +214,17 @@ const formatDate = (timeStr) => {
 }
 .book-card {
   cursor: pointer;
-  background: #fffdf9;
-  border: 1px solid #e8e0d6;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.3s ease;
 }
 .book-card:hover {
-  border-color: #c4b09a;
-  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.08);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(60, 40, 20, 0.1);
+  transform: translateY(-4px);
 }
 .book-cover {
   width:100%;

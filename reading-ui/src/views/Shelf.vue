@@ -2,7 +2,7 @@
   <div class="shelf-container">
     <div class="page-header">
       <div class="header-left">
-        <el-button link class="back-btn" @click="$router.push('/')">
+        <el-button plain round class="back-btn glass-btn" @click="$router.push('/')">
           <el-icon><ArrowLeft /></el-icon> 返回首页
         </el-button>
         <el-divider direction="vertical" />
@@ -530,8 +530,9 @@ const statusTagType = (status) => {
 
 /* === 上传弹窗 === */
 .avatar-uploader {
-  border: 1px dashed #d4c8ba;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px dashed rgba(139, 111, 82, 0.4);
+  border-radius: 8px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -540,9 +541,12 @@ const statusTagType = (status) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.2s;
+  transition: all 0.3s ease;
 }
-.avatar-uploader:hover { border-color: #8b6f52; }
+.avatar-uploader:hover { 
+  border-color: rgba(139, 111, 82, 0.8);
+  background: rgba(255, 255, 255, 0.7);
+}
 .upload-img-preview { width: 100%; height: 100%; object-fit: cover; }
 .avatar-uploader-icon { font-size: 22px; color: #b5a99c; }
 
@@ -580,17 +584,21 @@ const statusTagType = (status) => {
 }
 
 .shelf-card {
-  background: #fffdf9;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 12px;
   overflow: hidden;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   display: flex;
   flex-direction: column;
-  border: 1px solid #e8e0d6;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.05);
 }
 .shelf-card:hover {
-  border-color: #c4b09a;
-  box-shadow: 0 4px 14px rgba(60, 40, 20, 0.08);
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 32px rgba(60, 40, 20, 0.1);
+  transform: translateY(-4px);
 }
 
 /* === 封面区域 === */
@@ -599,7 +607,7 @@ const statusTagType = (status) => {
   position: relative;
   cursor: pointer;
   overflow: hidden;
-  background-color: #f0ece4;
+  background-color: rgba(255, 255, 255, 0.2);
 }
 .book-cover {
   width: 100%;
@@ -666,11 +674,13 @@ const statusTagType = (status) => {
 /* === 进度条区域 === */
 .progress-box {
   margin-top: auto;
-  margin-bottom: 10px;
-  background: #faf5ed;
-  padding: 8px 10px;
-  border-radius: 4px;
-  border: 1px solid #ede7de;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 .chapter-info {
   display: flex;
@@ -696,8 +706,8 @@ const statusTagType = (status) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #f0ece4;
-  padding-top: 10px;
+  border-top: 1px solid rgba(60, 40, 20, 0.06);
+  padding-top: 12px;
 }
 .action-btns {
   display: flex;
