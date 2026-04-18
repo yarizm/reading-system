@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
+import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
 
 const showCommentPopup = ref(false)
@@ -23,14 +23,16 @@ const replyTarget = ref(null)
 const replyParent = ref(null)
 
 const totalComments = computed(() => {
-  let c = commentList.value.length
-  commentList.value.forEach(x => { if (x.children) c += x.children.length })
-  return c
+  let count = commentList.value.length
+  commentList.value.forEach((item) => {
+    if (item.children) count += item.children.length
+  })
+  return count
 })
 
 onMounted(() => {
-  const u = localStorage.getItem('user')
-  if (u) userInfo.value = JSON.parse(u)
+  const user = localStorage.getItem('user')
+  if (user) userInfo.value = JSON.parse(user)
   loadBookDetail()
   loadComments()
   checkShelf()
@@ -38,196 +40,294 @@ onMounted(() => {
 
 const loadBookDetail = async () => {
   const res = await axios.get(`/api/sysBook/${bookId}`)
-  if (res.data.code === '200') bookInfo.value = res.data.data
-}
-const loadComments = async () => {
-  const res = await axios.get(`/api/comment/list/${bookId}`, { params: { userId: userInfo.value.id } })
-  if (res.data.code === '200') commentList.value = res.data.data
-}
-const checkShelf = async () => {
-  if (!userInfo.value.id) return
-  const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
-  if (res.data.code === '200') inShelf.value = res.data.data.some(b => b.bookId === bookId)
-}
-
-const toggleShelf = async () => {
-  if (!userInfo.value.id) return showToast('请先登录')
-  if (inShelf.value) {
-    await showConfirmDialog({ title: '提示', message: '确定移出书架吗？' })
-    await axios.delete('/api/bookshelf/removeByBook', { params: { userId: userInfo.value.id, bookId } })
-    showSuccessToast('已移出'); inShelf.value = false
-  } else {
-    await axios.post('/api/bookshelf/add', { userId: userInfo.value.id, bookId })
-    showSuccessToast('已加入书架'); inShelf.value = true
+  if (res.data.code === '200') {
+    bookInfo.value = res.data.data
   }
 }
 
-const startReading = () => router.push(`/read/${bookId}`)
+const loadComments = async () => {
+  const res = await axios.get(`/api/comment/list/${bookId}`, {
+    params: { userId: userInfo.value.id }
+  })
+  if (res.data.code === '200') {
+    commentList.value = res.data.data || []
+  }
+}
 
-const replyTo = (parent, target) => {
-  if (!userInfo.value.id) return showToast('请先登录')
-  replyParent.value = parent; replyTarget.value = target
+const checkShelf = async () => {
+  if (!userInfo.value.id) return
+  const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+  if (res.data.code === '200') {
+    inShelf.value = (res.data.data || []).some((book) => String(book.bookId) === String(bookId))
+  }
+}
+
+const toggleShelf = async () => {
+  if (!userInfo.value.id) {
+    showToast('请先登录')
+    return
+  }
+  if (inShelf.value) {
+    await showConfirmDialog({ title: '提示', message: '确定将这本书移出书架吗？' })
+    await axios.delete('/api/bookshelf/removeByBook', {
+      params: { userId: userInfo.value.id, bookId }
+    })
+    inShelf.value = false
+    showSuccessToast('已移出书架')
+  } else {
+    await axios.post('/api/bookshelf/add', {
+      userId: userInfo.value.id,
+      bookId
+    })
+    inShelf.value = true
+    showSuccessToast('已加入书架')
+  }
+}
+
+const startReading = () => {
+  router.push(`/read/${bookId}`)
+}
+
+const openCommentPopup = () => {
+  replyTarget.value = null
+  replyParent.value = null
   showCommentPopup.value = true
 }
-const cancelReply = () => { replyTarget.value = null; replyParent.value = null; showCommentPopup.value = false }
+
+const replyTo = (parent, target) => {
+  if (!userInfo.value.id) {
+    showToast('请先登录')
+    return
+  }
+  replyParent.value = parent
+  replyTarget.value = target
+  showCommentPopup.value = true
+}
+
+const cancelReply = () => {
+  replyTarget.value = null
+  replyParent.value = null
+  showCommentPopup.value = false
+}
 
 const submitComment = async () => {
-  if (!userInfo.value.id) return showToast('请先登录')
-  if (!myComment.value.trim()) return showToast('请输入内容')
+  if (!userInfo.value.id) {
+    showToast('请先登录')
+    return
+  }
+  if (!myComment.value.trim()) {
+    showToast('请输入评论内容')
+    return
+  }
   submitting.value = true
   try {
     const isReply = !!replyTarget.value
     await axios.post('/api/comment/add', {
-      bookId, userId: userInfo.value.id, content: myComment.value,
+      bookId,
+      userId: userInfo.value.id,
+      content: myComment.value,
       rating: isReply ? 0 : myRating.value,
       parentId: isReply ? replyParent.value.id : 0,
       replyUserId: isReply ? replyTarget.value.userId : null
     })
-    showSuccessToast(isReply ? '回复成功' : '发表成功')
-    myComment.value = ''; cancelReply(); loadComments()
-    if (!isReply) loadBookDetail()
-    showCommentPopup.value = false
-  } catch (e) { showFailToast('发表失败') }
-  finally { submitting.value = false }
+    showSuccessToast(isReply ? '回复成功' : '评论成功')
+    myComment.value = ''
+    cancelReply()
+    await loadComments()
+    if (!isReply) await loadBookDetail()
+  } catch (error) {
+    showFailToast('提交失败，请稍后再试')
+  } finally {
+    submitting.value = false
+  }
 }
 
 const toggleLike = async (item) => {
-  if (!userInfo.value.id) return showToast('请先登录')
-  const res = await axios.post('/api/comment/like', { commentId: item.id, userId: userInfo.value.id })
-  if (res.data.code === '200') { item.likeCount = res.data.data.likeCount; item.isLiked = res.data.data.isLiked }
+  if (!userInfo.value.id) {
+    showToast('请先登录')
+    return
+  }
+  const res = await axios.post('/api/comment/like', {
+    commentId: item.id,
+    userId: userInfo.value.id
+  })
+  if (res.data.code === '200') {
+    item.likeCount = res.data.data.likeCount
+    item.isLiked = res.data.data.isLiked
+  }
 }
 
 const deleteComment = async (id) => {
-  await showConfirmDialog({ title: '提示', message: '确定删除吗？' })
+  await showConfirmDialog({ title: '提示', message: '确定删除这条评论吗？' })
   await axios.delete(`/api/comment/${id}`)
-  showSuccessToast('已删除'); loadComments()
+  showSuccessToast('评论已删除')
+  loadComments()
 }
 
-const formatTime = (s) => s ? s.replace('T', ' ').substring(0, 16) : ''
+const formatTime = (time) => {
+  if (!time) return ''
+  return String(time).replace('T', ' ').substring(0, 16)
+}
 
-const shareBook = () => {
-  const shareText = `书荒救星！我发现了一本好书《${bookInfo.value.title}》，强烈推荐给你：\n${window.location.href}`
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(shareText).then(() => showSuccessToast('分享链接已复制')).catch(() => showFailToast('复制失败'))
-  } else {
-    showSuccessToast('请手动复制链接分享')
+const shareBook = async () => {
+  const shareText = `我在智能阅读里发现了一本不错的书：《${bookInfo.value.title || bookInfo.value.name}》\n${window.location.href}`
+  try {
+    await navigator.clipboard.writeText(shareText)
+    showSuccessToast('分享文案已复制')
+  } catch (error) {
+    showFailToast('复制失败，请手动分享链接')
   }
 }
 </script>
 
 <template>
   <div class="detail-page">
-    <van-nav-bar title="书籍详情" left-arrow @click-left="$router.back()" />
+    <van-nav-bar title="图书详情" left-arrow @click-left="$router.back()" />
 
-    <!-- Book Info Card -->
-    <div class="book-info-card">
-      <img :src="bookInfo.coverUrl || defaultCover" class="book-cover"  alt=""/>
-      <div class="info-right">
-        <h2 class="book-title">{{ bookInfo.title || bookInfo.name }}</h2>
-        <p class="book-author">✍ {{ bookInfo.author }}</p>
-        <p class="book-cat">📂 {{ bookInfo.category }}</p>
-        <van-rate v-model="bookInfo.avgRating" readonly allow-half size="16" color="#f5a623" void-color="#e0d8c8" />
-        <span class="rating-text" v-if="bookInfo.avgRating">{{ bookInfo.avgRating?.toFixed(1) }} 分</span>
+    <section class="hero-card">
+      <img :src="bookInfo.coverUrl || defaultCover" class="book-cover" alt="" />
+      <div class="hero-main">
+        <div class="book-label">书籍档案</div>
+        <h1 class="book-title">{{ bookInfo.title || bookInfo.name }}</h1>
+        <div class="meta-line">作者：{{ bookInfo.author || '未知作者' }}</div>
+        <div class="meta-line">分类：{{ bookInfo.category || '未分类' }}</div>
+        <div class="rating-row">
+          <van-rate
+            v-model="bookInfo.avgRating"
+            readonly
+            allow-half
+            size="16"
+            color="#f2a74b"
+            void-color="#e7dcc8"
+          />
+          <span class="rating-text">{{ bookInfo.avgRating ? `${bookInfo.avgRating.toFixed(1)} 分` : '暂无评分' }}</span>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Description -->
-    <div class="desc-section m-card" style="margin: 0 16px 12px; position: relative;">
-      <div class="desc-label" style="font-size: 16px; margin-bottom: 8px;">简介</div>
-      <p class="desc-text" style="color: #666; font-size: 14px; line-height: 1.8;">{{ bookInfo.description || '暂无简介...' }}</p>
-    </div>
+    <section class="content-card">
+      <div class="section-head">
+        <div>
+          <div class="section-title">内容简介</div>
+          <div class="section-tip">先快速了解这本书适不适合现在的你。</div>
+        </div>
+      </div>
+      <p class="book-desc">{{ bookInfo.description || '暂时还没有简介，先开始读读看吧。' }}</p>
+    </section>
 
-    <!-- Comments Section -->
-    <div class="comment-section">
-      <div class="m-section-title">💬 书友评论 ({{ totalComments }})</div>
+    <section class="content-card">
+      <div class="section-head">
+        <div>
+          <div class="section-title">书友评论</div>
+          <div class="section-tip">共 {{ totalComments }} 条评论，看看大家都聊了些什么。</div>
+        </div>
+        <van-button size="small" round plain type="primary" @click="openCommentPopup">写评论</van-button>
+      </div>
 
-      <van-empty v-if="commentList.length === 0" description="暂无评论，快来抢沙发！" image="search" />
+      <van-empty v-if="commentList.length === 0" description="还没有评论，来抢个沙发吧" image="search" />
 
-      <div v-for="item in commentList" :key="item.id" class="comment-item">
-        <van-image round width="36" height="36" :src="item.avatar || defaultAvatar" class="c-avatar" @click="$router.push(`/user/${item.userId}`)" />
-        <div class="c-body">
-          <div class="c-header">
-            <span class="c-name" @click="$router.push(`/user/${item.userId}`)">{{ item.nickname || '匿名' }}</span>
-            <van-rate v-if="item.rating" v-model="item.rating" readonly size="12" color="#f5a623" />
-          </div>
-          <p class="c-text">{{ item.content }}</p>
-          <div class="c-footer">
-            <span class="c-time">{{ formatTime(item.createTime) }}</span>
-            <div class="c-actions">
-              <span @click="toggleLike(item)" :class="{ liked: item.isLiked }">
-                {{ item.isLiked ? '♥' : '♡' }} {{ item.likeCount || 0 }}
+      <div v-else class="comment-list">
+        <article v-for="item in commentList" :key="item.id" class="comment-item">
+          <van-image
+            round
+            width="38"
+            height="38"
+            :src="item.avatar || defaultAvatar"
+            class="comment-avatar"
+            @click="$router.push(`/user/${item.userId}`)"
+          />
+          <div class="comment-body">
+            <div class="comment-top">
+              <span class="comment-name" @click="$router.push(`/user/${item.userId}`)">
+                {{ item.nickname || '匿名书友' }}
               </span>
-              <span @click="replyTo(item, item)">回复</span>
-              <span v-if="userInfo.id === item.userId || userInfo.role === 1" class="delete-action" @click="deleteComment(item.id)">删除</span>
+              <van-rate v-if="item.rating" v-model="item.rating" readonly size="12" color="#f2a74b" />
             </div>
-          </div>
+            <div class="comment-text">{{ item.content }}</div>
+            <div class="comment-foot">
+              <span class="comment-time">{{ formatTime(item.createTime) }}</span>
+              <div class="comment-actions">
+                <span :class="{ liked: item.isLiked }" @click="toggleLike(item)">
+                  {{ item.isLiked ? '已赞' : '点赞' }} {{ item.likeCount || 0 }}
+                </span>
+                <span @click="replyTo(item, item)">回复</span>
+                <span
+                  v-if="userInfo.id === item.userId || userInfo.role === 1"
+                  class="danger-text"
+                  @click="deleteComment(item.id)"
+                >
+                  删除
+                </span>
+              </div>
+            </div>
 
-          <!-- Sub comments -->
-          <div v-if="item.children && item.children.length > 0" class="sub-comments">
-            <div v-for="sub in item.children" :key="sub.id" class="sub-item">
-              <van-image round width="24" height="24" :src="sub.avatar || defaultAvatar" />
-              <div class="sub-body">
-                <span class="sub-name">{{ sub.nickname }}</span>
-                <span v-if="sub.replyUserId && sub.replyUserId !== item.userId" class="sub-reply-tag"> 回复 @{{ sub.replyNickname }}</span>
-                <p class="sub-text">{{ sub.content }}</p>
-                <div class="c-actions" style="margin-top: 4px;">
-                  <span @click="toggleLike(sub)" :class="{ liked: sub.isLiked }">{{ sub.isLiked ? '♥' : '♡' }} {{ sub.likeCount || 0 }}</span>
-                  <span @click="replyTo(item, sub)">回复</span>
-                  <span v-if="userInfo.id === sub.userId || userInfo.role === 1" class="delete-action" @click="deleteComment(sub.id)">删除</span>
+            <div v-if="item.children && item.children.length > 0" class="reply-list">
+              <div v-for="sub in item.children" :key="sub.id" class="reply-item">
+                <van-image round width="24" height="24" :src="sub.avatar || defaultAvatar" />
+                <div class="reply-body">
+                  <div class="reply-head">
+                    <span class="reply-name">{{ sub.nickname }}</span>
+                    <span v-if="sub.replyUserId && sub.replyUserId !== item.userId" class="reply-tag">
+                      回复 @{{ sub.replyNickname }}
+                    </span>
+                  </div>
+                  <div class="reply-text">{{ sub.content }}</div>
+                  <div class="reply-actions">
+                    <span :class="{ liked: sub.isLiked }" @click="toggleLike(sub)">
+                      {{ sub.isLiked ? '已赞' : '点赞' }} {{ sub.likeCount || 0 }}
+                    </span>
+                    <span @click="replyTo(item, sub)">回复</span>
+                    <span
+                      v-if="userInfo.id === sub.userId || userInfo.role === 1"
+                      class="danger-text"
+                      @click="deleteComment(sub.id)"
+                    >
+                      删除
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </article>
       </div>
-    </div>
+    </section>
 
-    <!-- Bottom Action Bar -->
     <van-action-bar>
-      <van-action-bar-icon
-        icon="chat-o"
-        text="留评"
-        @click="replyTarget=null; showCommentPopup=true;" 
-      />
-      <van-action-bar-icon
-        icon="share-o"
-        text="分享"
-        @click="shareBook"
-      />
+      <van-action-bar-icon icon="chat-o" text="评论" @click="openCommentPopup" />
+      <van-action-bar-icon icon="share-o" text="分享" @click="shareBook" />
       <van-action-bar-icon
         :icon="inShelf ? 'star' : 'star-o'"
-        :text="inShelf ? '已收藏' : '收藏'"
-        :color="inShelf ? '#f5a623' : ''"
+        :text="inShelf ? '已收藏' : '加入书架'"
+        :color="inShelf ? '#f2a74b' : ''"
         @click="toggleShelf"
       />
-      <van-action-bar-button
-        type="primary"
-        text="立即阅读"
-        @click="startReading"
-      />
+      <van-action-bar-button type="primary" text="立即阅读" @click="startReading" />
     </van-action-bar>
 
-    <!-- Comment Popup -->
-    <van-popup v-model:show="showCommentPopup" position="bottom" round :style="{ padding: '16px' }">
-      <div class="comment-input-area">
-        <div class="popup-header">
-          <span class="popup-title">{{ replyTarget ? `回复 @${replyTarget.nickname}` : '发表感悟' }}</span>
-          <van-icon name="cross" @click="cancelReply" />
+    <van-popup v-model:show="showCommentPopup" position="bottom" round>
+      <div class="popup-panel">
+        <div class="popup-head">
+          <div>
+            <div class="popup-title">{{ replyTarget ? `回复 @${replyTarget.nickname}` : '写下你的感受' }}</div>
+            <div class="popup-tip">{{ replyTarget ? '这条回复会显示在原评论下方。' : '一段真诚的推荐，往往比高分更打动人。' }}</div>
+          </div>
+          <van-icon name="cross" size="20" @click="cancelReply" />
         </div>
-        <div v-if="!replyTarget" class="rate-box" style="margin-bottom: 12px;">
-          <span style="font-size: 14px; margin-right: 8px;">综合评分</span>
-          <van-rate v-model="myRating" size="20" color="#f5a623" />
+        <div v-if="!replyTarget" class="rate-box">
+          <span class="rate-label">综合评分</span>
+          <van-rate v-model="myRating" size="22" color="#f2a74b" />
         </div>
         <van-field
           v-model="myComment"
           rows="4"
           autosize
           type="textarea"
-          placeholder="写下你的真实感想..."
-          style="background: #f7f8fa; border-radius: 8px; margin-bottom: 12px; padding: 12px;"
+          placeholder="写下你的真实阅读感受..."
+          class="comment-field"
         />
         <van-button type="primary" round block :loading="submitting" @click="submitComment">
-          {{ replyTarget ? '回复' : '发布' }}
+          {{ replyTarget ? '发送回复' : '发布评论' }}
         </van-button>
       </div>
     </van-popup>
@@ -235,49 +335,261 @@ const shareBook = () => {
 </template>
 
 <style scoped>
-.detail-page { padding-bottom: 130px; background: var(--color-bg); }
+.detail-page {
+  min-height: 100vh;
+  padding-bottom: calc(120px + var(--safe-bottom));
+  background:
+    radial-gradient(circle at top left, rgba(214, 191, 165, 0.22), transparent 28%),
+    linear-gradient(180deg, #f8f2ea 0%, #f6efe5 34%, #faf6f0 100%);
+}
 
-.book-info-card {
+.hero-card,
+.content-card {
+  margin: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.96);
+  box-shadow: 0 18px 38px rgba(93, 67, 43, 0.08);
+}
+
+.hero-card {
   display: flex;
   gap: 16px;
-  padding: 16px;
-  margin: 0 16px 12px;
-  background: var(--color-bg-card);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(60,40,20,0.05);
+  align-items: flex-start;
 }
-.book-cover { width: 100px; border-radius: 8px; box-shadow: 0 4px 12px rgba(60,40,20,0.12); object-fit: cover; aspect-ratio: 3/4; }
-.info-right { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.book-title { font-size: 20px; font-weight: 700; margin: 0; font-family: var(--font-serif),serif; }
-.book-author, .book-cat { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
-.rating-text { font-size: 13px; color: #f5a623; font-weight: 600; margin-left: 4px; }
 
-.desc-section .desc-label { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--color-text-secondary); }
-.comment-section { padding: 0 16px; padding-bottom: 24px; }
+.book-cover {
+  width: 108px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  object-fit: cover;
+  aspect-ratio: 3 / 4;
+  box-shadow: 0 14px 24px rgba(61, 44, 31, 0.16);
+}
 
-.comment-item { display: flex; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--color-border-light); }
-.c-avatar { flex-shrink: 0; }
-.c-body { flex: 1; min-width: 0; }
-.c-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.c-name { font-weight: 600; font-size: 14px; }
-.c-text { font-size: 14px; line-height: 1.6; margin: 0 0 6px; }
-.c-footer { display: flex; align-items: center; justify-content: space-between; }
-.c-time { font-size: 11px; color: var(--color-text-muted); }
-.c-actions { display: flex; gap: 14px; font-size: 12px; color: var(--color-text-muted); }
-.c-actions span { cursor: pointer; }
-.c-actions .liked { color: var(--color-danger); }
-.c-actions .delete-action { color: var(--color-danger); }
+.hero-main {
+  flex: 1;
+  min-width: 0;
+}
 
-.sub-comments { background: var(--color-bg-warm); border-radius: 8px; padding: 10px; margin-top: 8px; }
-.sub-item { display: flex; gap: 8px; margin-bottom: 10px; }
-.sub-item:last-child { margin-bottom: 0; }
-.sub-body { flex: 1; }
-.sub-name { font-weight: 600; font-size: 13px; color: var(--color-text-secondary); }
-.sub-reply-tag { font-size: 12px; color: var(--color-text-muted); }
-.sub-text { font-size: 13px; margin: 2px 0 0; }
+.book-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #a17752;
+  text-transform: uppercase;
+}
 
-.popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.popup-title { font-weight: 600; font-size: 16px; }
+.book-title {
+  margin: 8px 0 10px;
+  font-family: var(--font-serif), serif;
+  font-size: 24px;
+  line-height: 1.25;
+  color: #3d2c1f;
+}
 
-/* Custom Action Bar colors */
+.meta-line {
+  margin-top: 5px;
+  font-size: 13px;
+  color: #7e6855;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rating-text {
+  font-size: 13px;
+  color: #8a725d;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-family: var(--font-serif), serif;
+  font-size: 20px;
+  color: #3d2c1f;
+}
+
+.section-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8a725d;
+}
+
+.book-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.9;
+  color: #5a4637;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-item {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(143, 117, 87, 0.12);
+}
+
+.comment-item:last-child {
+  border-bottom: none;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comment-name,
+.reply-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #3d2c1f;
+}
+
+.comment-text,
+.reply-text {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #554132;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comment-foot,
+.comment-actions,
+.reply-actions {
+  display: flex;
+  align-items: center;
+}
+
+.comment-foot {
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.comment-time {
+  font-size: 11px;
+  color: #9a826c;
+}
+
+.comment-actions,
+.reply-actions {
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #8a725d;
+}
+
+.liked {
+  color: #c26647;
+}
+
+.danger-text {
+  color: #c64e3e;
+}
+
+.reply-list {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(247, 238, 228, 0.88);
+}
+
+.reply-item {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.reply-item:last-child {
+  margin-bottom: 0;
+}
+
+.reply-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.reply-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.reply-tag {
+  font-size: 12px;
+  color: #957e69;
+}
+
+.reply-actions {
+  margin-top: 8px;
+}
+
+.popup-panel {
+  padding: 22px 18px 28px;
+}
+
+.popup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.popup-title {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  color: #3d2c1f;
+}
+
+.popup-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8a725d;
+}
+
+.rate-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.rate-label {
+  font-size: 14px;
+  color: #5a4637;
+}
+
+.comment-field {
+  margin-bottom: 14px;
+  border-radius: 18px;
+  background: rgba(247, 242, 235, 0.9);
+}
 </style>

@@ -69,6 +69,13 @@ const readingConfig = reactive({
   fontSize: 18, lineHeight: 1.8, theme: 'default', voice: 'cherry'
 })
 
+const voiceOptions = [
+  { key: 'cherry', label: '甜美女声' },
+  { key: 'zhiqi', label: '温柔女声' },
+  { key: 'zhiying', label: '知性女声' },
+  { key: 'zhiyuan', label: '阳光男声' }
+]
+
 const selectedShareQuote = computed(() => {
   const index = selectedParagraphIndex.value
   if (index < 0 || index >= lines.value.length) return ''
@@ -83,6 +90,16 @@ const audioSourceLabel = computed(() => {
     return `第 ${audioPlayback.paragraphIndex + 1} 段`
   }
   return '朗读音频'
+})
+
+const chapterTtsLabel = computed(() => {
+  if (isAudioLoading.value && audioPlayback.sourceType === 'chapter') {
+    return '生成中'
+  }
+  if (isChapterPlaying.value) {
+    return '暂停'
+  }
+  return '听本章'
 })
 
 const getRouteReadTarget = () => {
@@ -669,7 +686,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
       <div class="bar-item" @click="showCatalog = true"><van-icon name="bars" size="20" /><span>目录</span></div>
       <div class="bar-item" @click="toggleChapterTts">
         <van-icon :name="(isAudioLoading && audioPlayback.sourceType === 'chapter') ? 'underway-o' : (isChapterPlaying ? 'pause-circle-o' : 'music-o')" size="20" :color="isChapterPlaying ? '#52c41a' : ''" />
-        <span>{{ (isAudioLoading && audioPlayback.sourceType === 'chapter') ? '生成中' : '听书' }}</span>
+        <span>{{ chapterTtsLabel }}</span>
       </div>
       <div class="bar-item" @click="showAiDrawer = true"><van-icon name="chat-o" size="20" /><span>助手</span></div>
       <div class="bar-item" @click="toggleShelf">
@@ -865,11 +882,12 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
     </van-popup>
 
     <!-- Settings Popup -->
-    <van-popup v-model:show="showSettings" position="bottom" round :style="{ maxHeight: '60%' }">
+    <van-popup v-model:show="showSettings" position="bottom" round :style="{ maxHeight: '72%' }">
       <div class="settings-popup">
         <h3>阅读设置</h3>
         <div class="s-group">
           <div class="s-label">主题</div>
+          <div class="settings-desc">切换不同阅读氛围，跟桌面端保持一致。</div>
           <div class="theme-row">
             <span :class="['t-btn', 't-default', readingConfig.theme === 'default' ? 'sel' : '']" @click="readingConfig.theme='default'">默认</span>
             <span :class="['t-btn', 't-green', readingConfig.theme === 'green' ? 'sel' : '']" @click="readingConfig.theme='green'">护眼</span>
@@ -878,11 +896,27 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
           </div>
         </div>
         <div class="s-group">
+          <div class="s-label">听书音色</div>
+          <div class="settings-desc">切换后，片段朗读和听本章都会使用新的声音。</div>
+          <div class="theme-row voice-row">
+            <span
+              v-for="voice in voiceOptions"
+              :key="voice.key"
+              :class="['t-btn', 't-default', readingConfig.voice === voice.key ? 'sel' : '']"
+              @click="readingConfig.voice = voice.key"
+            >
+              {{ voice.label }}
+            </span>
+          </div>
+        </div>
+        <div class="s-group">
           <div class="s-label">字号 {{ readingConfig.fontSize }}px</div>
+          <div class="settings-desc">增大字号后，正文和标题会一起放大。</div>
           <van-slider v-model="readingConfig.fontSize" :min="14" :max="32" :step="1" active-color="#8b6f52" />
         </div>
         <div class="s-group">
           <div class="s-label">行距 {{ readingConfig.lineHeight }}</div>
+          <div class="settings-desc">更宽的行距更适合长时间阅读。</div>
           <van-slider v-model="readingConfig.lineHeight" :min="1.4" :max="2.5" :step="0.1" active-color="#8b6f52" />
         </div>
       </div>
@@ -1044,8 +1078,39 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 .settings-popup h3 { margin-bottom: 20px; font-family: var(--font-serif),serif; }
 .s-group { margin-bottom: 20px; }
 .s-label { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.settings-desc {
+  margin-bottom: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
 .theme-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.t-btn { text-align: center; padding: 10px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+.voice-row {
+  grid-template-columns: repeat(2, 1fr);
+}
+.t-btn {
+  position: relative;
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: 0.2s;
+}
+.t-btn.sel {
+  border-color: #8b6f52;
+  box-shadow: 0 4px 12px rgba(139, 111, 82, 0.18);
+}
+.t-btn.sel::after {
+  content: '✓';
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 11px;
+  color: #8b6f52;
+  font-weight: 700;
+}
 
 .t-default { background: #fdfcf8; color: #2c2925; }
 .t-green { background: #dcedc8; color: #2e4a2d; }

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast, showSuccessToast, showFailToast } from 'vant'
+import { showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
 
 const route = useRoute()
@@ -26,13 +26,13 @@ const shareMsg = ref('')
 let pollTimer = null
 
 onMounted(async () => {
-  const userStr = localStorage.getItem('user')
-  if (!userStr) {
+  const user = localStorage.getItem('user')
+  if (!user) {
     showToast('请先登录')
     router.push('/login')
     return
   }
-  userInfo.value = JSON.parse(userStr)
+  userInfo.value = JSON.parse(user)
 
   try {
     const res = await axios.get(`/api/sysUser/profile/${friendId}`)
@@ -49,9 +49,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-  }
+  if (pollTimer) clearInterval(pollTimer)
 })
 
 const loadMessages = async () => {
@@ -88,7 +86,6 @@ const markAsRead = async () => {
 const sendMessage = async () => {
   const text = inputMessage.value.trim()
   if (!text) return
-
   try {
     await axios.post('/api/chat/send', {
       senderId: userInfo.value.id,
@@ -128,10 +125,10 @@ const confirmShare = async () => {
       bookId: selectedBookId.value,
       message: shareMsg.value
     })
-    showSuccessToast('分享成功')
+    showSuccessToast('图书分享成功')
     shareDialogVisible.value = false
   } catch (error) {
-    showFailToast('分享失败')
+    showFailToast('图书分享失败')
   }
 }
 
@@ -144,8 +141,8 @@ const parseShareContent = (content, prefix) => {
   }
 }
 
-const getParagraphShare = (msg) => parseShareContent(msg.content, PARAGRAPH_SHARE_PREFIX)
-const getAudioShare = (msg) => parseShareContent(msg.content, AUDIO_SHARE_PREFIX)
+const getParagraphShare = (message) => parseShareContent(message.content, PARAGRAPH_SHARE_PREFIX)
+const getAudioShare = (message) => parseShareContent(message.content, AUDIO_SHARE_PREFIX)
 
 const formatSharePosition = (share) => {
   if (!share) return '来自聊天分享'
@@ -162,8 +159,8 @@ const formatSharePosition = (share) => {
   return '朗读音频'
 }
 
-const openSharedParagraph = (msg) => {
-  const share = getParagraphShare(msg)
+const openSharedParagraph = (message) => {
+  const share = getParagraphShare(message)
   if (!share?.bookId) return
   router.push({
     path: `/read/${share.bookId}`,
@@ -174,8 +171,8 @@ const openSharedParagraph = (msg) => {
   })
 }
 
-const openSharedAudio = (msg) => {
-  const share = getAudioShare(msg)
+const openSharedAudio = (message) => {
+  const share = getAudioShare(message)
   if (!share?.bookId) return
   router.push({
     path: `/read/${share.bookId}`,
@@ -188,13 +185,13 @@ const openSharedAudio = (msg) => {
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
-  const d = new Date(timeStr)
-  const pad = (num) => String(num).padStart(2, '0')
+  const date = new Date(timeStr)
+  const pad = (value) => String(value).padStart(2, '0')
   const today = new Date()
-  if (d.toDateString() === today.toDateString()) {
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (date.toDateString() === today.toDateString()) {
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`
   }
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 </script>
 
@@ -206,56 +203,66 @@ const formatTime = (timeStr) => {
       </template>
     </van-nav-bar>
 
+    <section class="chat-head">
+      <div class="chat-title">{{ friendInfo.nickname || '这位书友' }}</div>
+      <div class="chat-subtitle">分享阅读想法、段落摘录和听书音频都会显示在这里。</div>
+    </section>
+
     <div class="messages-area" ref="messagesArea">
-      <van-empty v-if="messages.length === 0" description="开始聊天吧" image="search" />
+      <van-empty v-if="messages.length === 0" description="开始聊聊最近在看的书吧" image="search" />
+
       <div
-        v-for="msg in messages"
-        :key="msg.id"
-        :class="['msg-row', msg.senderId === userInfo.id ? 'mine' : 'theirs']"
+        v-for="message in messages"
+        :key="message.id"
+        :class="['msg-row', message.senderId === userInfo.id ? 'mine' : 'theirs']"
       >
         <van-image
-          v-if="msg.senderId !== userInfo.id"
+          v-if="message.senderId !== userInfo.id"
           round
-          width="32"
-          height="32"
+          width="34"
+          height="34"
           :src="friendInfo.avatar || defaultAvatar"
           class="msg-avatar"
         />
+
         <div class="bubble-wrap">
-          <div v-if="getParagraphShare(msg)" class="paragraph-share-card" @click="openSharedParagraph(msg)">
+          <div v-if="getParagraphShare(message)" class="paragraph-share-card" @click="openSharedParagraph(message)">
             <div class="share-card-label">段落分享</div>
-            <div class="share-card-title">《{{ getParagraphShare(msg).bookTitle || '当前书籍' }}》</div>
-            <div class="share-card-meta">{{ formatSharePosition(getParagraphShare(msg)) }}</div>
-            <div class="share-card-quote">“{{ getParagraphShare(msg).quote }}”</div>
-            <div v-if="getParagraphShare(msg).message" class="share-card-note">
-              留言：{{ getParagraphShare(msg).message }}
+            <div class="share-card-title">《{{ getParagraphShare(message).bookTitle || '当前书籍' }}》</div>
+            <div class="share-card-meta">{{ formatSharePosition(getParagraphShare(message)) }}</div>
+            <div class="share-card-quote">“{{ getParagraphShare(message).quote }}”</div>
+            <div v-if="getParagraphShare(message).message" class="share-card-note">
+              留言：{{ getParagraphShare(message).message }}
             </div>
-            <div class="share-card-link">点击前往阅读页</div>
+            <div class="share-card-link">点击跳转到阅读页</div>
           </div>
-          <div v-else-if="getAudioShare(msg)" class="audio-share-card" @click="openSharedAudio(msg)">
+
+          <div v-else-if="getAudioShare(message)" class="audio-share-card" @click="openSharedAudio(message)">
             <div class="share-card-label">音频分享</div>
-            <div class="share-card-title">{{ getAudioShare(msg).title || '朗读音频' }}</div>
-            <div class="share-card-meta">{{ formatSharePosition(getAudioShare(msg)) }}</div>
-            <div v-if="getAudioShare(msg).message" class="share-card-note">
-              留言：{{ getAudioShare(msg).message }}
+            <div class="share-card-title">{{ getAudioShare(message).title || '朗读音频' }}</div>
+            <div class="share-card-meta">{{ formatSharePosition(getAudioShare(message)) }}</div>
+            <div v-if="getAudioShare(message).message" class="share-card-note">
+              留言：{{ getAudioShare(message).message }}
             </div>
             <audio
               class="audio-inline-player"
-              :src="getAudioShare(msg).audioUrl"
+              :src="getAudioShare(message).audioUrl"
               controls
               preload="metadata"
               @click.stop
             />
-            <div v-if="getAudioShare(msg).bookId" class="share-card-link">点击跳转到阅读页</div>
+            <div v-if="getAudioShare(message).bookId" class="share-card-link">点击返回对应阅读位置</div>
           </div>
-          <div v-else class="bubble-text">{{ msg.content }}</div>
-          <div class="bubble-time">{{ formatTime(msg.createTime) }}</div>
+
+          <div v-else class="bubble-text">{{ message.content }}</div>
+          <div class="bubble-time">{{ formatTime(message.createTime) }}</div>
         </div>
+
         <van-image
-          v-if="msg.senderId === userInfo.id"
+          v-if="message.senderId === userInfo.id"
           round
-          width="32"
-          height="32"
+          width="34"
+          height="34"
           :src="userInfo.avatar || defaultAvatar"
           class="msg-avatar"
         />
@@ -264,38 +271,35 @@ const formatTime = (timeStr) => {
 
     <div class="chat-input-bar">
       <van-icon name="photo-o" size="24" color="#8b6f52" @click="openShareDialog" />
-      <van-field v-model="inputMessage" placeholder="输入消息..." @keypress.enter="sendMessage" class="msg-field" />
+      <van-field
+        v-model="inputMessage"
+        placeholder="输入消息..."
+        class="msg-field"
+        @keypress.enter="sendMessage"
+      />
       <van-button type="primary" size="small" round :disabled="!inputMessage.trim()" @click="sendMessage">
         发送
       </van-button>
     </div>
 
-    <van-popup v-model:show="shareDialogVisible" position="bottom" round :style="{ maxHeight: '60%' }">
+    <van-popup v-model:show="shareDialogVisible" position="bottom" round :style="{ maxHeight: '66%' }">
       <div class="share-popup">
-        <h3>分享书籍</h3>
-        <van-empty v-if="myShelf.length === 0" description="书架为空" />
+        <div class="popup-title">分享图书</div>
+        <div class="popup-tip">从你的书架中挑一本书发给这位好友。</div>
+        <van-empty v-if="myShelf.length === 0" description="你的书架还是空的" />
         <div v-else class="share-grid">
           <div
             v-for="book in myShelf"
             :key="book.bookId"
-            :class="['share-card', selectedBookId === book.bookId ? 'sel' : '']"
+            :class="['share-card', { selected: selectedBookId === book.bookId }]"
             @click="selectedBookId = book.bookId"
           >
-            <img :src="book.coverUrl || defaultCover" class="s-cover"  alt=""/>
+            <img :src="book.coverUrl || defaultCover" class="s-cover" alt="" />
             <div class="s-name">{{ book.bookName }}</div>
           </div>
         </div>
-        <van-field v-model="shareMsg" placeholder="附言（可选）" style="margin-top: 10px;" />
-        <van-button
-          type="primary"
-          block
-          round
-          style="margin-top: 10px;"
-          :disabled="!selectedBookId"
-          @click="confirmShare"
-        >
-          分享
-        </van-button>
+        <van-field v-model="shareMsg" placeholder="附上一句话，可不填" class="share-field" />
+        <van-button type="primary" block round :disabled="!selectedBookId" @click="confirmShare">确认分享</van-button>
       </div>
     </van-popup>
   </div>
@@ -305,8 +309,31 @@ const formatTime = (timeStr) => {
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background: var(--color-bg);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(214, 191, 165, 0.2), transparent 26%),
+    linear-gradient(180deg, #f8f2ea 0%, #f5eee4 42%, #faf6f0 100%);
+}
+
+.chat-head {
+  margin: 14px 16px 0;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 252, 247, 0.94);
+  box-shadow: 0 14px 30px rgba(93, 67, 43, 0.07);
+}
+
+.chat-title {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  color: #3d2c1f;
+}
+
+.chat-subtitle {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #8a725d;
 }
 
 .messages-area {
@@ -315,45 +342,57 @@ const formatTime = (timeStr) => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .msg-row {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 8px;
-  max-width: 82%;
+  max-width: 88%;
+}
+
+.mine {
+  align-self: flex-end;
+}
+
+.theirs {
+  align-self: flex-start;
 }
 
 .msg-avatar {
   flex-shrink: 0;
 }
 
+.bubble-wrap {
+  max-width: 100%;
+}
+
 .bubble-text {
-  padding: 10px 14px;
-  border-radius: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.65;
   word-break: break-word;
 }
 
 .mine .bubble-text {
-  background: linear-gradient(135deg, #8b6f52, #a68968);
+  background: linear-gradient(135deg, #8b6f52, #a98b69);
   color: #fff;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 6px;
 }
 
 .theirs .bubble-text {
-  background: var(--color-bg-card);
-  color: var(--color-text);
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 4px rgba(60, 40, 20, 0.05);
+  background: rgba(255, 252, 247, 0.95);
+  color: #4d392b;
+  border-bottom-left-radius: 6px;
+  box-shadow: 0 8px 22px rgba(93, 67, 43, 0.06);
 }
 
 .bubble-time {
+  margin-top: 6px;
   font-size: 10px;
-  color: var(--color-text-muted);
-  margin-top: 4px;
+  color: #9a826c;
 }
 
 .mine .bubble-time {
@@ -364,22 +403,24 @@ const formatTime = (timeStr) => {
 .audio-share-card {
   min-width: 220px;
   max-width: 300px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(139, 111, 82, 0.22);
-  background: rgba(245, 240, 232, 0.95);
+  padding: 13px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(139, 111, 82, 0.18);
+  background: rgba(255, 250, 243, 0.95);
+  box-shadow: 0 10px 26px rgba(93, 67, 43, 0.06);
 }
 
 .mine .paragraph-share-card,
 .mine .audio-share-card {
   background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #fff;
 }
 
 .share-card-label {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -391,23 +432,18 @@ const formatTime = (timeStr) => {
 
 .share-card-meta,
 .share-card-link {
-  margin-top: 6px;
+  margin-top: 7px;
   font-size: 12px;
   opacity: 0.82;
 }
 
-.share-card-quote {
-  margin-top: 8px;
-  font-size: 13px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
+.share-card-quote,
 .share-card-note {
   margin-top: 8px;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.7;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .audio-inline-player {
@@ -420,47 +456,74 @@ const formatTime = (timeStr) => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px calc(10px + var(--safe-bottom));
-  border-top: 1px solid var(--color-border-light);
-  background: var(--color-bg-card);
-  flex-shrink: 0;
+  border-top: 1px solid rgba(143, 117, 87, 0.14);
+  background: rgba(255, 252, 247, 0.96);
+  backdrop-filter: blur(12px);
 }
 
 .msg-field {
   flex: 1;
+  border-radius: 999px;
+  background: rgba(247, 242, 235, 0.92);
 }
 
 .share-popup {
-  padding: 20px;
+  padding: 22px 18px 28px;
+}
+
+.popup-title {
+  font-family: var(--font-serif), serif;
+  font-size: 22px;
+  color: #3d2c1f;
+}
+
+.popup-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #8a725d;
 }
 
 .share-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 8px;
-  max-height: 200px;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 12px;
+  margin: 16px 0 14px;
+  max-height: 260px;
   overflow-y: auto;
 }
 
 .share-card {
+  padding: 6px;
   border: 2px solid transparent;
-  border-radius: 6px;
-  padding: 4px;
-  text-align: center;
-  cursor: pointer;
+  border-radius: 16px;
+  background: rgba(250, 245, 238, 0.88);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.share-card.selected {
+  border-color: #9c7a58;
+  transform: translateY(-2px);
 }
 
 .s-cover {
   width: 100%;
-  height: 80px;
+  height: 100px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 12px;
 }
 
 .s-name {
-  font-size: 11px;
-  margin-top: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #4f3b2d;
+  text-align: center;
+}
+
+.share-field {
+  margin-bottom: 14px;
+  border-radius: 18px;
+  background: rgba(247, 242, 235, 0.9);
 }
 </style>
