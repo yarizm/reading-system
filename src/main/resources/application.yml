@@ -9,10 +9,9 @@ spring:
   # 2. 数据库连接配置 (MySQL)
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # TODO: 请确保数据库名 reading_db 正确，且 MySQL 服务已启动
     url: jdbc:mysql://localhost:3306/smartreader?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
-    username: root        # TODO: 修改为你的 MySQL 用户名
-    password: yarizm75    # TODO: 修改为你的 MySQL 密码
+    username: root
+    password: ${MYSQL_PASSWORD}
 
   # 3. Redis 连接配置 (用于缓存)
   data:
@@ -21,7 +20,6 @@ spring:
       port: 6379
       database: 0
       timeout: 3000ms
-      # password:     # 如果你的 Redis 设置了密码，请取消注释并填入
 
   # Elasticsearch 配置
   elasticsearch:
@@ -36,7 +34,7 @@ spring:
 # 4. MyBatis Plus 配置
 mybatis-plus:
   configuration:
-    # 开启 SQL 日志打印 (非常重要！开发时能在控制台看到程序到底执行了什么 SQL)
+    # 开启 SQL 日志打印
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     # 驼峰下划线转换
     map-underscore-to-camel-case: true
@@ -51,7 +49,7 @@ file:
 ai:
   dashscope:
     api-key: ${QWEN_API_KEY}
-  enable-recommendation: true  # 平时设为 false (省钱)，答辩演示时改为 true
+  enable-recommendation: true
 tts:
   provider: lightweight
   lightweight:
@@ -61,8 +59,8 @@ tts:
     enabled: true
 dify:
   reading:
-    api-url: "http://localhost/v1/chat-messages"
-    api-key: "app-aDnWDMzlbKPZqI85aRutB6SQ"
+    api-url: ${DIFY_CHAT_URL}
+    api-key: ${DIFY_READING_KEY}
   recommend:
-    api-url: "http://localhost/v1/chat-messages"
-    api-key: "app-Gxx2dczMgziTvm3G8RsBaKic"
+    api-url: ${DIFY_CHAT_URL}
+    api-key: ${DIFY_RECOMMEND_KEY}
