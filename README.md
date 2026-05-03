@@ -1,6 +1,5 @@
 # 智能书籍阅读系统 (Smart Reading System)
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Java](https://img.shields.io/badge/Java-17-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/SpringBoot-3.2.2-green.svg)
 ![Vue](https://img.shields.io/badge/Vue.js-3.x-4FC08D.svg)
