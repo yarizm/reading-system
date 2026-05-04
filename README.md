@@ -1,97 +1,226 @@
-# 智能书籍阅读系统 (Smart Reading System)
+# 智能阅读系统
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Java](https://img.shields.io/badge/Java-17-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/SpringBoot-3.2.2-green.svg)
 ![Vue](https://img.shields.io/badge/Vue.js-3.x-4FC08D.svg)
 
-## 📖 项目简介 (Introduction)
-本项目是一个功能完善、支持多端的智能书籍阅读和社交平台。系统采用前后端分离架构，提供了从图书推荐、全文检索、阅读与书架管理到用户社交（好友互动、即时聊天、书籍及段落分享）的完整闭环体验。同时，系统创造性地集成了基于大语言模型（LLM）的 AI 阅读助手，能够辅助读者进行深度阅读、段落分析与答疑。
+## 项目简介
+这是一个前后端分离的阅读系统，包含桌面端、移动端和 Spring Boot 后端。系统围绕“图书阅读、书架管理、评论互动、好友社交、AI 辅助阅读和听书”展开，适合做课程设计、毕业设计或继续扩展的业务原型。
 
-## ✨ 核心特性 (Key Features)
+## 主要功能
+### 阅读与书架
+- 图书详情展示、章节阅读、阅读进度记录
+- 用户书架管理，支持加入、移除、继续阅读
+- 书单创建、查看、分享、导入
 
-- **📚 沉浸式阅读与资源管理**
-  - 用户可以自由上传书籍资源，系统支持书籍的私有化阅读或经管理员审核后全站公开上架。
-  - 个人专属藏书架，支持多终端阅读进度自动追踪与无缝同步。
-  - 基于定制化规则和用户状态构建的首页书籍智能推荐。
+### 评论与互动
+- 图书评论、回复、点赞
+- 段落评论与段落分享
+- 图书分享给好友
 
-- **🔍 专业级全文检索引擎**
-  - 深度集成 Elasticsearch 8.x 与 IK 中文分词器，实现毫秒级的书籍元数据（标题、作者、简介）与章节内容的全文精准检索。
+### 社交功能
+- 搜索用户、添加好友、处理好友申请
+- 好友私聊
+- 聊天中展示图书分享、段落分享、音频分享
 
-- **🤖 流式 AI 智能阅读助手**
-  - 接入第三方大语言模型（兼容阿里云通义千问 / Dify AI）。
-  - 后端采用 WebFlux 异步调用，前端基于 `@microsoft/fetch-event-source` 及 Server-Sent Events (SSE) 协议，实现 AI 解析结果的打字机式流式实时输出，极大提升人机交互体验。
+### AI 与听书
+- AI 阅读助手
+- 首页推荐
+- 段落朗读、整章听书
+- 轻量 TTS 服务生成音频，支持下载与分享
 
-- **💬 细粒度社交互动与交流**
-  - **段落级批注（核心）**：除了常规的整书树形评论外，用户可精准定位到具体章节的特定段落发表评论，犹如“阅读弹幕”。
-  - 完整的社交连结：支持检索添加好友、基于 WebSocket 的双向双工即时通讯（私聊）、以及全局消息状态提醒机制。
-  - 以书会友：支持一键向好友分享全书，或直接定位分享特定段落。
+### 后台与审核
+- 用户信息管理
+- 图书上传与审核
+- 评论内容管理
 
-- **🛡️ 强大的后台维稳与管理体系**
-  - 提供系统高优权限账户，支持一键封禁/解禁违规用户。
-  - 图书审核制，主导新资源的发布流转流程。
-  - 全局社交治理：管理员可跨越权限壁垒，直接移除违规的评论或者批注内容。
+## 技术栈
+### 后端
+- Java 17
+- Spring Boot 3.2.2
+- Spring MVC
+- MyBatis-Plus
+- MySQL
+- Redis
+- Elasticsearch
+- WebSocket
 
-## 🛠️ 技术栈 (Technology Stack)
+### 前端
+- Vue 3
+- Vite
+- Vue Router
+- Element Plus（桌面端）
+- Vant（移动端）
 
-### 服务端 (Backend)
-- **核心框架:** Java 17, Spring Boot 3.2.2, Spring MVC
-- **数据持久化:** MyBatis-Plus 3.5.7, MySQL 8.x
-- **缓存与搜索引擎:** Redis, Elasticsearch
-- **通信与数据流:** WebSocket (即时双向通讯), Spring WebFlux & SSE (单向流式响应)
-- **AI 互通:** SDK 原生接入 (Dashscope 等)
-- **基础工具:** Hutool, Lombok, Gson, Spring Security
+### AI 与语音
+- Dify
+- DashScope
+- 轻量 TTS 服务（`lightweight-tts-service`）
 
-### 桌面端 UI (`reading-ui`)
-- **核心框架:** Vue 3.5.x, Vite, Vue Router, Pinia
-- **组件及交互:** Element-Plus, Axios
-
-### 移动端 UI (`reading-mobile-ui`)
-- **核心框架:** Vue 3.5.x, Vite, Vue Router
-- **组件及交互:** Vant 4, `@vant/touch-emulator` (全面适配移动端点触操作逻辑)
-
-## 📁 项目结构 (Project Structure)
+## 项目结构
 ```text
 reading-system/
-├── src/                  # 后端 Java 服务源码及配置文件 (Spring Boot)
-├── reading-ui/           # 桌面端 Web 前台应用源码
-├── reading-mobile-ui/    # 移动端 H5 混合应用源码
-├── pom.xml               # 后端 Maven 依赖配置主文件
-├── download_books.py     # 工具库：网络小说/书籍下载爬虫脚本
-├── import_books.py       # 工具库：电子书元数据的解析与数据库批量导入脚本
+├─ src/                         后端源码
+├─ reading-ui/                  桌面端前端
+├─ reading-mobile-ui/           移动端前端
+├─ lightweight-tts-service/     轻量 TTS 服务
+├─ docker-compose.tts.yml       TTS 服务 Docker 编排
+├─ pom.xml                      后端 Maven 配置
+└─ README.md
 ```
 
-## 🚀 快速运行 (Quick Start)
+## 运行环境
+启动前建议准备以下环境：
 
-### 1. 环境先决条件
-- **Java环境:** JDK 17 及以上
-- **Node环境:** Node.js v18 或更高版本
-- **中间件依赖:** MySQL 8.x, Redis 缓存服, Elasticsearch 服务
+- JDK 17
+- Node.js 18 及以上
+- MySQL 8.x
+- Redis
+- Elasticsearch
+- Python 3.11（如果本地直接运行轻量 TTS 服务）
+- Docker Desktop（如果通过容器运行轻量 TTS 服务）
 
-### 2. 后端服务启动
-1. 初始化数据库结构，并运行相关的初始化 SQL 文件（如存在）。
-2. 在 `src/main/resources/application.yml` 或 `application-dev.yml` 中调整如下参数：
-   - MySQL 数据库连接串及账号密码
-   - Redis 连接信息
-   - Elasticsearch 集群地址
-   - AI 大模型平台申请提供的 API Key
-3. 经由 IDE 载入 Maven 依赖并启动主启动类，或者在项目根目录下通过终端命令运行：
-```bash
-mvn clean install
+## 配置说明
+后端主配置文件为：
+
+[application.yml](reading-system/src/main/resources/application.yml)
+
+需要重点确认以下配置：
+
+- MySQL 连接信息
+- Redis 连接信息
+- Elasticsearch 地址
+- 文件上传目录 `file.upload-path`
+- Dify 相关配置
+- TTS 配置
+
+当前配置中使用了以下环境变量：
+
+- `MYSQL_PASSWORD`
+- `QWEN_API_KEY`
+- `DIFY_CHAT_URL`
+- `DIFY_READING_KEY`
+- `DIFY_RECOMMEND_KEY`
+
+## 启动方式
+### 1. 启动基础依赖
+先确保以下服务可用：
+
+- MySQL
+- Redis
+- Elasticsearch
+
+### 2. 启动轻量 TTS 服务
+有两种方式。
+
+方式一：使用 Docker
+```powershell
+cd reading-system
+docker compose -f docker-compose.tts.yml up -d --build
+```
+
+方式二：本地直接运行
+```powershell
+cd reading-system\lightweight-tts-service
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8091
+```
+
+### 3. 启动后端
+如果本机已安装 Maven：
+```powershell
+cd reading-system
 mvn spring-boot:run
 ```
 
-### 3. 前端应用启动 (桌面端 & 移动端)
-项目提供分离式的多端运行载体，根据需要进入对应目录。以桌面端为例：
-```bash
-cd reading-ui
-npm install
-npm run dev
-```
-若需调试移动端环境，可运行：
-```bash
-cd reading-mobile-ui
+如果你使用 IDEA，也可以直接运行：
+
+- `ReadingSystemApplication`
+
+默认端口：
+
+- 后端：`8090`
+
+### 4. 启动桌面端
+```powershell
+cd reading-system\reading-ui
 npm install
 npm run dev
 ```
 
+### 5. 启动移动端
+```powershell
+cd reading-system\reading-mobile-ui
+npm install
+npm run dev
+```
+
+## 访问说明
+启动完成后，可分别访问桌面端和移动端开发地址。具体端口以 Vite 控制台输出为准，通常为：
+
+- 桌面端：`http://localhost:5173`
+- 移动端：`http://localhost:5174` 或其他空闲端口
+
+后端接口前缀主要为：
+
+- `/api/*`
+
+静态文件访问路径：
+
+- `/files/*`
+
+## 听书相关说明
+当前整章听书与段落朗读都依赖轻量 TTS 服务。后端会调用：
+
+- `http://localhost:8091/synthesize`
+
+如果听书功能不可用，优先检查：
+
+- TTS 服务是否启动
+- `tts.provider` 是否为 `lightweight`
+- `tts.lightweight.base-url` 是否正确
+- 文件上传目录是否可写
+
+## 推荐功能说明
+首页推荐逻辑当前包含三层：
+
+1. 基于用户书架的协同过滤候选
+2. 调用 Dify 做推荐排序与补齐
+3. 出错时回退到随机推荐
+
+推荐结果会缓存到 Redis，避免每次刷新首页都重复调用模型。
+
+## 日志说明
+后端日志已做分级控制：
+
+- 业务正常运行信息：`INFO`
+- 降级、缓存失败等非致命问题：`WARN`
+- 解析失败、TTS 失败等异常：`ERROR`
+
+默认会抑制大部分框架和 SQL 噪音。如果需要排查验证码或更细的业务过程，可以临时把对应包的日志级别调到 `DEBUG`。
+
+## 常见问题
+### 1. 后端启动失败
+优先检查：
+
+- MySQL、Redis、Elasticsearch 是否启动
+- 环境变量是否已配置
+- `application.yml` 中的路径和端口是否正确
+
+### 2. 听书失败
+优先检查：
+
+- 轻量 TTS 服务是否正常运行
+- `8091` 端口是否可访问
+- 上传目录是否存在且有写权限
+
+### 3. 推荐功能无结果
+优先检查：
+
+- Redis 是否可用
+- Dify 配置是否正确
+- 用户是否已有书架数据
+
+## 说明
+- 根目录 README 主要介绍整体项目。
+- 轻量 TTS 服务、桌面端和移动端目录下各自也有独立 README，可按需查看。

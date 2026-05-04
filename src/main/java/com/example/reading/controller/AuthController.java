@@ -4,23 +4,22 @@ import cn.hutool.core.util.StrUtil;
 import com.example.reading.common.Result;
 import com.example.reading.entity.SysUser;
 import com.example.reading.service.AuthService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/**
- * 认证控制器
- * 处理验证码发送、验证码登录、注册及密码重置，所有 Redis 操作和业务逻辑委托给 AuthService。
- */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private AuthService authService;
 
-    /** 发送验证码（模拟：打印到控制台） */
     @PostMapping("/sendCode")
     public Result<?> sendCode(@RequestBody Map<String, Object> params) {
         String target = (String) params.get("target");
@@ -31,15 +30,12 @@ public class AuthController {
         }
 
         String code = authService.generateAndCacheCode(target, type);
+        log.debug("Verification code generated. target={}, type={}, code={}",
+                maskTarget(target), type, code);
 
-        System.out.println("=========================================");
-        System.out.println("发送验证码给 " + target + " : " + code);
-        System.out.println("=========================================");
-
-        return Result.success("验证码已发送（请查看控制台）");
+        return Result.success("验证码已发送（开发环境可在 DEBUG 日志中查看）");
     }
 
-    /** 验证码注册 */
     @PostMapping("/register")
     public Result<?> register(@RequestBody Map<String, Object> params) {
         try {
@@ -56,7 +52,6 @@ public class AuthController {
         }
     }
 
-    /** 验证码登录 */
     @PostMapping("/loginByCode")
     public Result<?> loginByCode(@RequestBody Map<String, Object> params) {
         try {
@@ -70,7 +65,6 @@ public class AuthController {
         }
     }
 
-    /** 重置密码 */
     @PostMapping("/resetPassword")
     public Result<?> resetPassword(@RequestBody Map<String, Object> params) {
         try {
@@ -83,5 +77,12 @@ public class AuthController {
         } catch (Exception e) {
             return Result.error("400", e.getMessage());
         }
+    }
+
+    private String maskTarget(String target) {
+        if (StrUtil.isBlank(target) || target.length() <= 4) {
+            return "****";
+        }
+        return target.substring(0, 2) + "****" + target.substring(target.length() - 2);
     }
 }

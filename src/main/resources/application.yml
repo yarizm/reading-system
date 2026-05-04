@@ -35,7 +35,7 @@ spring:
 mybatis-plus:
   configuration:
     # 开启 SQL 日志打印
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
     # 驼峰下划线转换
     map-underscore-to-camel-case: true
   global-config:
@@ -64,3 +64,20 @@ dify:
   recommend:
     api-url: ${DIFY_CHAT_URL}
     api-key: ${DIFY_RECOMMEND_KEY}
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss} %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.example.reading: INFO
+    org.springframework: WARN
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.apache.ibatis: WARN
+    org.mybatis: WARN
+    com.baomidou: WARN
+    org.springframework.data.redis: WARN
+    io.lettuce.core: WARN
+    org.elasticsearch.client: WARN
+    reactor.netty: WARN
