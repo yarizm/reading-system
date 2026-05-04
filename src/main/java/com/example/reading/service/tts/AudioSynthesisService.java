@@ -8,6 +8,8 @@ import com.example.reading.dto.AudioGenerateRequest;
 import com.example.reading.dto.AudioGenerateResponse;
 import com.example.reading.entity.SysChapter;
 import com.example.reading.mapper.SysChapterMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ import java.util.List;
 
 @Service
 public class AudioSynthesisService {
+
+    private static final Logger log = LoggerFactory.getLogger(AudioSynthesisService.class);
 
     private final List<TtsProvider> providers;
     private final TtsProperties ttsProperties;
@@ -82,7 +86,8 @@ public class AudioSynthesisService {
             updateChapterAudioCache(request, response.getAudioUrl());
             return Result.success(response);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Audio synthesis failed. sourceType={}, chapterId={}, bookId={}, voice={}",
+                    request.getSourceType(), request.getChapterId(), request.getBookId(), request.getVoice(), e);
             return Result.error("500", "当前听书服务不可用，请稍后再试");
         }
     }
