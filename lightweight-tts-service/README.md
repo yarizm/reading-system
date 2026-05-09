@@ -8,6 +8,18 @@
 - uvicorn
 - edge-tts
 
+## 入口与端口
+
+| 项目 | 值 |
+| --- | --- |
+| 主入口文件 | `app.py` |
+| FastAPI 对象 | `app` |
+| 默认端口 | `8091` |
+| 健康检查 | `GET /health` |
+| 合成接口 | `POST /synthesize` |
+
+当前服务应通过 uvicorn 启动，不是直接执行 `python app.py`。
+
 ## 安装依赖
 
 ```bash
@@ -48,6 +60,8 @@ docker compose -f docker-compose.tts.yml ps
 docker compose -f docker-compose.tts.yml down
 ```
 
+`docker-compose.tts.yml` 只启动 TTS 服务，不会启动 MySQL、Redis、Elasticsearch、后端或前端。
+
 ## 默认接口
 
 ### `POST /synthesize`
@@ -78,6 +92,7 @@ tts:
   provider: lightweight
   lightweight:
     base-url: "http://localhost:8091"
+    timeout-ms: 60000
 ```
 
 当后端在宿主机运行、TTS 服务通过 Docker 运行时，默认配置无需调整。如果后端也运行在 Docker 网络内，需要将 `tts.lightweight.base-url` 改为容器服务名，例如：
@@ -87,6 +102,8 @@ tts:
   lightweight:
     base-url: "http://lightweight-tts:8091"
 ```
+
+如果 TTS 服务未启动、网络不可达或 edge-tts 生成失败，后端听书接口会返回失败结果或错误信息。基础阅读和书架功能不应依赖该服务启动。
 
 ## 常见问题
 
@@ -99,9 +116,11 @@ tts:
 - 检查网络是否能访问 edge-tts 所需服务
 - 检查请求文本是否为空
 - 检查 `voice` 是否为有效的 Edge TTS voice id
+- 检查服务日志中的异常信息
 
 ### 后端无法调用
 
 - 检查 `GET /health` 是否返回正常
 - 检查后端配置的 `tts.lightweight.base-url`
 - 检查防火墙或 Docker 端口映射
+- 检查后端 `file.upload-path` 是否存在且可写
