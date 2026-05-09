@@ -1,38 +1,60 @@
-# reading-ui
+# 智能阅读系统桌面端
 
-This template should help get you started developing with Vue 3 in Vite.
+`reading-ui` 是智能阅读系统的桌面端前端，基于 Vue 3、Vite、Vue Router 和 Element Plus 构建。
 
-## Recommended IDE Setup
+## 技术栈
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Vue 3
+- Vite
+- Vue Router
+- Element Plus
+- Axios
+- Pinia
 
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## 安装依赖
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+推荐在 CI 或干净环境中使用：
+
+```sh
+npm ci
+```
+
+## 本地开发
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+默认开发地址通常为：
+
+```text
+http://localhost:5173
+```
+
+## 构建
 
 ```sh
 npm run build
 ```
+
+构建产物输出到 `dist`。
+
+## 预览
+
+```sh
+npm run preview
+```
+
+## 后端 API 地址配置
+
+开发环境代理配置位于 `vite.config.js`：
+
+- `/api` 转发到 `http://localhost:8090`
+- `/ws` 转发到 `http://localhost:8090`
+- `/files` 转发到 `http://localhost:8090`
+
+如后端端口或地址变化，请同步调整 `vite.config.js` 中的 `target`。

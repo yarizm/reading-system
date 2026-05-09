@@ -14,8 +14,8 @@ public class CodeGenerator {
     public static void main(String[] args) {
         // 1. 数据库配置
         String url = "jdbc:mysql://localhost:3306/smartreader?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai";
-        String username = "root";       // TODO: 确认你的数据库账号
-        String password = "yarizm75";   // TODO: 确认你的数据库密码
+        String username = "root";
+        String password = "your_mysql_password";
 
         // 2. 路径配置
         // 获取当前项目根目录

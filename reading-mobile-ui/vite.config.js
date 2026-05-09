@@ -24,7 +24,7 @@ export default defineConfig({
       }
     }
   },
-  // 👇 必须新增这一个配置块！让预览模式也能代理请求！
+  // 预览模式也需要代理请求
   preview: {
     host: '0.0.0.0',
     allowedHosts: true,
