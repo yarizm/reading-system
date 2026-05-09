@@ -11,6 +11,7 @@
 - AI 阅读助手与推荐相关配置
 - 轻量 TTS 服务与听书能力
 - Docker Compose 启动 TTS 服务
+- 完善部署说明，包括基础依赖服务、数据库初始化说明、Maven Wrapper 启动方式、Docker Compose 覆盖范围和部署检查清单
 
 ### Planned
 

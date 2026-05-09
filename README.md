@@ -30,7 +30,7 @@
 | 存储与中间件 | MySQL, Redis, Elasticsearch |
 | 桌面端 | Vue 3, Vite, Vue Router, Element Plus |
 | 移动端 | Vue 3, Vite, Vue Router, Vant |
-| AI 与推荐 | Dify, DashScope |
+| AI 与推荐 | Dify, DashScope/Qwen |
 | 听书服务 | FastAPI, uvicorn, edge-tts |
 
 ## 项目结构
@@ -45,6 +45,7 @@
 | `reading-mobile-ui` | 移动端 Vue 前端 |
 | `lightweight-tts-service` | 轻量 TTS 服务 |
 | `docker-compose.tts.yml` | 仅用于启动 TTS 服务的 Docker Compose 配置 |
+| `mvnw`, `mvnw.cmd`, `.mvn/wrapper/` | Maven Wrapper |
 | `pom.xml` | 后端 Maven 配置 |
 
 ## 环境要求
@@ -52,12 +53,12 @@
 | 依赖 | 建议版本 | 说明 |
 | --- | --- | --- |
 | JDK | 17 | 后端编译和运行 |
-| Maven | 可选 | 仓库已提供 Maven Wrapper；没有本地 Maven 时使用 `mvnw.cmd` 或 `./mvnw` |
+| Maven | 可选 | 仓库已提供 Maven Wrapper，无需本地安装 Maven |
 | Node.js | 22.x | 前端构建；桌面端要求 `^20.19.0 || >=22.12.0` |
 | npm | 随 Node 安装 | 前端依赖管理 |
 | Python | 3.11 | 本地运行轻量 TTS 服务 |
 | MySQL | 8.x | 业务数据库，建议字符集 `utf8mb4` |
-| Redis | 6.x+ | 缓存与推荐结果缓存 |
+| Redis | 6.x+ | 缓存、推荐结果缓存等 |
 | Elasticsearch | 8.x | 图书搜索 |
 | Docker Desktop | 可选 | 容器方式启动 TTS 服务 |
 
@@ -66,11 +67,11 @@
 | 服务 | 用途 | 默认地址/端口 | 是否必需 | 配置位置 |
 | --- | --- | --- | --- | --- |
 | MySQL | 业务数据存储 | `localhost:3306`，数据库名 `smartreader` | 必需 | `src/main/resources/application.yml` / `MYSQL_PASSWORD` |
-| Redis | 缓存、推荐结果缓存等 | `localhost:6379`，database `0` | 视功能而定，推荐启动 | `src/main/resources/application.yml` |
+| Redis | 缓存、会话或业务状态 | `localhost:6379`，database `0` | 视功能而定 | `src/main/resources/application.yml` |
 | Elasticsearch | 图书搜索 | `http://localhost:9200` | 搜索功能需要 | `src/main/resources/application.yml` |
-| TTS 服务 | 段落朗读、整章听书 | `http://localhost:8091` | 听书功能需要 | `src/main/resources/application.yml` |
-| Dify | AI 阅读助手与推荐排序 | 外部地址，默认示例为 `https://api.dify.ai/v1/chat-messages` | AI 功能需要 | `.env.example` 对应变量 / 系统环境变量 |
-| DashScope/Qwen | AI 与 DashScope TTS 能力 | 外部服务 | AI 或 DashScope TTS 功能需要 | `.env.example` 对应变量 / 系统环境变量 |
+| TTS 服务 | 段落朗读、听书 | `http://localhost:8091` | 听书功能需要 | `src/main/resources/application.yml` |
+| Dify | AI 阅读助手 | 外部服务地址，示例为 `https://api.dify.ai/v1/chat-messages` | AI 功能需要 | 环境变量 |
+| DashScope/Qwen | AI 能力 | 外部服务 | AI 功能需要 | 环境变量 |
 
 ## 配置说明
 
@@ -82,7 +83,7 @@
 | `spring.datasource.url` | MySQL 地址，默认连接 `jdbc:mysql://localhost:3306/smartreader` |
 | `spring.datasource.username` | MySQL 用户名，当前默认 `root` |
 | `spring.datasource.password` | MySQL 密码，来自环境变量 `MYSQL_PASSWORD` |
-| `spring.data.redis.*` | Redis 连接配置 |
+| `spring.data.redis.*` | Redis 连接配置，默认 `localhost:6379` |
 | `spring.elasticsearch.uris` | Elasticsearch 地址，默认 `http://localhost:9200` |
 | `file.upload-path` | 上传文件和生成音频文件保存目录，部署前需要确保目录存在且可写 |
 | `ai.dashscope.api-key` | DashScope API Key，来自环境变量 `QWEN_API_KEY` |
@@ -101,9 +102,9 @@ DIFY_READING_KEY=your_dify_reading_key
 DIFY_RECOMMEND_KEY=your_dify_recommend_key
 ```
 
-请复制 `.env.example` 为 `.env` 后按本地环境填写。不要提交 `.env`，也不要把真实数据库密码、DashScope Key 或 Dify Key 写入代码、README 或提交记录。
+`.env.example` 是环境变量清单模板。请复制 `.env.example` 为 `.env` 后按本地环境填写，不要提交 `.env` 或真实密钥。
 
-注意：Spring Boot 默认不会自动读取项目根目录的 `.env` 文件。`.env.example` 只是变量清单模板。开发时可以通过系统环境变量、IDE 运行配置、Shell 启动脚本或部署平台环境变量注入这些值。
+Spring Boot 默认不会自动读取项目根目录的 `.env` 文件。开发或部署时需要通过系统环境变量、IDE 运行配置、Shell 启动脚本或部署平台环境变量注入这些值。
 
 ## 数据库初始化说明
 
@@ -124,7 +125,7 @@ CREATE DATABASE smartreader
 | `src/main/resources/db/social.sql` | 创建好友、聊天和图书分享相关表 | 分模块脚本 |
 | `src/main/resources/db/migration_user_upload.sql` | 给 `sys_book` 和 `sys_user` 增加上传审核相关字段 | 依赖已存在的 `sys_book`、`sys_user` |
 
-这些脚本是补充脚本或迁移脚本，不是完整的一键初始化脚本。仓库当前暂未提供完整数据库初始化 SQL，也没有明确的完整初始管理员账号或测试数据脚本。首次部署需要根据项目实际数据库结构准备基础表，例如用户、图书、章节、评论、书架等核心表，然后再按功能需要执行上述补充脚本。
+这些脚本是补充/迁移脚本或局部脚本，不是完整一键初始化 SQL。当前仓库暂未提供完整一键初始化 SQL，也没有明确的初始管理员账号或测试数据脚本。首次部署仍需要根据项目实际数据库结构准备用户、图书、章节、评论、书架等基础表，再按功能需要执行上述补充脚本。
 
 如果已经具备基础表，建议执行顺序为：
 
@@ -135,7 +136,7 @@ CREATE DATABASE smartreader
 4. src/main/resources/db/migration_user_upload.sql
 ```
 
-后续建议补充 `sql/init.sql`、Flyway/Liquibase 迁移或按模块拆分的完整初始化脚本。
+后续建议补充 `sql/init.sql` 或 Flyway/Liquibase 迁移。
 
 ## 快速启动
 
@@ -149,6 +150,12 @@ java -version
 node -v
 npm -v
 python --version
+```
+
+Linux/macOS 可使用：
+
+```bash
+./mvnw -version
 ```
 
 ### 2. 准备数据库
@@ -183,7 +190,7 @@ $env:DIFY_RECOMMEND_KEY="your_dify_recommend_key"
 Docker 方式：
 
 ```powershell
-docker compose -f docker-compose.tts.yml up -d --build
+docker compose -f docker-compose.tts.yml up -d
 ```
 
 `docker-compose.tts.yml` 只启动轻量 TTS 服务，不会启动 MySQL、Redis、Elasticsearch、后端或前端。
@@ -200,14 +207,22 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 
 ### 5. 启动后端服务
 
+Windows PowerShell：
+
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-macOS / Linux 使用：
+Linux/macOS：
 
 ```bash
 ./mvnw spring-boot:run
+```
+
+如果本机已安装 Maven，也可以使用：
+
+```bash
+mvn spring-boot:run
 ```
 
 也可以在 IDE 中直接运行 `ReadingSystemApplication`。后端启动前请确认 MySQL 连接、环境变量和 `file.upload-path` 已配置好。
@@ -239,17 +254,20 @@ npm run dev
 | 桌面端前端 | `http://localhost:5173` | Vite 默认开发地址 |
 | 移动端前端 | `http://localhost:5174` | 如端口占用，Vite 会自动分配其他端口 |
 
-前端开发环境通过 Vite 代理访问后端：
+## 前端代理说明
+
+前端开发环境通过 Vite proxy 访问后端：
 
 - `reading-ui/vite.config.js` 中 `/api`、`/ws`、`/files` 默认转发到 `http://localhost:8090`
 - `reading-mobile-ui/vite.config.js` 中 `/api`、`/ws`、`/files` 默认转发到 `http://localhost:8090`
-- 前端当前没有使用 `VITE_API_BASE_URL` 等环境变量；如需更换后端地址，请修改对应 Vite proxy 的 `target`
+- 如果需要修改后端地址，请修改对应 `vite.config.js` 中 proxy 的 `target`
+- 当前前端没有使用 `VITE_API_BASE_URL` 等环境变量，不要通过该变量配置后端地址
 
 ## Docker Compose 说明
 
-当前仓库只提供 `docker-compose.tts.yml`，它只覆盖轻量 TTS 服务。
+当前仓库只提供 `docker-compose.tts.yml`，它只用于启动轻量 TTS 服务。
 
-它不是完整系统一键部署文件，不会启动：
+它不包含：
 
 - MySQL
 - Redis
@@ -258,7 +276,7 @@ npm run dev
 - 桌面端前端
 - 移动端前端
 
-后续可以补充完整 `docker-compose.yml`，用于一键启动 MySQL、Redis、Elasticsearch、后端、前端和 TTS。
+当前仓库暂未提供完整系统一键部署的 `docker-compose.yml`。后续建议补充完整 Compose，用于启动 MySQL、Redis、Elasticsearch、后端、前端和 TTS。
 
 ## AI 与听书说明
 
@@ -284,17 +302,39 @@ POST http://localhost:8091/synthesize
 - [ ] 已安装 Java 17，或已正确配置 `JAVA_HOME`
 - [ ] 已安装 Node.js 22 或满足前端 `package.json` 的 Node 版本
 - [ ] 已安装 Python 3.11
-- [ ] MySQL 已启动并创建 `smartreader` 数据库
-- [ ] 已准备完整业务表结构；已按需执行 `src/main/resources/db` 下的补充脚本
+- [ ] MySQL 已启动并已创建 `smartreader` 数据库
+- [ ] 已准备完整业务表结构，并按需执行 `src/main/resources/db` 下的补充脚本
 - [ ] Redis 已启动，默认可通过 `localhost:6379` 访问
 - [ ] Elasticsearch 已启动，默认可通过 `http://localhost:9200` 访问
 - [ ] 已配置 `MYSQL_PASSWORD`
-- [ ] 如需 AI 功能，已配置 `QWEN_API_KEY`、`DIFY_CHAT_URL`、`DIFY_READING_KEY`、`DIFY_RECOMMEND_KEY`
+- [ ] 如需 AI 功能，已配置 `QWEN_API_KEY` 和 Dify 相关变量：`DIFY_CHAT_URL`、`DIFY_READING_KEY`、`DIFY_RECOMMEND_KEY`
 - [ ] 如需听书功能，TTS 服务已启动并可访问 `/health`
 - [ ] `file.upload-path` 指向的目录存在且可写
 - [ ] 后端 `8090` 端口可访问
-- [ ] 桌面端和移动端 Vite proxy 指向正确后端地址
+- [ ] 桌面端前端可访问，默认 `http://localhost:5173`
+- [ ] 移动端前端可访问，默认 `http://localhost:5174` 或 Vite 实际输出
+- [ ] 前端代理指向正确后端地址
 - [ ] 没有将 `.env` 或真实密钥提交到 Git
+
+## Maven Wrapper
+
+仓库已包含 Maven Wrapper：
+
+- `mvnw`
+- `mvnw.cmd`
+- `.mvn/wrapper/maven-wrapper.properties`
+
+新用户无需本地安装 Maven。后端编译优先使用：
+
+```powershell
+.\mvnw.cmd -q -DskipTests compile
+```
+
+Linux/macOS：
+
+```bash
+./mvnw -q -DskipTests compile
+```
 
 ## 开发与验证
 
@@ -304,7 +344,7 @@ POST http://localhost:8091/synthesize
 .\mvnw.cmd -q -DskipTests compile
 ```
 
-macOS / Linux 使用：
+Linux/macOS：
 
 ```bash
 ./mvnw -q -DskipTests compile
