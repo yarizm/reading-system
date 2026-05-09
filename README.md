@@ -52,7 +52,7 @@
 | 依赖 | 建议版本 | 说明 |
 | --- | --- | --- |
 | JDK | 17 | 后端编译和运行 |
-| Maven | 3.8+ | 后端依赖管理 |
+| Maven | 可选 | 仓库已提供 Maven Wrapper；没有本地 Maven 时使用 `mvnw.cmd` 或 `./mvnw` |
 | Node.js | 22.x | 前端构建；桌面端要求 `^20.19.0 || >=22.12.0` |
 | npm | 随 Node 安装 | 前端依赖管理 |
 | Python | 3.11 | 本地运行轻量 TTS 服务 |
@@ -145,7 +145,7 @@ CREATE DATABASE smartreader
 
 ```powershell
 java -version
-mvn -version
+.\mvnw.cmd -version
 node -v
 npm -v
 python --version
@@ -201,7 +201,13 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 ### 5. 启动后端服务
 
 ```powershell
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
+```
+
+macOS / Linux 使用：
+
+```bash
+./mvnw spring-boot:run
 ```
 
 也可以在 IDE 中直接运行 `ReadingSystemApplication`。后端启动前请确认 MySQL 连接、环境变量和 `file.upload-path` 已配置好。
@@ -275,8 +281,7 @@ POST http://localhost:8091/synthesize
 
 ## 部署检查清单
 
-- [ ] 已安装 Java 17
-- [ ] 已安装 Maven
+- [ ] 已安装 Java 17，或已正确配置 `JAVA_HOME`
 - [ ] 已安装 Node.js 22 或满足前端 `package.json` 的 Node 版本
 - [ ] 已安装 Python 3.11
 - [ ] MySQL 已启动并创建 `smartreader` 数据库
@@ -296,7 +301,13 @@ POST http://localhost:8091/synthesize
 基础验证命令：
 
 ```powershell
-mvn -q -DskipTests compile
+.\mvnw.cmd -q -DskipTests compile
+```
+
+macOS / Linux 使用：
+
+```bash
+./mvnw -q -DskipTests compile
 ```
 
 ```powershell
