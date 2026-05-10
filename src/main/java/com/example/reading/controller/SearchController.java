@@ -1,7 +1,11 @@
 package com.example.reading.controller;
 
 import com.example.reading.common.Result;
+import com.example.reading.entity.SysUser;
+import com.example.reading.service.AuthTokenService;
 import com.example.reading.service.BookSearchService;
+import com.example.reading.service.ISysUserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +21,19 @@ public class SearchController {
 
     @Autowired
     private BookSearchService bookSearchService;
+
+    @Autowired
+    private AuthTokenService authTokenService;
+
+    @Autowired
+    private ISysUserService sysUserService;
+
+    private boolean isAdmin(HttpServletRequest request) {
+        Long userId = authTokenService.resolveUserId(request);
+        if (userId == null) return false;
+        SysUser user = sysUserService.getById(userId);
+        return user != null && Integer.valueOf(1).equals(user.getRole());
+    }
 
     /** 全文搜索（支持关键词 + 分类筛选 + 分页） */
     @GetMapping
@@ -36,7 +53,10 @@ public class SearchController {
 
     /** 全量同步 MySQL 数据到 Elasticsearch（管理员手动触发） */
     @PostMapping("/sync")
-    public Result<?> syncAll() {
+    public Result<?> syncAll(HttpServletRequest request) {
+        if (!isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         int count = bookSearchService.syncAllBooksToEs();
         return Result.success("成功同步 " + count + " 本书到 Elasticsearch 索引");
     }

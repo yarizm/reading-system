@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import axios from 'axios'
 
 // Vant 组件
 import {
@@ -17,6 +18,21 @@ import 'vant/lib/index.css'
 import '@vant/touch-emulator'
 
 import './styles/index.css'
+
+axios.interceptors.request.use((config) => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      const token = JSON.parse(userStr).token
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    } catch (e) {
+      localStorage.removeItem('user')
+    }
+  }
+  return config
+})
 
 const app = createApp(App)
 

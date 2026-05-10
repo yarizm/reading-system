@@ -68,6 +68,12 @@ const routes = [
         name: 'UserProfile',
         component: () => import('../views/UserProfile.vue')
     },
+    // 用户书籍管理
+    {
+        path: '/my-books',
+        name: 'MyBooks',
+        component: () => import('../views/MyBooks.vue')
+    },
     // 好友中心
     {
         path: '/friends',

@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-container">
+  <div class="chat-container page-glass-container">
     <div class="chat-header">
       <el-button link @click="$router.push('/friends')">
         <el-icon><ArrowLeft /></el-icon>
@@ -318,8 +318,7 @@ const formatTime = (timeStr) => {
 
 <style scoped>
 .chat-container {
-  max-width: 800px;
-  margin: 0 auto;
+  min-height: unset; /* 覆盖 page-glass-container 的 min-height: 100vh */
   height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
@@ -396,7 +395,7 @@ const formatTime = (timeStr) => {
 
 .bubble-time {
   font-size: 11px;
-  color: #c4b9ab;
+  color: #8a7d72;
   margin-top: 4px;
 }
 

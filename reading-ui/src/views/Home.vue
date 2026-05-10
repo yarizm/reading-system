@@ -1,7 +1,7 @@
 <template>
   <div class="home-wrapper">
-    <div class="home-container">
-    <div class="nav-header">
+    <div class="home-container page-glass-container">
+      <div class="nav-header">
       <div class="logo">📚 智能书籍管理系统</div>
       <div class="nav-right">
         <el-button link class="nav-item" @click="goToShelf">
@@ -24,10 +24,13 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+              <el-dropdown-item command="myBooks">我的书籍</el-dropdown-item>
               <el-dropdown-item command="admin" v-if="userInfo.role === 1" divided>
-                <span style="color: #F56C6C; font-weight: bold;">后台管理</span>
+                <span style="color: orange; font-weight: bold;">后台管理</span>
               </el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="logout" divided>
+                <span style="color: #F56C6C; font-weight: bold;">退出登录</span>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -236,7 +239,7 @@ onUnmounted(() => {
 const connectWebSocket = () => {
   if (!userInfo.value.id) return
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}`
+  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`
   ws = new WebSocket(wsUrl)
 
   ws.onmessage = (event) => {
@@ -387,6 +390,8 @@ const handleUserCommand = (cmd) => {
     loadRecommendBooks()
   } else if (cmd === 'profile') {
     router.push('/profile')
+  } else if (cmd === 'myBooks') {
+    router.push('/my-books')
   } else if (cmd === 'admin') {
     router.push('/admin')
   }
@@ -444,23 +449,8 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   width: 100%;
 }
 .home-container {
-  max-width: 1240px;
-  margin: 0 auto;
   padding: 0 24px 40px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #3d3632;
-  background-color: rgba(255, 255, 255, 0.6); /* Semi-transparent white to show bg clearly */
-  backdrop-filter: blur(8px);
-  min-height: 100vh;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
-  
-  /* Override Element Plus Primary Color to warm brown */
-  --el-color-primary: #8b6f52;
-  --el-color-primary-light-3: #a38c75;
-  --el-color-primary-light-5: #bdae9c;
-  --el-color-primary-light-7: #d6ccc2;
-  --el-color-primary-light-9: #f0ece4;
-  --el-color-primary-dark-2: #6b5040;
+  color: #2a211c;
 }
 
 /* === Navigation Bar (Glassmorphism & Sticky) === */
@@ -591,7 +581,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .notify-desc {
   font-size: 13px;
-  color: #9b8e82;
+  color: #6b5e53;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -618,7 +608,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   cursor: pointer;
   padding: 8px 24px;
   border-radius: 20px;
-  color: #5a5048;
+  color: #3d3632;
   font-size: 14px;
   font-weight: 500;
   transition: all 0.25s ease;
@@ -751,7 +741,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   border-radius: 6px;
   font-size: 12px;
   margin-right: 12px;
-  color: #9b8e82;
+  color: #6b5e53;
   flex-shrink: 0;
   font-weight: 700;
 }
@@ -854,7 +844,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   color: #2e2520;
 }
 .simple-author {
-  color: #9b8e82;
+  color: #6b5e53;
   font-size: 13px;
   font-weight: 500;
 }
@@ -906,13 +896,13 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .book-author {
   font-size: 13px;
-  color: #9b8e82;
+  color: #6b5e53;
   margin-bottom: 8px;
   font-weight: 500;
 }
 .book-desc {
   font-size: 13px;
-  color: #9b8e82;
+  color: #6b5e53;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -983,7 +973,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .suggest-author {
   font-size: 12px;
-  color: #a38c75;
+  color: #6b5e53;
 }
 .search-result-title {
   display: flex;

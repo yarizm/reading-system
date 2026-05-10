@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-container">
+  <div class="admin-container page-glass-container">
     <div class="page-header">
       <div class="header-left">
         <el-button plain round class="back-btn glass-btn" @click="goHome">
@@ -95,28 +95,34 @@
       </el-tab-pane>
 
       <el-tab-pane label="书籍审核" name="review">
-        <el-empty v-if="reviewList.length === 0" description="暂无待审核的书籍" />
+        <el-empty v-if="reviewList.length === 0" description="暂无待审核的请求" />
         <el-table v-else :data="reviewList" border stripe>
-          <el-table-column prop="id" label="ID" width="60" />
-          <el-table-column prop="title" label="书名" />
-          <el-table-column prop="author" label="作者" />
-          <el-table-column prop="category" label="分类" width="80" />
-          <el-table-column prop="uploaderNickname" label="上传者" width="120" />
-          <el-table-column label="封面" width="80">
+          <el-table-column prop="id" label="请求ID" width="70" />
+          <el-table-column prop="bookTitle" label="书名" />
+          <el-table-column prop="uploaderNickname" label="申请人" width="100" />
+          <el-table-column label="请求类型" width="100" align="center">
             <template #default="scope">
-              <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 36px; height: 48px; object-fit: cover; border-radius: 3px" alt=""/>
+              <el-tag :type="reqTypeTag(scope.row.requestType)" size="small">
+                {{ reqTypeText(scope.row.requestType) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="封面" width="70">
+            <template #default="scope">
+              <img v-if="scope.row.bookCoverUrl" :src="scope.row.bookCoverUrl" style="width: 36px; height: 48px; object-fit: cover; border-radius: 3px" alt=""/>
               <span v-else style="color: #c4b9ab; font-size: 12px">无</span>
             </template>
           </el-table-column>
-          <el-table-column label="简介" min-width="160">
+          <el-table-column label="发起时间" width="160">
             <template #default="scope">
-              <span style="font-size: 13px; color: #7a6e63">{{ scope.row.description || '-' }}</span>
+              <span style="font-size: 13px; color: #7a6e63">{{ new Date(scope.row.createTime).toLocaleString() }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
+          <el-table-column label="操作" width="260" fixed="right">
             <template #default="scope">
-              <el-button type="success" size="small" @click="reviewBook(scope.row.id, 'approve')">通过</el-button>
-              <el-button type="danger" size="small" @click="reviewBook(scope.row.id, 'reject')">驳回</el-button>
+              <el-button type="info" size="small" @click="openReviewDetail(scope.row)">详情</el-button>
+              <el-button type="success" size="small" @click="reviewRequest(scope.row.id, 'approve')">通过</el-button>
+              <el-button type="danger" size="small" @click="openRejectDialog(scope.row)">驳回</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -149,6 +155,7 @@
         <el-form-item label="封面图">
           <el-upload
               action="/api/sysBook/upload"
+              :headers="uploadHeaders"
               :on-success="(res) => bookForm.coverUrl = res.data"
               :show-file-list="false"
               class="avatar-uploader"
@@ -162,11 +169,12 @@
         <el-form-item label="电子书">
           <el-upload
               action="/api/sysBook/upload"
+              :headers="uploadHeaders"
               :on-success="(res) => bookForm.filePath = res.data"
               :show-file-list="false"
           >
             <el-button size="small" type="primary">
-              {{ bookForm.filePath ? '文件已上传 (点击替换)' : '上传 TXT/PDF' }}
+              {{ bookForm.filePath ? '文件已上传 (点击替换)' : '上传 TXT' }}
             </el-button>
           </el-upload>
         </el-form-item>
@@ -201,6 +209,61 @@
       <template #footer>
         <el-button @click="showUserDialog = false">取消</el-button>
         <el-button @click="saveUser" type="primary">确认修改</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 审核详情弹窗 -->
+    <el-dialog v-model="showReviewDetail" title="审核详情" width="640px">
+      <template v-if="currentReview">
+        <div v-if="currentReview.requestType === 'new'" class="review-detail">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="书名">{{ currentReview.bookTitle }}</el-descriptions-item>
+            <el-descriptions-item label="作者">{{ currentReview.bookAuthor }}</el-descriptions-item>
+            <el-descriptions-item label="申请人">{{ currentReview.uploaderNickname }}</el-descriptions-item>
+            <el-descriptions-item label="分类">{{ currentReview.bookCategory || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="简介" :span="2">{{ currentReview.bookDescription || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+        <div v-else-if="currentReview.requestType === 'edit'" class="review-detail">
+          <h4 style="margin: 0 0 12px;">编辑对比</h4>
+          <el-table :data="editDiffRows" border size="small">
+            <el-table-column prop="field" label="字段" width="100" />
+            <el-table-column prop="oldVal" label="当前值">
+              <template #default="scope">
+                <span style="color: #999;">{{ scope.row.oldVal || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="newVal" label="变更为">
+              <template #default="scope">
+                <span style="color: #409eff; font-weight: 500;">{{ scope.row.newVal || '-' }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else-if="currentReview.requestType === 'delist'" class="review-detail">
+          <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 16px;">
+            申请人请求下架此书籍，审核通过后书籍将从公开列表移除。
+          </el-alert>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="书名">{{ currentReview.bookTitle }}</el-descriptions-item>
+            <el-descriptions-item label="作者">{{ currentReview.bookAuthor }}</el-descriptions-item>
+            <el-descriptions-item label="分类">{{ currentReview.bookCategory || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="简介" :span="2">{{ currentReview.bookDescription || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 驳回原因弹窗 -->
+    <el-dialog v-model="showRejectDialog" title="驳回审核" width="420px">
+      <el-form label-width="80px">
+        <el-form-item label="驳回原因">
+          <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请输入驳回原因（必填）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showRejectDialog = false">取消</el-button>
+        <el-button type="danger" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>
 
@@ -258,11 +321,13 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' // 引入路由
 import axios from 'axios'
+import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {ArrowLeft, Plus, User, CircleCheck, CircleClose} from '@element-plus/icons-vue' // 引入图标
 
 const router = useRouter()
 const activeTab = ref('book')
+const uploadHeaders = getAuthHeaders()
 
 // 获取当前登录用户的ID，用于权限判断
 const userStr = localStorage.getItem('user')
@@ -286,6 +351,12 @@ const showUserDialog = ref(false)
 const bookForm = ref({ id: null, title: '', author: '', category: '', coverUrl: '', filePath: '' })
 const userForm = ref({ id: null, username: '', nickname: '', role: 0, age: null, createTime: null })
 const reviewList = ref([])
+const showReviewDetail = ref(false)
+const currentReview = ref(null)
+const editDiffRows = ref([])
+const showRejectDialog = ref(false)
+const rejectReason = ref('')
+const rejectTargetId = ref(null)
 
 // 发言记录与封禁状态
 const showRecordsDrawer = ref(false)
@@ -491,9 +562,12 @@ const deleteParagraphComment = async (id) => {
 }
 
 // === 4. 书籍审核逻辑 ===
+const reqTypeText = (t) => ({ new: '新书公开', edit: '编辑审核', delist: '下架审核' }[t] || t)
+const reqTypeTag = (t) => ({ new: 'success', edit: 'warning', delist: 'danger' }[t] || 'info')
+
 const loadReviewList = async () => {
   try {
-    const res = await axios.get('/api/sysBook/pendingReview')
+    const res = await axios.get('/api/sysBook/reviewRequests/pending')
     if (res.data.code === '200') {
       reviewList.value = res.data.data
     }
@@ -502,15 +576,15 @@ const loadReviewList = async () => {
   }
 }
 
-const reviewBook = async (id, action) => {
+const reviewRequest = async (id, action) => {
   const label = action === 'approve' ? '通过' : '驳回'
   try {
-    await ElMessageBox.confirm(`确定${label}这本书籍吗？`, '审核确认', {
+    await ElMessageBox.confirm(`确定${label}该请求吗？`, '审核确认', {
       confirmButtonText: label,
       cancelButtonText: '取消',
       type: action === 'approve' ? 'success' : 'warning'
     })
-    const res = await axios.post(`/api/sysBook/review/${id}?action=${action}`)
+    const res = await axios.post(`/api/sysBook/reviewRequest/${id}`, { action })
     if (res.data.code === '200') {
       ElMessage.success(res.data.data || `已${label}`)
       loadReviewList()
@@ -518,7 +592,61 @@ const reviewBook = async (id, action) => {
       ElMessage.error(res.data.msg)
     }
   } catch (e) {
-    // 用户取消确认框
+    // 用户取消
+  }
+}
+
+const openReviewDetail = (row) => {
+  currentReview.value = row
+  editDiffRows.value = []
+  if (row.requestType === 'edit' && row.newBookData) {
+    const newData = JSON.parse(row.newBookData)
+    // 将 SQL JOIN 的下划线字段映射到驼峰
+    const oldBook = {
+      title: row.bookTitle,
+      author: row.bookAuthor,
+      description: row.bookDescription,
+      category: row.bookCategory,
+      coverUrl: row.bookCoverUrl,
+      filePath: row.bookFilePath
+    }
+    const fieldMap = { title: '书名', author: '作者', description: '简介', category: '分类', tags: '标签', coverUrl: '封面', filePath: '文件' }
+    for (const [key, label] of Object.entries(fieldMap)) {
+      const oldVal = oldBook[key] || ''
+      const newVal = newData[key] ?? ''
+      if (newVal !== undefined && newVal !== oldVal) {
+        editDiffRows.value.push({ field: label, oldVal, newVal })
+      }
+    }
+  }
+  showReviewDetail.value = true
+}
+
+const openRejectDialog = (row) => {
+  rejectTargetId.value = row.id
+  rejectReason.value = ''
+  showRejectDialog.value = true
+}
+
+const confirmReject = async () => {
+  if (!rejectReason.value.trim()) {
+    ElMessage.warning('请输入驳回原因')
+    return
+  }
+  try {
+    const res = await axios.post(`/api/sysBook/reviewRequest/${rejectTargetId.value}`, {
+      action: 'reject',
+      rejectReason: rejectReason.value.trim()
+    })
+    if (res.data.code === '200') {
+      ElMessage.success('已驳回')
+      showRejectDialog.value = false
+      loadReviewList()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } catch (e) {
+    ElMessage.error('操作失败')
   }
 }
 
@@ -537,8 +665,6 @@ onMounted(() => {
 <style scoped>
 .admin-container {
   padding: 18px 24px;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 
@@ -574,26 +700,6 @@ onMounted(() => {
 .avatar-uploader-icon {
   font-size: 24px;
   color: #b5a99c;
-}
-/* === 标准统一头部 === */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid rgba(60, 40, 20, 0.08); /* 柔化了边线 */
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #6b5e53;
 }
 .back-btn:hover { color: #8b6f52; }
 
@@ -638,14 +744,18 @@ onMounted(() => {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #333;
+  color: #2e2520;
 }
 
 /* === 发言记录样式 === */
 .comment-list { padding: 10px; }
 .comment-item { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-.comment-meta { display: flex; justify-content: space-between; font-size: 13px; color: #666; margin-bottom: 8px;}
+.comment-meta { display: flex; justify-content: space-between; font-size: 13px; color: #4a3e35; margin-bottom: 8px;}
 .comment-quote { background: #f5f5f5; padding: 6px 10px; font-size: 13px; color: #888; border-left: 3px solid #ccc; }
-.comment-content { font-size: 14px; color: #333; margin-bottom: 10px; }
+.comment-content { font-size: 14px; color: #2a211c; margin-bottom: 10px; }
 .comment-actions { text-align: right; }
+
+/* === 审核详情 === */
+.review-detail { padding: 8px 0; }
+.review-detail h4 { color: #2e2520; font-size: 15px; }
 </style>

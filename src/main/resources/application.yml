@@ -46,6 +46,10 @@ mybatis-plus:
 # 自定义文件上传路径
 file:
   upload-path: D:/WORK/reading-system-files/  # 请确保这个盘符存在，或者改成你喜欢的路径
+app:
+  auth:
+    token-secret: ${APP_AUTH_TOKEN_SECRET:${random.uuid}}
+    token-ttl-millis: ${APP_AUTH_TOKEN_TTL_MILLIS:86400000}
 ai:
   dashscope:
     api-key: ${QWEN_API_KEY}

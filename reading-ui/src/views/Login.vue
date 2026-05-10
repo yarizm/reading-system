@@ -286,7 +286,7 @@ const handleReset = async () => {
 
 .login-card {
   width: 420px;
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   padding: 40px 38px 36px;
@@ -315,7 +315,7 @@ const handleReset = async () => {
   margin: 24px 0 24px;
 }
 .title h2 { margin: 0; color: #2e2520; font-family: 'Noto Serif SC', serif; font-size: 26px; }
-.title p { color: #9b8e82; margin-top: 8px; font-size: 13px; letter-spacing: 2px; }
+.title p { color: #6b5e53; margin-top: 8px; font-size: 13px; letter-spacing: 2px; }
 
 /* Capsular Tabs */
 .auth-tabs {

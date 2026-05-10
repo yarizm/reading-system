@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showNotify } from 'vant'
+import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
@@ -28,16 +29,15 @@ const onTabChange = (index) => {
 const loadUnread = async () => {
   if (!userInfo.value.id) return
   try {
-    const res = await fetch(`/api/chat/unread/${userInfo.value.id}`)
-    const data = await res.json()
-    unreadCount.value = data.data || 0
+    const res = await axios.get(`/api/chat/unread/${userInfo.value.id}`)
+    unreadCount.value = res.data.data || 0
   } catch (e) { /* ignore */ }
 }
 
 const connectWs = () => {
   if (!userInfo.value.id) return
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}`
+  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`
   ws = new WebSocket(wsUrl)
 
   ws.onmessage = (event) => {

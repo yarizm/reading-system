@@ -8,7 +8,9 @@ import com.example.reading.common.Result;
 import com.example.reading.dto.UserDto;
 import com.example.reading.entity.SysUser;
 import com.example.reading.mapper.UserBookshelfMapper;
+import com.example.reading.service.AuthTokenService;
 import com.example.reading.service.ISysUserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,11 +32,26 @@ public class SysUserController {
     @Autowired
     private UserBookshelfMapper shelfMapper;
 
+    @Autowired
+    private AuthTokenService authTokenService;
+
+    private Long currentUserId(HttpServletRequest request) {
+        return authTokenService.resolveUserId(request);
+    }
+
+    private boolean isAdmin(HttpServletRequest request) {
+        Long userId = currentUserId(request);
+        if (userId == null) return false;
+        SysUser user = sysUserService.getById(userId);
+        return user != null && Integer.valueOf(1).equals(user.getRole());
+    }
+
     /** 用户名 + 密码登录 */
     @PostMapping("/login")
     public Result<SysUser> login(@RequestBody UserDto userDto) {
         try {
             SysUser user = sysUserService.login(userDto);
+            user.setToken(authTokenService.createToken(user.getId()));
             return Result.success(user);
         } catch (Exception e) {
             return Result.error("500", e.getMessage());
@@ -43,17 +60,40 @@ public class SysUserController {
 
     /** 更新用户基本信息（昵称、头像等，不含密码和用户名） */
     @PostMapping("/update")
-    public Result<?> update(@RequestBody SysUser user) {
-        user.setPassword(null);
-        user.setUsername(null);
-        sysUserService.updateById(user);
-        SysUser currentUser = sysUserService.getById(user.getId());
-        return Result.success(currentUser);
+    public Result<?> update(@RequestBody SysUser user, HttpServletRequest request) {
+        Long currentUserId = currentUserId(request);
+        if (currentUserId == null) {
+            return Result.error("403", "Forbidden");
+        }
+        SysUser existing = sysUserService.getById(currentUserId);
+        if (existing == null) {
+            return Result.error("404", "User not found");
+        }
+        if (user.getNickname() != null) existing.setNickname(user.getNickname());
+        if (user.getAvatar() != null) existing.setAvatar(user.getAvatar());
+        if (user.getAge() != null) existing.setAge(user.getAge());
+        if (user.getPreferences() != null) existing.setPreferences(user.getPreferences());
+        if (user.getHealthLimitTime() != null) existing.setHealthLimitTime(user.getHealthLimitTime());
+        if (user.getPreferredVoice() != null) existing.setPreferredVoice(user.getPreferredVoice());
+        if (user.getShelfVisible() != null) existing.setShelfVisible(user.getShelfVisible());
+        if (user.getInfoVisible() != null) existing.setInfoVisible(user.getInfoVisible());
+        if (user.getEmail() != null) existing.setEmail(user.getEmail());
+        if (user.getPhone() != null) existing.setPhone(user.getPhone());
+        sysUserService.updateById(existing);
+        existing.setPassword(null);
+        existing.setToken(authTokenService.createToken(existing.getId()));
+        return Result.success(existing);
     }
 
     /** 管理员专用的用户信息修改接口（允许更高权限的字段更新） */
     @PostMapping("/adminUpdate")
-    public Result<?> adminUpdate(@RequestBody SysUser user, @RequestParam(required = false) Long operatorId) {
+    public Result<?> adminUpdate(@RequestBody SysUser user,
+                                 @RequestParam(required = false) Long operatorId,
+                                 HttpServletRequest request) {
+        Long currentUserId = currentUserId(request);
+        if (!isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         if (user.getId() == null) {
             return Result.error("500", "用户ID不能为空");
         }
@@ -66,11 +106,11 @@ public class SysUserController {
         // 核心校验：拦截非法角色权限篡改
         if (user.getRole() != null && !user.getRole().equals(originalUser.getRole())) {
             // 只有顶级管理员 (id=1) 才能修改角色
-            if (operatorId == null || operatorId != 1L) {
+            if (currentUserId == null || currentUserId != 1L) {
                 return Result.error("403", "越权操作：只有最高管理员有权修改管理权限");
             }
             // 防止自己取消自己的管理员权限
-            if (user.getId().equals(operatorId)) {
+            if (user.getId().equals(currentUserId)) {
                 return Result.error("403", "安全受限：不可修改自己的管理员权限");
             }
         }
@@ -86,12 +126,18 @@ public class SysUserController {
 
     /** 修改密码 */
     @PostMapping("/password")
-    public Result<?> updatePassword(@RequestBody SysUser user) {
+    public Result<?> updatePassword(@RequestBody SysUser user, HttpServletRequest request) {
+        Long currentUserId = currentUserId(request);
+        if (currentUserId == null) {
+            return Result.error("403", "Forbidden");
+        }
         if (StrUtil.isBlank(user.getPassword())) {
             return Result.error("500", "新密码不能为空");
         }
-        user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
-        sysUserService.updateById(user);
+        SysUser passwordUpdate = new SysUser();
+        passwordUpdate.setId(currentUserId);
+        passwordUpdate.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
+        sysUserService.updateById(passwordUpdate);
         return Result.success();
     }
 
@@ -99,7 +145,11 @@ public class SysUserController {
     @GetMapping("/list")
     public Result<?> getUserList(@RequestParam(defaultValue = "1") Integer pageNum,
                                  @RequestParam(defaultValue = "10") Integer pageSize,
-                                 @RequestParam(defaultValue = "") String username) {
+                                 @RequestParam(defaultValue = "") String username,
+                                 HttpServletRequest request) {
+        if (!isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         QueryWrapper<SysUser> query = new QueryWrapper<>();
         if (!username.isEmpty()) {
@@ -111,15 +161,18 @@ public class SysUserController {
 
     /** 查看用户公开资料（含书架，管理员可越权查看私密资料） */
     @GetMapping("/profile/{id}")
-    public Result<?> getUserProfile(@PathVariable Long id, @RequestParam(required = false) Long viewerId) {
+    public Result<?> getUserProfile(@PathVariable Long id,
+                                    @RequestParam(required = false) Long viewerId,
+                                    HttpServletRequest request) {
         SysUser user = sysUserService.getById(id);
         if (user == null) {
             return Result.error("404", "用户不存在");
         }
 
         boolean isAdmin = false;
-        if (viewerId != null) {
-            SysUser viewer = sysUserService.getById(viewerId);
+        Long currentUserId = currentUserId(request);
+        if (currentUserId != null) {
+            SysUser viewer = sysUserService.getById(currentUserId);
             if (viewer != null && viewer.getRole() != null && viewer.getRole() == 1) {
                 isAdmin = true;
             }
@@ -151,7 +204,10 @@ public class SysUserController {
 
     /** 删除用户（管理员，超级管理员 ID=1 不可删除） */
     @DeleteMapping("/{id}")
-    public Result<?> deleteUser(@PathVariable Long id) {
+    public Result<?> deleteUser(@PathVariable Long id, HttpServletRequest request) {
+        if (!isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         if (id == 1L) {
             return Result.error("500", "无法删除超级管理员");
         }
@@ -161,7 +217,12 @@ public class SysUserController {
 
     /** 封禁/解封用户（管理员） */
     @PostMapping("/ban/{id}")
-    public Result<?> banUser(@PathVariable Long id, @RequestParam Boolean banned) {
+    public Result<?> banUser(@PathVariable Long id,
+                             @RequestParam Boolean banned,
+                             HttpServletRequest request) {
+        if (!isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         if (id == 1L) {
             return Result.error("500", "无法封禁超级管理员");
         }

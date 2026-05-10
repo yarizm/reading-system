@@ -47,7 +47,7 @@ onUnmounted(() => {
 const connectWs = () => {
   if (!userInfo.value.id) return
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  ws = new WebSocket(`${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}`)
+  ws = new WebSocket(`${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`)
   ws.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data)

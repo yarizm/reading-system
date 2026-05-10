@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import axios from 'axios'
 
 // 1. 引入 Element Plus 及其样式
 import ElementPlus from 'element-plus'
@@ -13,6 +14,21 @@ import router from './router'
 
 // 3. 引入全局样式 (可选)
 import './style.css'
+
+axios.interceptors.request.use((config) => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      const token = JSON.parse(userStr).token
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    } catch (e) {
+      localStorage.removeItem('user')
+    }
+  }
+  return config
+})
 
 const app = createApp(App)
 

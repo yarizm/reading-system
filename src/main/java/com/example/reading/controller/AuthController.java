@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.example.reading.common.Result;
 import com.example.reading.entity.SysUser;
 import com.example.reading.service.AuthService;
+import com.example.reading.service.AuthTokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private AuthTokenService authTokenService;
 
     @PostMapping("/sendCode")
     public Result<?> sendCode(@RequestBody Map<String, Object> params) {
@@ -59,6 +63,8 @@ public class AuthController {
                     (String) params.get("target"),
                     (String) params.get("code")
             );
+            user.setPassword(null);
+            user.setToken(authTokenService.createToken(user.getId()));
             return Result.success(user);
         } catch (Exception e) {
             return Result.error("400", e.getMessage());

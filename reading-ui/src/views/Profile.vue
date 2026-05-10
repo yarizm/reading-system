@@ -1,5 +1,5 @@
 <template>
-  <div class="profile-container">
+  <div class="profile-container page-glass-container">
     <div class="page-header">
       <div class="header-left">
         <el-button plain round class="back-btn glass-btn" @click="goHome">
@@ -38,6 +38,10 @@
             <div class="info-item">
               <el-icon><Calendar /></el-icon>
               <span>注册时间：{{ formatTime(userInfo.createTime) }}</span>
+            </div>
+            <div class="info-item" style="cursor: pointer; color: #8b6f52;" @click="router.push('/my-books')">
+              <el-icon><Collection /></el-icon>
+              <span>我的书籍 →</span>
             </div>
           </div>
         </el-card>
@@ -79,6 +83,7 @@
                   <el-upload
                       class="avatar-uploader"
                       action="/api/sysBook/upload"
+                      :headers="uploadHeaders"
                       :show-file-list="false"
                       :on-success="handleAvatarSuccess"
                       :before-upload="beforeAvatarUpload"
@@ -128,12 +133,14 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import {User, Calendar, Plus, ArrowLeft} from '@element-plus/icons-vue' // 引入新图标
+import {User, Calendar, Plus, ArrowLeft, Collection} from '@element-plus/icons-vue' // 引入新图标
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { getAuthHeaders } from '../utils/authHeaders'
 
 const router = useRouter()
+const uploadHeaders = getAuthHeaders()
 // 默认头像
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const activeTab = ref('info')
@@ -272,9 +279,7 @@ const formatTime = (timeStr) => {
 
 <style scoped>
 .profile-container {
-  max-width: 960px;
-  margin: 24px auto;
-  padding: 0 24px;
+  padding: 24px 24px 40px;
 }
 
 
@@ -323,7 +328,7 @@ const formatTime = (timeStr) => {
   align-items: center;
   margin-bottom: 14px;
   font-size: 13px;
-  color: #6b5e53;
+  color: #4a3e35;
   border-bottom: 1px dashed #e8e0d6;
   padding-bottom: 10px;
 }
@@ -387,38 +392,5 @@ const formatTime = (timeStr) => {
   color: #9b8e82;
   background: rgba(255,253,249,0.85);
 }
-/* === 标准统一头部 === */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #e8e0d6;
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #6b5e53;
-}
-.back-btn:hover { color: #8b6f52; }
-.header-title-box {
-  display: flex;
-  flex-direction: column;
-}
-.header-title-box h2 {
-  margin: 0;
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
-  font-size: 22px;
-  font-weight: 600;
-}
-
 
 </style>

@@ -3,13 +3,12 @@ package com.example.reading.controller;
 import com.example.reading.common.Result;
 import com.example.reading.dto.AudioShareRequest;
 import com.example.reading.entity.ChatMessage;
+import com.example.reading.service.AuthContextService;
 import com.example.reading.service.IChatMessageService;
 import com.example.reading.utils.NotificationWebSocketHandler;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -27,17 +26,20 @@ public class AudioShareController {
     @Autowired
     private NotificationWebSocketHandler notificationHandler;
 
+    @Autowired
+    private AuthContextService authContextService;
+
     @PostMapping("/send")
-    public Result<?> shareAudio(@RequestBody AudioShareRequest request) {
-        if (request.getSenderId() == null
-                || request.getReceiverId() == null
-                || request.getAudioUrl() == null
-                || request.getAudioUrl().isBlank()) {
-            return Result.error("500", "参数不完整");
+    public Result<?> shareAudio(@RequestBody AudioShareRequest request, HttpServletRequest httpRequest) {
+        Long currentUserId = authContextService.currentUserId(httpRequest);
+        if (currentUserId == null || request.getReceiverId() == null
+                || request.getAudioUrl() == null || request.getAudioUrl().isBlank()) {
+            return Result.error("500", "Invalid parameters");
         }
+        request.setSenderId(currentUserId);
 
         ChatMessage chatMessage = new ChatMessage();
-        chatMessage.setSenderId(request.getSenderId());
+        chatMessage.setSenderId(currentUserId);
         chatMessage.setReceiverId(request.getReceiverId());
         chatMessage.setContent(buildShareContent(request));
         chatMessage.setIsRead(0);
@@ -45,12 +47,11 @@ public class AudioShareController {
         chatMessageService.save(chatMessage);
 
         Map<String, Object> data = new HashMap<>();
-        data.put("senderId", request.getSenderId());
+        data.put("senderId", currentUserId);
         data.put("content", chatMessage.getContent());
         data.put("shareType", "audio");
         data.put("title", request.getTitle());
         notificationHandler.sendNotification(request.getReceiverId(), "chat", data);
-
         return Result.success();
     }
 
@@ -75,7 +76,6 @@ public class AudioShareController {
     }
 
     private String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                .replace("\"", "\\\"");
+        return text.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

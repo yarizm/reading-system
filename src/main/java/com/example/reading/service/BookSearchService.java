@@ -44,8 +44,9 @@ public class BookSearchService {
      * 全量同步：将 MySQL 中的所有书籍及其章节内容同步到 Elasticsearch
      */
     public int syncAllBooksToEs() {
-        // 1. 查出所有书籍
-        List<SysBook> allBooks = sysBookMapper.selectList(null);
+        QueryWrapper<SysBook> query = new QueryWrapper<>();
+        query.and(wrapper -> wrapper.eq("status", 2).or().isNull("status"));
+        List<SysBook> allBooks = sysBookMapper.selectList(query);
         List<EsBookDoc> docs = new ArrayList<>();
 
         for (SysBook book : allBooks) {

@@ -9,14 +9,23 @@ import com.example.reading.entity.SysBook;
 import com.example.reading.entity.SysChapter;
 import com.example.reading.entity.UserBookshelf;
 import com.example.reading.entity.SysUser;
+import com.example.reading.entity.BookReviewRequest;
+import com.example.reading.mapper.BookReviewRequestMapper;
+import com.example.reading.dto.BookEditDTO;
+import com.example.reading.dto.ReviewActionDTO;
+import com.example.reading.service.AuthContextService;
 import com.example.reading.service.IBookRecommendationService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.ISysUserService;
+import com.google.gson.Gson;
 import com.example.reading.utils.ChapterParser;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +39,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/sysBook")
 public class SysBookController {
+
+    private static final Logger log = LoggerFactory.getLogger(SysBookController.class);
 
     @Autowired
     private ISysBookService sysBookService;
@@ -55,19 +66,50 @@ public class SysBookController {
     @Autowired
     private ISysUserService sysUserService;
 
-    @Value("${file.upload-path}")
+    @Autowired
+    private BookReviewRequestMapper reviewRequestMapper;
+
+    private final Gson gson = new Gson();
+
+    @Autowired
+    private AuthContextService authContextService;
+
     private final String uploadPath = System.getProperty("user.dir") + "/files/";
+
+    private boolean isUploader(SysBook book, HttpServletRequest request) {
+        Long uid = authContextService.currentUserId(request);
+        return book != null && uid != null
+                && book.getUploaderId() != null
+                && book.getUploaderId().equals(uid);
+    }
+
+    private void trySyncToEs(Long bookId) {
+        try { bookSearchService.syncOneBookToEs(bookId); }
+        catch (Exception e) { log.error("Failed to sync book to ES. bookId={}", bookId, e); }
+    }
+
+    private void tryDeleteFromEs(Long bookId) {
+        try { bookSearchService.deleteFromEs(bookId); }
+        catch (Exception e) { log.error("Failed to delete book from ES. bookId={}", bookId, e); }
+    }
 
     // ===================== 通用功能 =====================
 
     /** 通用文件上传（封面图 / 电子书 / 头像等） */
     @PostMapping("/upload")
-    public Result<String> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public Result<String> upload(@RequestParam("file") MultipartFile file,
+                                 HttpServletRequest request) throws IOException {
+        if (authContextService.currentUserId(request) == null) {
+            return Result.error("403", "Forbidden");
+        }
         if (file.isEmpty()) {
             return Result.error("500", "上传文件不能为空");
         }
         String originalFilename = file.getOriginalFilename();
         String suffix = FileUtil.getSuffix(originalFilename);
+        if (suffix == null || !Set.of("jpg", "jpeg", "png", "webp", "gif", "txt").contains(suffix.toLowerCase())) {
+            return Result.error("400", "Unsupported file type");
+        }
         String fileName = IdUtil.fastSimpleUUID() + "." + suffix;
 
         File dir = new File(uploadPath);
@@ -83,31 +125,43 @@ public class SysBookController {
     // ===================== 管理员书籍管理 =====================
 
     /** 管理员新增图书（直接公开，status=2） */
+    @Transactional
     @PostMapping("/add")
-    public Result<?> add(@RequestBody SysBook sysBook) {
+    public Result<?> add(@RequestBody SysBook sysBook, HttpServletRequest request) {
+        if (!authContextService.isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         if (sysBook.getTitle() == null) {
             return Result.error("500", "书名不能为空");
         }
         sysBook.setStatus(2);
         sysBook.setCreateTime(LocalDateTime.now());
         sysBookService.save(sysBook);
-        try { bookSearchService.syncOneBookToEs(sysBook.getId()); } catch (Exception ignored) {}
+        trySyncToEs(sysBook.getId());
         return Result.success();
     }
 
     /** 更新图书 */
+    @Transactional
     @PutMapping("/update")
-    public Result<?> update(@RequestBody SysBook sysBook) {
+    public Result<?> update(@RequestBody SysBook sysBook, HttpServletRequest request) {
+        if (!authContextService.isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         sysBookService.updateById(sysBook);
-        try { bookSearchService.syncOneBookToEs(sysBook.getId()); } catch (Exception ignored) {}
+        trySyncToEs(sysBook.getId());
         return Result.success();
     }
 
     /** 删除图书 */
+    @Transactional
     @DeleteMapping("/{id}")
-    public Result<?> delete(@PathVariable Long id) {
+    public Result<?> delete(@PathVariable Long id, HttpServletRequest request) {
+        if (!authContextService.isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         sysBookService.removeById(id);
-        try { bookSearchService.deleteFromEs(id); } catch (Exception ignored) {}
+        tryDeleteFromEs(id);
         return Result.success();
     }
 
@@ -115,7 +169,11 @@ public class SysBookController {
 
     /** 用户上传书籍（默认私有 status=0，自动加入用户书架） */
     @PostMapping("/userUpload")
-    public Result<?> userUpload(@RequestBody SysBook sysBook) {
+    public Result<?> userUpload(@RequestBody SysBook sysBook, HttpServletRequest request) {
+        Long currentUserId = authContextService.currentUserId(request);
+        if (currentUserId == null || !currentUserId.equals(sysBook.getUploaderId())) {
+            return Result.error("403", "Forbidden");
+        }
         if (sysBook.getTitle() == null || sysBook.getUploaderId() == null) {
             return Result.error("500", "书名和上传者ID不能为空");
         }
@@ -141,46 +199,229 @@ public class SysBookController {
     }
 
     /** 用户申请将私有书籍公开（status 0/3 → 1） */
+    @Transactional
     @PostMapping("/applyPublic/{id}")
-    public Result<?> applyPublic(@PathVariable Long id) {
+    public Result<?> applyPublic(@PathVariable Long id,
+                                              HttpServletRequest request) {
         SysBook book = sysBookService.getById(id);
         if (book == null) return Result.error("404", "书籍不存在");
+        if (!isUploader(book, request)) {
+            return Result.error("403", "无权操作该书籍");
+        }
         if (book.getStatus() != null && book.getStatus() != 0 && book.getStatus() != 3) {
             return Result.error("500", "当前状态不允许申请公开");
         }
+
+        // 检查是否已有待审核的请求
+        List<BookReviewRequest> pending = reviewRequestMapper.selectPendingByBookId(id);
+        if (!pending.isEmpty()) {
+            return Result.error("500", "该书籍已有待审核的请求，请等待审核完成");
+        }
+
         book.setStatus(1);
         sysBookService.updateById(book);
+
+        // 创建新书审核请求记录
+        BookReviewRequest reviewRequest = new BookReviewRequest();
+        reviewRequest.setBookId(id);
+        reviewRequest.setUserId(book.getUploaderId());
+        reviewRequest.setRequestType("new");
+        reviewRequest.setStatus(0);
+        reviewRequest.setCreateTime(LocalDateTime.now());
+        reviewRequestMapper.insert(reviewRequest);
+
         return Result.success();
     }
 
     /** 获取用户自己上传的书籍列表 */
     @GetMapping("/myUploads/{userId}")
-    public Result<List<SysBook>> getMyUploads(@PathVariable Long userId) {
+    public Result<List<SysBook>> getMyUploads(@PathVariable Long userId, HttpServletRequest request) {
+        if (!authContextService.isSelfOrAdmin(userId, request)) {
+            return Result.error("403", "Forbidden");
+        }
         return Result.success(sysBookMapper.selectByUploaderId(userId));
     }
 
-    // ===================== 管理员审核 =====================
+    // ===================== 用户书籍管理 =====================
 
-    /** 获取待审核书籍列表（含上传者昵称） */
-    @GetMapping("/pendingReview")
-    public Result<List<SysBook>> getPendingReview() {
-        return Result.success(sysBookMapper.selectPendingBooks());
+    /** 用户编辑私有/驳回书籍（直接更新 sys_book，status 保持原状态） */
+    @PutMapping("/userEdit")
+    public Result<?> userEdit(@RequestBody BookEditDTO dto, HttpServletRequest request) {
+        if (dto.getId() == null) return Result.error("400", "书籍ID不能为空");
+        SysBook existing = sysBookService.getById(dto.getId());
+        if (existing == null) return Result.error("404", "书籍不存在");
+        if (!isUploader(existing, request)) {
+            return Result.error("403", "无权操作该书籍");
+        }
+        if (existing.getStatus() != null && existing.getStatus() != 0 && existing.getStatus() != 3 && existing.getStatus() != 4) {
+            return Result.error("500", "当前状态不允许直接编辑");
+        }
+        if (dto.getTitle() != null) existing.setTitle(dto.getTitle());
+        if (dto.getAuthor() != null) existing.setAuthor(dto.getAuthor());
+        if (dto.getCategory() != null) existing.setCategory(dto.getCategory());
+        if (dto.getDescription() != null) existing.setDescription(dto.getDescription());
+        if (dto.getTags() != null) existing.setTags(dto.getTags());
+        if (dto.getCoverUrl() != null) existing.setCoverUrl(dto.getCoverUrl());
+        if (dto.getFilePath() != null) existing.setFilePath(dto.getFilePath());
+        sysBookService.updateById(existing);
+        return Result.success();
     }
 
-    /** 审核书籍（approve=通过, reject=驳回） */
-    @PostMapping("/review/{id}")
-    public Result<?> reviewBook(@PathVariable Long id, @RequestParam String action) {
+    /** 用户提交已上线书籍的编辑审核（创建 edit 类型 review request） */
+    @PostMapping("/applyEdit")
+    @Transactional
+    public Result<?> applyEdit(@RequestBody SysBook sysBook,
+                                            HttpServletRequest request) {
+        if (sysBook.getId() == null) return Result.error("400", "书籍ID不能为空");
+        SysBook existing = sysBookService.getById(sysBook.getId());
+        if (existing == null) return Result.error("404", "书籍不存在");
+        if (!isUploader(existing, request)) {
+            return Result.error("403", "无权操作该书籍");
+        }
+        if (existing.getStatus() == null || existing.getStatus() != 2) {
+            return Result.error("500", "只有已上线的书籍才能提交编辑审核");
+        }
+
+        // 检查是否已有待审核的请求
+        List<BookReviewRequest> pending = reviewRequestMapper.selectPendingByBookId(sysBook.getId());
+        if (!pending.isEmpty()) {
+            return Result.error("500", "该书籍已有待审核的请求，请等待审核完成");
+        }
+
+        BookReviewRequest reviewRequest = new BookReviewRequest();
+        reviewRequest.setBookId(sysBook.getId());
+        reviewRequest.setUserId(existing.getUploaderId());
+        reviewRequest.setRequestType("edit");
+        reviewRequest.setStatus(0);
+        reviewRequest.setCreateTime(LocalDateTime.now());
+
+        // 将变更后的书籍信息序列化为 JSON
+        SysBook snapshot = new SysBook();
+        snapshot.setTitle(sysBook.getTitle());
+        snapshot.setAuthor(sysBook.getAuthor());
+        snapshot.setDescription(sysBook.getDescription());
+        snapshot.setCategory(sysBook.getCategory());
+        snapshot.setTags(sysBook.getTags());
+        snapshot.setCoverUrl(sysBook.getCoverUrl());
+        snapshot.setFilePath(sysBook.getFilePath());
+        reviewRequest.setNewBookData(gson.toJson(snapshot));
+
+        reviewRequestMapper.insert(reviewRequest);
+        return Result.success("编辑审核已提交");
+    }
+
+    /** 用户申请下架已上线书籍（创建 delist 类型 review request） */
+    @PostMapping("/applyDelist/{id}")
+    @Transactional
+    public Result<?> applyDelist(@PathVariable Long id,
+                                              HttpServletRequest request) {
         SysBook book = sysBookService.getById(id);
         if (book == null) return Result.error("404", "书籍不存在");
+        if (!isUploader(book, request)) {
+            return Result.error("403", "无权操作该书籍");
+        }
+        if (book.getStatus() == null || book.getStatus() != 2) {
+            return Result.error("500", "只有已上线的书籍才能申请下架");
+        }
+
+        List<BookReviewRequest> pending = reviewRequestMapper.selectPendingByBookId(id);
+        if (!pending.isEmpty()) {
+            return Result.error("500", "该书籍已有待审核的请求，请等待审核完成");
+        }
+
+        BookReviewRequest reviewRequest = new BookReviewRequest();
+        reviewRequest.setBookId(id);
+        reviewRequest.setUserId(book.getUploaderId());
+        reviewRequest.setRequestType("delist");
+        reviewRequest.setStatus(0);
+        reviewRequest.setCreateTime(LocalDateTime.now());
+        reviewRequestMapper.insert(reviewRequest);
+        return Result.success("下架审核已提交");
+    }
+
+    /** 用户查看自己的所有审核请求 */
+    @GetMapping("/reviewRequests/{userId}")
+    public Result<List<BookReviewRequest>> getUserReviewRequests(@PathVariable Long userId,
+                                                                 HttpServletRequest request) {
+        if (!authContextService.isSelfOrAdmin(userId, request)) {
+            return Result.error("403", "Forbidden");
+        }
+        return Result.success(reviewRequestMapper.selectByUserId(userId));
+    }
+
+    /** 管理员查看所有待审核请求 */
+    @GetMapping("/reviewRequests/pending")
+    public Result<List<BookReviewRequest>> getPendingReviewRequests(HttpServletRequest request) {
+        if (!authContextService.isAdmin(request)) {
+            return Result.error("403", "无权查看审核请求");
+        }
+        return Result.success(reviewRequestMapper.selectPendingAll());
+    }
+
+    /** 管理员审核单个请求 */
+    @Transactional
+    @PostMapping("/reviewRequest/{id}")
+    public Result<?> reviewRequest(@PathVariable Long id,
+                                   @RequestBody ReviewActionDTO dto,
+                                   HttpServletRequest httpRequest) {
+        if (!authContextService.isAdmin(httpRequest)) {
+            return Result.error("403", "无权审核请求");
+        }
+        String action = dto.getAction();
+        String rejectReason = dto.getRejectReason();
+        BookReviewRequest request = reviewRequestMapper.selectById(id);
+        if (request == null) return Result.error("404", "审核请求不存在");
+        if (request.getStatus() != 0) return Result.error("500", "该请求已处理");
+
+        SysBook book = sysBookService.getById(request.getBookId());
+        if (book == null) return Result.error("404", "关联书籍不存在");
 
         if ("approve".equals(action)) {
-            book.setStatus(2);
-            sysBookService.updateById(book);
-            try { bookSearchService.syncOneBookToEs(id); } catch (Exception ignored) {}
+            switch (request.getRequestType()) {
+                case "new" -> {
+                    book.setStatus(2);
+                    sysBookService.updateById(book);
+                    trySyncToEs(book.getId());
+                }
+                case "edit" -> {
+                    SysBook changes = gson.fromJson(request.getNewBookData(), SysBook.class);
+                    if (changes.getTitle() != null) book.setTitle(changes.getTitle());
+                    if (changes.getAuthor() != null) book.setAuthor(changes.getAuthor());
+                    if (changes.getDescription() != null) book.setDescription(changes.getDescription());
+                    if (changes.getCategory() != null) book.setCategory(changes.getCategory());
+                    if (changes.getTags() != null) book.setTags(changes.getTags());
+                    if (changes.getCoverUrl() != null) book.setCoverUrl(changes.getCoverUrl());
+                    if (changes.getFilePath() != null) book.setFilePath(changes.getFilePath());
+                    sysBookService.updateById(book);
+                    trySyncToEs(book.getId());
+                }
+                case "delist" -> {
+                    book.setStatus(4);
+                    sysBookService.updateById(book);
+                    tryDeleteFromEs(book.getId());
+                }
+                default -> {
+                    return Result.error("400", "不支持的审核请求类型");
+                }
+            }
+            request.setStatus(1);
+            request.setReviewTime(LocalDateTime.now());
+            reviewRequestMapper.updateById(request);
             return Result.success("审核通过");
         } else if ("reject".equals(action)) {
-            book.setStatus(3);
-            sysBookService.updateById(book);
+            if (rejectReason == null || rejectReason.isBlank()) {
+                return Result.error("400", "驳回原因不能为空");
+            }
+            request.setStatus(2);
+            request.setRejectReason(rejectReason);
+            request.setReviewTime(LocalDateTime.now());
+            reviewRequestMapper.updateById(request);
+
+            // 新书审核驳回时，将书籍状态改为已驳回
+            if ("new".equals(request.getRequestType())) {
+                book.setStatus(3);
+                sysBookService.updateById(book);
+            }
             return Result.success("已驳回");
         }
         return Result.error("400", "无效的审核操作");
@@ -212,12 +453,17 @@ public class SysBookController {
                               @RequestParam(defaultValue = "10") Integer pageSize,
                               @RequestParam(defaultValue = "") String keyword,
                               @RequestParam(defaultValue = "") String category,
-                              @RequestParam(required = false) Boolean isAdmin) {
+                              @RequestParam(required = false) Boolean isAdmin,
+                              HttpServletRequest request) {
+        boolean adminView = Boolean.TRUE.equals(isAdmin);
+        if (adminView && !authContextService.isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
         Page<SysBook> page = new Page<>(pageNum, pageSize);
         QueryWrapper<SysBook> query = new QueryWrapper<>();
 
         // 如果不是管理员，则只返回已公开的书籍（status=2 或 status 为 NULL 的历史数据）
-        if (isAdmin == null || !isAdmin) {
+        if (!adminView) {
             query.and(w -> w.eq("status", 2).or().isNull("status"));
         }
 
@@ -232,7 +478,7 @@ public class SysBookController {
         Page<SysBook> resultPage = sysBookService.page(page, query);
         
         // 若为管理员，获取上传者昵称以供展示
-        if (isAdmin != null && isAdmin) {
+        if (adminView) {
             for (SysBook book : resultPage.getRecords()) {
                 if (book.getUploaderId() != null) {
                     SysUser uploader = sysUserService.getById(book.getUploaderId());
@@ -273,7 +519,7 @@ public class SysBookController {
             chapterMapper.insert(chapter);
         }
 
-        try { bookSearchService.syncOneBookToEs(bookId); } catch (Exception ignored) {}
+        trySyncToEs(bookId);
         return Result.success("成功解析出 " + chapters.size() + " 个章节");
     }
 

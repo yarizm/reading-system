@@ -1,5 +1,5 @@
 <template>
-  <div class="shelf-container">
+  <div class="shelf-container page-glass-container">
     <div class="page-header">
       <div class="header-left">
         <el-button plain round class="back-btn glass-btn" @click="$router.push('/')">
@@ -202,6 +202,7 @@
         <el-form-item label="封面图">
           <el-upload
               action="/api/sysBook/upload"
+              :headers="uploadHeaders"
               :on-success="(res) => uploadForm.coverUrl = res.data"
               :show-file-list="false"
               class="avatar-uploader"
@@ -213,6 +214,7 @@
         <el-form-item label="电子书" required>
           <el-upload
               action="/api/sysBook/upload"
+              :headers="uploadHeaders"
               :on-success="(res) => uploadForm.filePath = res.data"
               :show-file-list="false"
           >
@@ -259,6 +261,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { getAuthHeaders } from '../utils/authHeaders'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -275,6 +278,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const uploadHeaders = getAuthHeaders()
 const shelfList = ref([])
 const userInfo = ref({})
 const shelfVisible = ref(1)
@@ -499,7 +503,9 @@ const openMyUploads = async () => {
 
 const applyPublic = async (bookId) => {
   try {
-    const res = await axios.post(`/api/sysBook/applyPublic/${bookId}`)
+    const res = await axios.post(`/api/sysBook/applyPublic/${bookId}`, null, {
+      params: { userId: userInfo.value.id }
+    })
     if (res.data.code === '200') {
       ElMessage.success('已提交公开申请，等待管理员审核')
       openMyUploads()
@@ -523,8 +529,6 @@ const statusTagType = (status) => {
 
 <style scoped>
 .shelf-container {
-  max-width: 1100px;
-  margin: 0 auto;
   padding: 18px 24px;
 }
 
@@ -667,7 +671,7 @@ const statusTagType = (status) => {
 }
 .book-author {
   font-size: 12px;
-  color: #9b8e82;
+  color: #6b5e53;
   margin-bottom: 14px;
 }
 
@@ -689,7 +693,7 @@ const statusTagType = (status) => {
   margin-bottom: 5px;
 }
 .chapter-label {
-  color: #9b8e82;
+  color: #6b5e53;
   flex-shrink: 0;
 }
 .chapter-name {
@@ -716,7 +720,7 @@ const statusTagType = (status) => {
 }
 .time-text {
   font-size: 12px;
-  color: #c4b9ab;
+  color: #8a7d72;
 }
 
 /* === 书单抽屉 === */
@@ -797,90 +801,5 @@ const statusTagType = (status) => {
   font-size: 12px;
   color: #9b8e82;
 }
-/* === 标准统一头部 === */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #e8e0d6;
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #6b5e53;
-}
-.back-btn:hover { color: #8b6f52; }
-.header-title-box {
-  display: flex;
-  flex-direction: column;
-}
-.header-title-box h2 {
-  margin: 0;
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
-  font-size: 22px;
-  font-weight: 600;
-}
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 4px 0 0 0;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-/* === 标准统一头部 === */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid #e8e0d6;
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #6b5e53;
-}
-.back-btn:hover { color: #8b6f52; }
-.header-title-box {
-  display: flex;
-  flex-direction: column;
-}
-.header-title-box h2 {
-  margin: 0;
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
-  font-size: 22px;
-  font-weight: 600;
-}
-.subtitle {
-  color: #9b8e82;
-  font-size: 13px;
-  margin: 4px 0 0 0;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+
 </style>

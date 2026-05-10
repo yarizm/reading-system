@@ -103,10 +103,13 @@ const doImport = async () => {
 }
 .import-card {
   width: 560px;
-  background: #fffdf9;
-  border: 1px solid #e8e0d6;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
   padding: 36px 32px;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.06);
 }
 
 /* === 头部 === */
@@ -128,7 +131,7 @@ const doImport = async () => {
   margin: 0 0 6px;
 }
 .list-meta {
-  color: #b5a99c;
+  color: #8a7d72;
   font-size: 13px;
   margin: 0;
 }
@@ -160,8 +163,8 @@ const doImport = async () => {
   color: #3d3632;
   margin-bottom: 3px;
 }
-.book-author { font-size: 13px; color: #9b8e82; }
-.book-category { font-size: 12px; color: #c4b9ab; margin-top: 2px; }
+.book-author { font-size: 13px; color: #6b5e53; }
+.book-category { font-size: 12px; color: #8a7d72; margin-top: 2px; }
 
 /* === 底部操作 === */
 .import-actions {

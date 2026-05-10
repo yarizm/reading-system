@@ -1,5 +1,5 @@
 <template>
-  <div class="book-detail-container">
+  <div class="book-detail-container page-glass-container">
     <el-card class="info-card" shadow="never">
       <div class="info-wrapper">
         <div class="cover-box">
@@ -325,7 +325,7 @@ const goToUserProfile = (userId) => {
 </script>
 
 <style scoped>
-.book-detail-container { max-width: 960px; margin: 24px auto; padding: 0 24px; }
+.book-detail-container { padding: 24px 24px 40px; }
 
 /* === 书籍卡片 === */
 :deep(.el-card) {
@@ -390,11 +390,11 @@ const goToUserProfile = (userId) => {
 .comment-content-wrapper { flex: 1; }
 .comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .nickname { font-weight: 600; font-size: 14px; color: #4a3828; }
-.time { color: #b5a99c; font-size: 12px; margin-left: auto; }
+.time { color: #8a7d72; font-size: 12px; margin-left: auto; }
 .text { font-size: 14px; color: #3d3632; line-height: 1.7; margin-bottom: 10px; }
 
 /* === 操作栏 === */
-.comment-actions { display: flex; gap: 18px; font-size: 13px; color: #9b8e82; }
+.comment-actions { display: flex; gap: 18px; font-size: 13px; color: #6b5e53; }
 .action-item { cursor: pointer; display: flex; align-items: center; gap: 4px; transition: color 0.2s; }
 .action-item:hover { color: #6b5040; }
 .action-item.is-active { color: #a34040; }
@@ -409,7 +409,7 @@ const goToUserProfile = (userId) => {
 .sub-nickname { font-weight: 600; color: #5a5048; }
 .reply-tag { color: #9b8e82; }
 .at-name { color: #8b6f52; cursor: pointer; }
-.sub-time { font-size: 12px; color: #c4b9ab; margin-left: auto; }
+.sub-time { font-size: 12px; color: #8a7d72; margin-left: auto; }
 .sub-text { font-size: 14px; color: #4a4440; margin-bottom: 6px; }
 .sub-actions { font-size: 12px; }
 

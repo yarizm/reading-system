@@ -11,7 +11,7 @@ import lombok.Setter;
 
 /**
  * 书籍信息表
- * status: 0=私有(用户上传未公开), 1=待审核, 2=已公开(默认), 3=已驳回
+ * status: 0=私有(用户上传未公开), 1=待审核, 2=已公开(默认), 3=已驳回, 4=已下架
  */
 @Getter
 @Setter
@@ -51,7 +51,7 @@ public class SysBook implements Serializable {
     @TableField("uploader_id")
     private Long uploaderId;
 
-    /** 状态：0=私有, 1=待审核, 2=已公开, 3=已驳回 */
+    /** 状态：0=私有, 1=待审核, 2=已公开, 3=已驳回, 4=已下架 */
     @TableField("status")
     private Integer status;
 

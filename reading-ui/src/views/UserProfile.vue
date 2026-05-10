@@ -1,5 +1,5 @@
 <template>
-  <div class="user-profile-container" v-loading="loading">
+  <div class="user-profile-container page-glass-container" v-loading="loading">
     <!-- 用户不存在 -->
     <div v-if="error" class="error-state">
       <el-icon size="48" color="#c4b9ab"><WarningFilled /></el-icon>
@@ -119,9 +119,7 @@ const formatDate = (timeStr) => {
 
 <style scoped>
 .user-profile-container {
-  max-width: 900px;
-  margin: 28px auto;
-  padding: 0 24px;
+  padding: 28px 24px 40px;
 }
 
 /* === 用户卡片 === */
@@ -159,7 +157,7 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #9b8e82;
+  color: #6b5e53;
 }
 
 /* === 书架区域 === */

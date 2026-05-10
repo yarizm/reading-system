@@ -16,7 +16,7 @@ html, body {
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-    color: #3d3632;
+    color: #2a211c;
     overflow-x: hidden;
 }
 
@@ -56,7 +56,7 @@ a {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     border: 1px solid rgba(139, 111, 82, 0.5) !important;
-    color: #6b5040 !important;
+    color: #4a3628 !important;
     box-shadow: 0 4px 12px rgba(60, 40, 20, 0.05) !important;
     transition: all 0.3s ease !important;
 }
@@ -64,4 +64,69 @@ a {
     background: rgba(255, 255, 255, 0.8) !important;
     border-color: #8b6f52 !important;
     transform: translateY(-2px);
+}
+
+/* === 全局统一页头 === */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(60, 40, 20, 0.10);
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.page-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-header .back-btn {
+  font-size: 15px;
+  color: #4a3e35;
+}
+.page-header .back-btn:hover { color: #8b6f52; }
+.page-header .header-title-box {
+  display: flex;
+  flex-direction: column;
+}
+.page-header .header-title-box h2 {
+  margin: 0;
+  font-family: 'Noto Serif SC', serif;
+  color: #2e2520;
+  font-size: 22px;
+  font-weight: 600;
+}
+.page-header .header-title-box .subtitle {
+  color: #6b5e53;
+  font-size: 13px;
+  margin: 4px 0 0 0;
+}
+.page-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* === 全局统一半透明容器 === */
+.page-glass-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  min-height: 100vh;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+}
+
+/* === Element Plus 全局暖棕主题 === */
+:root {
+  --el-color-primary: #8b6f52;
+  --el-color-primary-light-3: #a38c75;
+  --el-color-primary-light-5: #bdae9c;
+  --el-color-primary-light-7: #d6ccc2;
+  --el-color-primary-light-9: #f0ece4;
+  --el-color-primary-dark-2: #6b5040;
 }

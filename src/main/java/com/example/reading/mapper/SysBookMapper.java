@@ -38,14 +38,6 @@ public interface SysBookMapper extends BaseMapper<SysBook> {
     @Select("SELECT * FROM sys_book WHERE (status = 2 OR status IS NULL) ORDER BY RAND() LIMIT 8")
     List<SysBook> selectRandomBooks();
 
-    /** 待审核书籍列表（含上传者昵称） */
-    @Select("SELECT b.*, u.nickname as uploaderNickname " +
-            "FROM sys_book b " +
-            "LEFT JOIN sys_user u ON b.uploader_id = u.id " +
-            "WHERE b.status = 1 " +
-            "ORDER BY b.create_time DESC")
-    List<SysBook> selectPendingBooks();
-
     /** 用户上传的书籍列表 */
     @Select("SELECT * FROM sys_book WHERE uploader_id = #{userId} ORDER BY create_time DESC")
     List<SysBook> selectByUploaderId(@Param("userId") Long userId);

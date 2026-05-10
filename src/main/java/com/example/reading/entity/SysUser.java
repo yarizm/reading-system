@@ -101,4 +101,6 @@ public class SysUser implements Serializable {
 
     @TableField("is_banned")
     private Integer isBanned; // 0:正常 1:封禁
+    @TableField(exist = false)
+    private String token;
 }

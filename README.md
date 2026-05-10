@@ -94,8 +94,12 @@
 
 当前 `application.yml` 中引用的环境变量与 `.env.example` 一致：
 
+后端登录 token 由 `app.auth.token-secret` 签名，生产环境必须通过 `APP_AUTH_TOKEN_SECRET` 设置为足够长的随机值；`APP_AUTH_TOKEN_TTL_MILLIS` 可调整 token 有效期，默认 24 小时。
+
 ```env
 MYSQL_PASSWORD=your_mysql_password
+APP_AUTH_TOKEN_SECRET=change_this_to_a_long_random_secret
+APP_AUTH_TOKEN_TTL_MILLIS=86400000
 QWEN_API_KEY=your_dashscope_api_key
 DIFY_CHAT_URL=https://api.dify.ai/v1/chat-messages
 DIFY_READING_KEY=your_dify_reading_key
@@ -307,6 +311,7 @@ POST http://localhost:8091/synthesize
 - [ ] Redis 已启动，默认可通过 `localhost:6379` 访问
 - [ ] Elasticsearch 已启动，默认可通过 `http://localhost:9200` 访问
 - [ ] 已配置 `MYSQL_PASSWORD`
+- [ ] 生产环境已配置 `APP_AUTH_TOKEN_SECRET`
 - [ ] 如需 AI 功能，已配置 `QWEN_API_KEY` 和 Dify 相关变量：`DIFY_CHAT_URL`、`DIFY_READING_KEY`、`DIFY_RECOMMEND_KEY`
 - [ ] 如需听书功能，TTS 服务已启动并可访问 `/health`
 - [ ] `file.upload-path` 指向的目录存在且可写

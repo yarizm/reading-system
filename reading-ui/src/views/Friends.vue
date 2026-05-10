@@ -1,5 +1,5 @@
 <template>
-  <div class="friends-container">
+  <div class="friends-container page-glass-container">
     <!-- 顶部导航 -->
     <div class="page-header">
       <div class="header-left">
@@ -213,7 +213,7 @@ onUnmounted(() => {
 const connectWebSocket = () => {
   if (!userInfo.value.id) return
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}`
+  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`
   ws = new WebSocket(wsUrl)
 
   ws.onmessage = (event) => {
@@ -382,8 +382,6 @@ const formatDate = (timeStr) => {
 
 <style scoped>
 .friends-container {
-  max-width: 1100px;
-  margin: 0 auto;
   padding: 18px 24px;
 }
 
@@ -445,7 +443,7 @@ const formatDate = (timeStr) => {
 }
 .user-sub {
   font-size: 12px;
-  color: #9b8e82;
+  color: #6b5e53;
   margin-top: 2px;
 }
 
@@ -503,7 +501,7 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #9b8e82;
+  color: #6b5e53;
   margin-bottom: 2px;
 }
 .share-msg {
@@ -513,7 +511,7 @@ const formatDate = (timeStr) => {
 }
 .share-time {
   font-size: 11px;
-  color: #c4b9ab;
+  color: #8a7d72;
   margin-top: 2px;
 }
 .new-tag {
@@ -616,44 +614,6 @@ const formatDate = (timeStr) => {
 }
 .section-card {
   margin-bottom: 20px;
-}
-/* === 标准统一头部 === */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #6b5e53;
-}
-.back-btn:hover { color: #8b6f52; }
-.header-title-box {
-  display: flex;
-  flex-direction: column;
-}
-.header-title-box h2 {
-  margin: 0;
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
-  font-size: 22px;
-  font-weight: 600;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 </style>

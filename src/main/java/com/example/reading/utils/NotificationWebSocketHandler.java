@@ -1,6 +1,8 @@
 package com.example.reading.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.reading.service.AuthTokenService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -24,6 +26,9 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     // userId -> List<WebSocketSession>
     private static final ConcurrentHashMap<Long, List<WebSocketSession>> SESSIONS = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private AuthTokenService authTokenService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -88,10 +93,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private Long extractUserId(WebSocketSession session) {
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
-        if (query != null && query.contains("userId=")) {
+        if (query != null && query.contains("userId=") && query.contains("token=")) {
             try {
                 String val = query.split("userId=")[1].split("&")[0];
-                return Long.parseLong(val);
+                Long requestedUserId = Long.parseLong(val);
+                String token = query.split("token=")[1].split("&")[0];
+                Long tokenUserId = authTokenService.resolveUserId(token);
+                return requestedUserId.equals(tokenUserId) ? requestedUserId : null;
             } catch (Exception e) {
                 return null;
             }
