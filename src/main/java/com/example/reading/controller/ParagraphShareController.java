@@ -41,12 +41,18 @@ public class ParagraphShareController {
                 || request.getChapterIndex() == null || request.getParagraphIndex() == null) {
             return Result.error("500", "Invalid parameters");
         }
+        if (!authContextService.areFriends(currentUserId, request.getReceiverId())) {
+            return Result.error("403", "Only friends can receive shares");
+        }
         request.setSenderId(currentUserId);
 
         String quote = normalizeText(request.getQuote());
         if (quote.isEmpty()) return Result.error("500", "Shared paragraph cannot be empty");
 
         SysBook book = sysBookService.getById(request.getBookId());
+        if (!authContextService.canAccessBook(book, currentUserId)) {
+            return Result.error("403", "Forbidden");
+        }
         String bookTitle = book != null ? book.getTitle() : "当前书籍";
 
         ChatMessage chatMessage = new ChatMessage();

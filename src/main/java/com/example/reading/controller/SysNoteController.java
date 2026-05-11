@@ -28,6 +28,9 @@ public class SysNoteController {
         if (currentUserId == null || note.getBookId() == null) {
             return Result.error("403", "Forbidden");
         }
+        if (!authContextService.canViewBook(note.getBookId(), request)) {
+            return Result.error("403", "Forbidden");
+        }
         note.setUserId(currentUserId);
         note.setCreateTime(LocalDateTime.now());
         sysNoteService.save(note);
@@ -40,6 +43,9 @@ public class SysNoteController {
                                       HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
         if (currentUserId == null) {
+            return Result.error("403", "Forbidden");
+        }
+        if (!authContextService.canViewBook(bookId, request)) {
             return Result.error("403", "Forbidden");
         }
         QueryWrapper<SysNote> query = new QueryWrapper<>();

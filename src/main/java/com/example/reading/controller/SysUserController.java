@@ -4,12 +4,15 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.reading.common.IpUtil;
 import com.example.reading.common.Result;
 import com.example.reading.dto.UserDto;
 import com.example.reading.entity.SysUser;
 import com.example.reading.mapper.UserBookshelfMapper;
+import com.example.reading.service.AuthContextService;
 import com.example.reading.service.AuthTokenService;
 import com.example.reading.service.ISysUserService;
+import com.example.reading.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -35,20 +38,40 @@ public class SysUserController {
     @Autowired
     private AuthTokenService authTokenService;
 
+    @Autowired
+    private AuthContextService authContextService;
+
+    @Autowired
+    private RateLimitService rateLimitService;
+
     private Long currentUserId(HttpServletRequest request) {
-        return authTokenService.resolveUserId(request);
+        return authContextService.currentUserId(request);
     }
 
     private boolean isAdmin(HttpServletRequest request) {
-        Long userId = currentUserId(request);
-        if (userId == null) return false;
-        SysUser user = sysUserService.getById(userId);
-        return user != null && Integer.valueOf(1).equals(user.getRole());
+        return authContextService.isAdmin(request);
+    }
+
+    private boolean isSelf(Long userId, HttpServletRequest request) {
+        Long currentUserId = currentUserId(request);
+        return currentUserId != null && currentUserId.equals(userId);
+    }
+
+    private SysUser sanitizeUser(SysUser user) {
+        if (user != null) {
+            user.setPassword(null);
+            user.setToken(null);
+        }
+        return user;
     }
 
     /** 用户名 + 密码登录 */
     @PostMapping("/login")
-    public Result<SysUser> login(@RequestBody UserDto userDto) {
+    public Result<SysUser> login(@RequestBody UserDto userDto, HttpServletRequest request) {
+        String clientIp = IpUtil.getClientIp(request);
+        if (!rateLimitService.isAllowed("login:" + clientIp, 10, 60)) {
+            return Result.error("429", "登录尝试过于频繁，请60秒后再试");
+        }
         try {
             SysUser user = sysUserService.login(userDto);
             user.setToken(authTokenService.createToken(user.getId()));
@@ -121,18 +144,28 @@ public class SysUserController {
         
         // 执行更新
         sysUserService.updateById(user);
-        return Result.success(sysUserService.getById(user.getId()));
+        return Result.success(sanitizeUser(sysUserService.getById(user.getId())));
     }
 
-    /** 修改密码 */
+    /** 修改密码（需提供旧密码） */
     @PostMapping("/password")
     public Result<?> updatePassword(@RequestBody SysUser user, HttpServletRequest request) {
         Long currentUserId = currentUserId(request);
         if (currentUserId == null) {
             return Result.error("403", "Forbidden");
         }
+        if (StrUtil.isBlank(user.getOldPassword())) {
+            return Result.error("500", "旧密码不能为空");
+        }
         if (StrUtil.isBlank(user.getPassword())) {
             return Result.error("500", "新密码不能为空");
+        }
+        SysUser existingUser = sysUserService.getById(currentUserId);
+        if (existingUser == null) {
+            return Result.error("404", "用户不存在");
+        }
+        if (!BCrypt.checkpw(user.getOldPassword(), existingUser.getPassword())) {
+            return Result.error("500", "旧密码不正确");
         }
         SysUser passwordUpdate = new SysUser();
         passwordUpdate.setId(currentUserId);
@@ -156,7 +189,38 @@ public class SysUserController {
             query.like("username", username).or().like("nickname", username);
         }
         query.orderByDesc("id");
-        return Result.success(sysUserService.page(page, query));
+        Page<SysUser> resultPage = sysUserService.page(page, query);
+        resultPage.getRecords().forEach(this::sanitizeUser);
+        return Result.success(resultPage);
+    }
+
+    /** 获取当前登录用户信息（用于前端验证 Token 有效性和角色） */
+    @GetMapping("/me")
+    public Result<?> getCurrentUser(HttpServletRequest request) {
+        Long userId = currentUserId(request);
+        if (userId == null) {
+            return Result.error("401", "未登录");
+        }
+        SysUser user = sysUserService.getById(userId);
+        if (user == null) {
+            return Result.error("404", "用户不存在");
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", user.getId());
+        result.put("username", user.getUsername());
+        result.put("nickname", user.getNickname());
+        result.put("avatar", user.getAvatar());
+        result.put("role", user.getRole());
+        result.put("age", user.getAge());
+        result.put("preferences", user.getPreferences());
+        result.put("email", user.getEmail());
+        result.put("phone", user.getPhone());
+        result.put("createTime", user.getCreateTime());
+        result.put("shelfVisible", user.getShelfVisible());
+        result.put("infoVisible", user.getInfoVisible());
+        result.put("preferredVoice", user.getPreferredVoice());
+        result.put("healthLimitTime", user.getHealthLimitTime());
+        return Result.success(result);
     }
 
     /** 查看用户公开资料（含书架，管理员可越权查看私密资料） */
@@ -195,7 +259,9 @@ public class SysUserController {
             profile.put("preferences", user.getPreferences());
         }
         if (showShelf) {
-            List<Map<String, Object>> shelf = shelfMapper.selectMyShelf(id);
+            List<Map<String, Object>> shelf = (isAdmin || isSelf(id, request))
+                    ? shelfMapper.selectMyShelf(id)
+                    : shelfMapper.selectPublicShelf(id);
             profile.put("shelfList", shelf);
         }
 

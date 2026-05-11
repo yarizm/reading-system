@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'vant'
 import axios from 'axios'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { getAuthHeaders, withFileAccessToken } from '../utils/authHeaders'
 
 const route = useRoute()
 const router = useRouter()
@@ -63,6 +64,7 @@ const audioPlayback = reactive({
   chapterIndex: null,
   paragraphIndex: null
 })
+const playableAudioUrl = computed(() => withFileAccessToken(audioPlayback.audioUrl))
 
 // Reading settings
 const readingConfig = reactive({
@@ -495,7 +497,7 @@ const downloadCurrentAudio = () => {
   if (!audioPlayback.audioUrl) return
   const ext = audioPlayback.audioUrl.split('.').pop()?.split('?')[0] || 'mp3'
   const link = document.createElement('a')
-  link.href = audioPlayback.audioUrl
+  link.href = playableAudioUrl.value
   link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.${ext}`
   document.body.appendChild(link)
   link.click()
@@ -582,7 +584,7 @@ const sendChat = async (ctx, modeOverride, displayMsg) => {
   try {
     await fetchEventSource('/api/difyreading/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
       body: JSON.stringify({
         text: textToAnalyze, mode: instruction,
         conversationId: currentConversationId.value,
@@ -802,7 +804,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
           <audio
             ref="currentAudio"
             class="audio-player-element"
-            :src="audioPlayback.audioUrl || undefined"
+            :src="playableAudioUrl || undefined"
             controls
             preload="metadata"
             @loadedmetadata="handleAudioLoadedMetadata"

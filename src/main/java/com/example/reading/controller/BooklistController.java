@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.common.Result;
 import com.example.reading.entity.Booklist;
 import com.example.reading.entity.BooklistBook;
+import com.example.reading.entity.SysBook;
 import com.example.reading.entity.UserBookshelf;
 import com.example.reading.mapper.BooklistBookMapper;
 import com.example.reading.mapper.BooklistMapper;
 import com.example.reading.mapper.UserBookshelfMapper;
 import com.example.reading.service.AuthContextService;
+import com.example.reading.service.ISysBookService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +31,9 @@ public class BooklistController {
 
     @Autowired
     private UserBookshelfMapper shelfMapper;
+
+    @Autowired
+    private ISysBookService sysBookService;
 
     @Autowired
     private AuthContextService authContextService;
@@ -71,6 +76,9 @@ public class BooklistController {
         Booklist booklist = booklistMapper.selectById(booklistBook.getBooklistId());
         if (booklist == null) return Result.error("404", "Booklist not found");
         if (!authContextService.isSelf(booklist.getUserId(), request)) return Result.error("403", "Forbidden");
+        Long currentUserId = authContextService.currentUserId(request);
+        SysBook book = sysBookService.getById(booklistBook.getBookId());
+        if (!authContextService.canAccessBook(book, currentUserId)) return Result.error("403", "Forbidden");
         QueryWrapper<BooklistBook> query = new QueryWrapper<>();
         query.eq("booklist_id", booklistBook.getBooklistId()).eq("book_id", booklistBook.getBookId());
         if (booklistBookMapper.selectCount(query) > 0) return Result.error("500", "Book already exists");
@@ -106,7 +114,7 @@ public class BooklistController {
         query.eq("share_code", shareCode);
         Booklist booklist = booklistMapper.selectOne(query);
         if (booklist == null) return Result.error("404", "Booklist not found");
-        booklist.setBooks(booklistMapper.selectBooksByListId(booklist.getId()));
+        booklist.setBooks(booklistMapper.selectPublicBooksByListId(booklist.getId()));
         return Result.success(booklist);
     }
 
@@ -128,6 +136,10 @@ public class BooklistController {
 
         int added = 0;
         for (BooklistBook bb : booklistBooks) {
+            SysBook book = sysBookService.getById(bb.getBookId());
+            if (!authContextService.isPublicBook(book)) {
+                continue;
+            }
             QueryWrapper<UserBookshelf> shelfQuery = new QueryWrapper<>();
             shelfQuery.eq("user_id", currentUserId).eq("book_id", bb.getBookId());
             if (shelfMapper.selectCount(shelfQuery) == 0) {

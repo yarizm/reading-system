@@ -55,6 +55,8 @@ public class BookSearchService {
         }
 
         // 2. 批量写入 ES
+        // Rebuild from public books only, so stale private documents are removed.
+        esBookRepository.deleteAll();
         esBookRepository.saveAll(docs);
         return docs.size();
     }
@@ -65,6 +67,10 @@ public class BookSearchService {
     public void syncOneBookToEs(Long bookId) {
         SysBook book = sysBookMapper.selectById(bookId);
         if (book == null) return;
+        if (book.getStatus() != null && !Integer.valueOf(2).equals(book.getStatus())) {
+            deleteFromEs(bookId);
+            return;
+        }
 
         EsBookDoc doc = buildEsDoc(book);
         esBookRepository.save(doc);

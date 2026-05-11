@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,13 +75,26 @@ public class SysBookController {
     @Autowired
     private AuthContextService authContextService;
 
-    private final String uploadPath = System.getProperty("user.dir") + "/files/";
+    @Value("${file.upload-path}")
+    private String uploadPath;
 
     private boolean isUploader(SysBook book, HttpServletRequest request) {
         Long uid = authContextService.currentUserId(request);
         return book != null && uid != null
                 && book.getUploaderId() != null
                 && book.getUploaderId().equals(uid);
+    }
+
+    private SysBook sanitizeBookForPublic(SysBook book) {
+        if (book != null) {
+            book.setFilePath(null);
+        }
+        return book;
+    }
+
+    private List<SysBook> sanitizeBooksForPublic(List<SysBook> books) {
+        books.forEach(this::sanitizeBookForPublic);
+        return books;
     }
 
     private void trySyncToEs(Long bookId) {
@@ -116,7 +130,7 @@ public class SysBookController {
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        file.transferTo(new File(uploadPath + fileName));
+        file.transferTo(new File(dir, fileName));
 
         String fileUrl = "/files/" + fileName;
         return Result.success(fileUrl);
@@ -431,20 +445,26 @@ public class SysBookController {
 
     /** 获取书籍详情（含平均评分） */
     @GetMapping("/{id}")
-    public Result<SysBook> getDetail(@PathVariable Long id) {
+    public Result<SysBook> getDetail(@PathVariable Long id, HttpServletRequest request) {
         SysBook book = sysBookService.getById(id);
         if (book == null) {
             return Result.error("404", "书籍不存在");
         }
+        if (!authContextService.canViewBook(book, request)) {
+            return Result.error("403", "Forbidden");
+        }
         Double avg = commentMapper.getAvgRating(id);
         book.setAvgRating(avg);
+        if (!isUploader(book, request) && !authContextService.isAdmin(request)) {
+            sanitizeBookForPublic(book);
+        }
         return Result.success(book);
     }
 
     /** 热门阅读榜单（仅已公开书籍） */
     @GetMapping("/rank")
     public Result<List<SysBook>> getRankBooks() {
-        return Result.success(sysBookMapper.selectRankBooks());
+        return Result.success(sanitizeBooksForPublic(sysBookMapper.selectRankBooks()));
     }
 
     /** 书籍列表（仅已公开，分页 + 关键词搜索 + 分类筛选） */
@@ -489,14 +509,26 @@ public class SysBookController {
             }
         }
         
+        if (!adminView) {
+            sanitizeBooksForPublic(resultPage.getRecords());
+        }
         return Result.success(resultPage);
     }
 
     /** 解析书籍章节（自动拆分 TXT 文件为章节结构） */
     @PostMapping("/analyze/{bookId}")
-    public Result<?> analyzeBook(@PathVariable Long bookId) {
+    public Result<?> analyzeBook(@PathVariable Long bookId,
+                                 HttpServletRequest request) {
+        Long currentUserId = authContextService.currentUserId(request);
+        if (currentUserId == null) {
+            return Result.error("403", "Forbidden");
+        }
         SysBook book = sysBookService.getById(bookId);
         if (book == null) return Result.error("404", "书籍不存在");
+
+        if (!authContextService.canViewBook(book, currentUserId)) {
+            return Result.error("403", "Forbidden");
+        }
 
         QueryWrapper<SysChapter> query = new QueryWrapper<>();
         query.eq("book_id", bookId);
@@ -525,26 +557,40 @@ public class SysBookController {
 
     /** 获取书籍目录列表 */
     @GetMapping("/catalog/{bookId}")
-    public Result<List<SysChapter>> getCatalog(@PathVariable Long bookId) {
+    public Result<List<SysChapter>> getCatalog(@PathVariable Long bookId, HttpServletRequest request) {
+        SysBook book = sysBookService.getById(bookId);
+        if (book == null) return Result.error("404", "Book not found");
+        if (!authContextService.canViewBook(book, request)) return Result.error("403", "Forbidden");
         return Result.success(chapterMapper.selectCatalog(bookId));
     }
 
     /** 获取某一章节的详细内容 */
     @GetMapping("/chapter/{chapterId}")
-    public Result<SysChapter> getChapterContent(@PathVariable Long chapterId) {
-        return Result.success(chapterMapper.selectById(chapterId));
+    public Result<SysChapter> getChapterContent(@PathVariable Long chapterId, HttpServletRequest request) {
+        SysChapter chapter = chapterMapper.selectById(chapterId);
+        if (chapter == null) return Result.error("404", "Chapter not found");
+        SysBook book = sysBookService.getById(chapter.getBookId());
+        if (book == null) return Result.error("404", "Book not found");
+        if (!authContextService.canViewBook(book, request)) return Result.error("403", "Forbidden");
+        return Result.success(chapter);
     }
 
     /** 首页轮播热门书籍（仅已公开） */
     @GetMapping("/hot")
     public Result<List<SysBook>> getHotBooks() {
-        return Result.success(sysBookMapper.selectHotBooks());
+        return Result.success(sanitizeBooksForPublic(sysBookMapper.selectHotBooks()));
     }
 
     /** 随机推荐书籍（仅已公开） */
     @GetMapping("/recommend")
     public Result<List<SysBook>> getRecommendBooks(@RequestParam(required = false) Long userId,
-                                                   @RequestParam(defaultValue = "false") boolean refresh) {
-        return Result.success(bookRecommendationService.recommendHomeBooks(userId, refresh));
+                                                   @RequestParam(defaultValue = "false") boolean refresh,
+                                                   HttpServletRequest request) {
+        Long currentUserId = authContextService.currentUserId(request);
+        Long effectiveUserId = currentUserId;
+        if (userId != null && !userId.equals(currentUserId)) {
+            effectiveUserId = null;
+        }
+        return Result.success(sanitizeBooksForPublic(bookRecommendationService.recommendHomeBooks(effectiveUserId, refresh)));
     }
 }

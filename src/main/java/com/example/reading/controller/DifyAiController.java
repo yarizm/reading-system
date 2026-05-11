@@ -1,9 +1,14 @@
 package com.example.reading.controller;
 
+import com.example.reading.service.AuthContextService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
@@ -18,6 +23,9 @@ import java.util.Map;
 @RequestMapping("/difyreading")
 @CrossOrigin
 public class DifyAiController {
+
+    @Autowired
+    private AuthContextService authContextService;
 
     @Value("${dify.reading.api-url}")
     private String difyApiUrl;
@@ -35,7 +43,12 @@ public class DifyAiController {
 
     /** 将选中文本发送给 Dify 进行流式分析 */
     @PostMapping(value = "/analyze", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter analyzeText(@RequestBody AskRequest request) {
+    public SseEmitter analyzeText(@RequestBody AskRequest request,
+                                  HttpServletRequest httpRequest) {
+        Long currentUserId = authContextService.currentUserId(httpRequest);
+        if (currentUserId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
         SseEmitter emitter = new SseEmitter(60000L);
 
         Map<String, Object> payload = new HashMap<>();
@@ -46,7 +59,7 @@ public class DifyAiController {
         inputs.put("book_name", request.bookName != null ? request.bookName : "未知书籍");
         payload.put("inputs", inputs);
         payload.put("response_mode", "streaming");
-        payload.put("user", "user-vue-001");
+        payload.put("user", "user-" + currentUserId);
 
         // 组装 query：绑定书名以提高 RAG 检索命中率
         String queryText = request.mode;

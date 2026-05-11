@@ -2,10 +2,12 @@ package com.example.reading.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.common.Result;
+import com.example.reading.entity.SysBook;
 import com.example.reading.entity.SysUser;
 import com.example.reading.entity.UserBookshelf;
 import com.example.reading.mapper.UserBookshelfMapper;
-import com.example.reading.service.AuthTokenService;
+import com.example.reading.service.AuthContextService;
+import com.example.reading.service.ISysBookService;
 import com.example.reading.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,28 +29,30 @@ public class UserBookshelfController {
     private UserBookshelfMapper shelfMapper;
 
     @Autowired
-    private AuthTokenService authTokenService;
+    private AuthContextService authContextService;
 
     @Autowired
     private ISysUserService sysUserService;
 
-    private Long currentUserId(HttpServletRequest request) {
-        return authTokenService.resolveUserId(request);
-    }
+    @Autowired
+    private ISysBookService sysBookService;
 
-    private boolean isAdmin(Long userId) {
-        if (userId == null) return false;
-        SysUser user = sysUserService.getById(userId);
-        return user != null && Integer.valueOf(1).equals(user.getRole());
+    private Long currentUserId(HttpServletRequest request) {
+        return authContextService.currentUserId(request);
     }
 
     private boolean canViewShelf(Long userId, HttpServletRequest request) {
         Long currentUserId = currentUserId(request);
-        if (currentUserId != null && (currentUserId.equals(userId) || isAdmin(currentUserId))) {
+        if (currentUserId != null && (currentUserId.equals(userId) || authContextService.isAdmin(currentUserId))) {
             return true;
         }
         SysUser user = sysUserService.getById(userId);
         return user != null && (user.getShelfVisible() == null || Integer.valueOf(1).equals(user.getShelfVisible()));
+    }
+
+    private boolean canViewFullShelf(Long userId, HttpServletRequest request) {
+        Long currentUserId = currentUserId(request);
+        return currentUserId != null && (currentUserId.equals(userId) || authContextService.isAdmin(currentUserId));
     }
 
     private boolean isSelf(Long userId, HttpServletRequest request) {
@@ -60,6 +64,11 @@ public class UserBookshelfController {
     @PostMapping("/add")
     public Result<?> add(@RequestBody UserBookshelf shelf, HttpServletRequest request) {
         if (!isSelf(shelf.getUserId(), request)) {
+            return Result.error("403", "Forbidden");
+        }
+        Long currentUserId = currentUserId(request);
+        SysBook book = sysBookService.getById(shelf.getBookId());
+        if (!authContextService.canAccessBook(book, currentUserId)) {
             return Result.error("403", "Forbidden");
         }
         QueryWrapper<UserBookshelf> query = new QueryWrapper<>();
@@ -82,7 +91,10 @@ public class UserBookshelfController {
         if (!canViewShelf(userId, request)) {
             return Result.error("403", "Forbidden");
         }
-        return Result.success(shelfMapper.selectMyShelf(userId));
+        if (canViewFullShelf(userId, request)) {
+            return Result.success(shelfMapper.selectMyShelf(userId));
+        }
+        return Result.success(shelfMapper.selectPublicShelf(userId));
     }
 
     /** 按书架记录 ID 移出书架 */

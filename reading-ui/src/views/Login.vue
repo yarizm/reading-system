@@ -119,9 +119,11 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import request from '../utils/request'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const mode = ref('login') // login, register, reset
 const loginMethod = ref('password') // password, code
 const loading = ref(false)
@@ -174,7 +176,7 @@ const sendCode = async (type) => {
   // if (!isPhone && !isEmail) return ElMessage.warning('格式不正确')
 
   try {
-    await axios.post('/api/auth/sendCode', { target, type })
+    await request.post('/api/auth/sendCode', { target, type })
     ElMessage.success('验证码发送成功 (请查看控制台)')
     
     // 启动倒计时
@@ -203,7 +205,7 @@ const handleLogin = async () => {
          loading.value = false
          return ElMessage.warning('请输入账号密码')
        }
-       res = await axios.post('/api/sysUser/login', {
+       res = await request.post('/api/sysUser/login', {
          username: form.username,
          password: form.password
        })
@@ -212,7 +214,7 @@ const handleLogin = async () => {
          loading.value = false
          return ElMessage.warning('请输入手机/邮箱和验证码')
        }
-       res = await axios.post('/api/auth/loginByCode', {
+       res = await request.post('/api/auth/loginByCode', {
          target: form.target,
          code: form.code
        })
@@ -220,7 +222,7 @@ const handleLogin = async () => {
 
     if (res.data.code === '200') {
       ElMessage.success('登录成功')
-      localStorage.setItem('user', JSON.stringify(res.data.data))
+      authStore.login(res.data.data)
       router.push('/')
     } else {
       ElMessage.error(res.data.msg || '登录失败')
@@ -239,7 +241,7 @@ const handleRegister = async () => {
   }
   loading.value = true
   try {
-    const res = await axios.post('/api/auth/register', regForm)
+    const res = await request.post('/api/auth/register', regForm)
     if (res.data.code === '200') {
       ElMessage.success('注册成功，请登录')
       mode.value = 'login'
@@ -260,7 +262,7 @@ const handleReset = async () => {
   }
   loading.value = true
   try {
-    const res = await axios.post('/api/auth/resetPassword', resetForm)
+    const res = await request.post('/api/auth/resetPassword', resetForm)
      if (res.data.code === '200') {
       ElMessage.success('密码重置成功，请登录')
       mode.value = 'login'

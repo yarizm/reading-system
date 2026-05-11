@@ -112,6 +112,9 @@
                   label-width="100px"
                   style="margin-top: 20px; max-width: 500px"
               >
+                <el-form-item label="旧密码" prop="oldPassword">
+                  <el-input v-model="pwdForm.oldPassword" type="password" show-password />
+                </el-form-item>
                 <el-form-item label="新密码" prop="password">
                   <el-input v-model="pwdForm.password" type="password" show-password />
                 </el-form-item>
@@ -135,11 +138,13 @@
 import { ref, reactive, onMounted } from 'vue'
 import {User, Calendar, Plus, ArrowLeft, Collection} from '@element-plus/icons-vue' // 引入新图标
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import request from '../utils/request'
 import { useRouter } from 'vue-router'
 import { getAuthHeaders } from '../utils/authHeaders'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const uploadHeaders = getAuthHeaders()
 // 默认头像
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
@@ -159,6 +164,7 @@ const form = reactive({
 
 // 修改密码表单
 const pwdForm = reactive({
+  oldPassword: '',
   password: '',
   confirmPassword: ''
 })
@@ -175,15 +181,15 @@ const validatePass2 = (rule, value, callback) => {
   }
 }
 const pwdRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
   password: [{ required: true, message: '请输入新密码', trigger: 'blur' }, { min: 3, message: '密码长度至少3位', trigger: 'blur' }],
   confirmPassword: [{ validator: validatePass2, trigger: 'blur' }]
 }
 
 // 初始化加载
 onMounted(() => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    const user = JSON.parse(userStr)
+  const user = authStore.user
+  if (user) {
     userInfo.value = user
     // 初始化表单数据
     form.id = user.id
@@ -213,14 +219,14 @@ const handleAvatarSuccess = (response) => {
 
 const beforeAvatarUpload = (rawFile) => {
   const isImage = rawFile.type === 'image/jpeg' || rawFile.type === 'image/png';
-  const isLt2M = rawFile.size / 1024 / 1024 < 10;
+  const isLt10M = rawFile.size / 1024 / 1024 < 10;
 
   if (!isImage) {
     ElMessage.error('上传头像图片只能是 JPG/PNG 格式!');
     return false;
   }
-  if (!isLt2M) {
-    ElMessage.error('上传头像图片大小不能超过 2MB!');
+  if (!isLt10M) {
+    ElMessage.error('上传头像图片大小不能超过 10MB!');
     return false;
   }
   return true;
@@ -229,13 +235,13 @@ const beforeAvatarUpload = (rawFile) => {
 // === 方法 1: 更新基本资料 ===
 const updateProfile = async () => {
   try {
-    const res = await axios.post('/api/sysUser/update', form)
+    const res = await request.post('/api/sysUser/update', form)
     if (res.data.code === '200') {
       ElMessage.success('个人资料更新成功')
 
       // 关键步骤：更新本地缓存
       const newUser = res.data.data
-      localStorage.setItem('user', JSON.stringify(newUser))
+      authStore.login(newUser)
 
       // 更新当前页面显示
       userInfo.value = newUser
@@ -255,14 +261,15 @@ const changePassword = () => {
   pwdFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        await axios.post('/api/sysUser/password', {
+        await request.post('/api/sysUser/password', {
           id: userInfo.value.id,
+          oldPassword: pwdForm.oldPassword,
           password: pwdForm.password
         })
         ElMessage.success('密码修改成功，请重新登录')
 
         // 登出逻辑
-        localStorage.removeItem('user')
+        authStore.logout()
         router.push('/login')
       } catch (e) {
         ElMessage.error('修改失败')

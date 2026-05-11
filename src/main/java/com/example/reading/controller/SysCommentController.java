@@ -33,6 +33,9 @@ public class SysCommentController {
     public Result<List<SysComment>> list(@PathVariable Long bookId,
                                          @RequestParam(required = false) Long userId,
                                          HttpServletRequest request) {
+        if (!authContextService.canViewBook(bookId, request)) {
+            return Result.error("403", "Forbidden");
+        }
         List<SysComment> allComments = commentMapper.selectByBookId(bookId, authContextService.currentUserId(request));
 
         List<SysComment> rootComments = new ArrayList<>();
@@ -59,8 +62,16 @@ public class SysCommentController {
         if (currentUserId == null || comment.getBookId() == null) {
             return Result.error("500", "Invalid parameters");
         }
+        if (!authContextService.canViewBook(comment.getBookId(), request)) {
+            return Result.error("403", "Forbidden");
+        }
         comment.setUserId(currentUserId);
-        if (comment.getParentId() != null && comment.getParentId() != 0) {
+        boolean isReply = comment.getParentId() != null && comment.getParentId() != 0;
+        if (isReply) {
+            SysComment parent = commentMapper.selectById(comment.getParentId());
+            if (parent == null || !comment.getBookId().equals(parent.getBookId())) {
+                return Result.error("400", "Invalid parent comment");
+            }
             comment.setRating(0);
         } else {
             comment.setParentId(0L);
@@ -83,6 +94,9 @@ public class SysCommentController {
 
         SysComment comment = commentMapper.selectById(commentId);
         if (comment == null) return Result.error("404", "Comment not found");
+        if (!authContextService.canViewBook(comment.getBookId(), request)) {
+            return Result.error("403", "Forbidden");
+        }
 
         String checkSql = "SELECT count(*) FROM sys_comment_like WHERE comment_id = ? AND user_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, commentId, userId);

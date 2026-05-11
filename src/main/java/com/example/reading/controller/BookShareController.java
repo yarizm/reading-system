@@ -2,6 +2,7 @@ package com.example.reading.controller;
 
 import com.example.reading.common.Result;
 import com.example.reading.entity.BookShare;
+import com.example.reading.entity.SysBook;
 import com.example.reading.mapper.BookShareMapper;
 import com.example.reading.service.AuthContextService;
 import com.example.reading.service.IBookShareService;
@@ -39,6 +40,13 @@ public class BookShareController {
         if (currentUserId == null || share.getReceiverId() == null || share.getBookId() == null) {
             return Result.error("403", "Forbidden");
         }
+        if (!authContextService.areFriends(currentUserId, share.getReceiverId())) {
+            return Result.error("403", "Only friends can receive shares");
+        }
+        SysBook book = sysBookService.getById(share.getBookId());
+        if (!authContextService.canAccessBook(book, currentUserId)) {
+            return Result.error("403", "Forbidden");
+        }
         share.setSenderId(currentUserId);
         share.setIsRead(0);
         bookShareService.save(share);
@@ -46,7 +54,6 @@ public class BookShareController {
         Map<String, Object> data = new HashMap<>();
         data.put("senderId", share.getSenderId());
         data.put("bookId", share.getBookId());
-        var book = sysBookService.getById(share.getBookId());
         data.put("bookTitle", book != null ? book.getTitle() : "");
         notificationHandler.sendNotification(share.getReceiverId(), "book_share", data);
         return Result.success();

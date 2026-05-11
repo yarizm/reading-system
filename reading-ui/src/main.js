@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import axios from 'axios'
+import { createPinia } from 'pinia'
 
 // 1. 引入 Element Plus 及其样式
 import ElementPlus from 'element-plus'
@@ -31,12 +32,14 @@ axios.interceptors.request.use((config) => {
 })
 
 const app = createApp(App)
+const pinia = createPinia()
 
 // 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
 
+app.use(pinia)
 app.use(router)
 app.use(ElementPlus, {
   locale: zhCn,

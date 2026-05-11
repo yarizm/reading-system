@@ -149,16 +149,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import request from '../utils/request'
 import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus } from '@element-plus/icons-vue'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const uploadHeaders = getAuthHeaders()
 
-const userStr = localStorage.getItem('user')
-const currentUser = userStr ? JSON.parse(userStr) : null
+const currentUser = authStore.user
 
 const books = ref([])
 const reviewRequests = ref([])
@@ -202,7 +203,7 @@ const formatTime = (t) => {
 const loadBooks = async () => {
   if (!currentUser) return
   try {
-    const res = await axios.get(`/api/sysBook/myUploads/${currentUser.id}`)
+    const res = await request.get(`/api/sysBook/myUploads/${currentUser.id}`)
     if (res.data.code === '200') {
       books.value = res.data.data
     }
@@ -214,7 +215,7 @@ const loadBooks = async () => {
 const loadReviewRequests = async () => {
   if (!currentUser) return
   try {
-    const res = await axios.get(`/api/sysBook/reviewRequests/${currentUser.id}`)
+    const res = await request.get(`/api/sysBook/reviewRequests/${currentUser.id}`)
     if (res.data.code === '200') {
       reviewRequests.value = res.data.data
     }
@@ -242,15 +243,15 @@ const saveBook = async () => {
   try {
     if (isUpload.value) {
       const payload = { ...editForm.value, uploaderId: currentUser.id }
-      await axios.post('/api/sysBook/userUpload', payload)
+      await request.post('/api/sysBook/userUpload', payload)
       ElMessage.success('上传成功')
     } else if (editForm.value.status === 2) {
       // 已上线书籍走编辑审核
-      await axios.post('/api/sysBook/applyEdit', editForm.value)
+      await request.post('/api/sysBook/applyEdit', editForm.value)
       ElMessage.success('编辑审核已提交')
     } else {
       // 草稿/驳回/下架 直接更新
-      await axios.put('/api/sysBook/userEdit', editForm.value)
+      await request.put('/api/sysBook/userEdit', editForm.value)
       ElMessage.success('保存成功')
     }
     showEditDialog.value = false
@@ -264,7 +265,7 @@ const saveBook = async () => {
 const submitForReview = async (bookId) => {
   try {
     await ElMessageBox.confirm('确定提交审核吗？审核通过后书籍将公开上线。', '提交审核')
-    const res = await axios.post(`/api/sysBook/applyPublic/${bookId}`)
+    const res = await request.post(`/api/sysBook/applyPublic/${bookId}`)
     if (res.data.code === '200') {
       ElMessage.success('已提交审核')
       loadBooks()
@@ -280,7 +281,7 @@ const submitForReview = async (bookId) => {
 const requestDelist = async (bookId) => {
   try {
     await ElMessageBox.confirm('确定申请下架吗？需要管理员审核通过后才会下架。', '申请下架', { type: 'warning' })
-    const res = await axios.post(`/api/sysBook/applyDelist/${bookId}`)
+    const res = await request.post(`/api/sysBook/applyDelist/${bookId}`)
     if (res.data.code === '200') {
       ElMessage.success('下架审核已提交')
       loadBooks()

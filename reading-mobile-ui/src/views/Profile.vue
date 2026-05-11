@@ -3,28 +3,29 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const userInfo = ref({})
 const activeTab = ref('info')
 
 const form = reactive({ id: null, nickname: '', avatar: '', age: null, infoVisible: 1 })
-const pwdForm = reactive({ password: '', confirmPassword: '' })
+const pwdForm = reactive({ oldPassword: '', password: '', confirmPassword: '' })
 
 onMounted(() => {
-  const user = localStorage.getItem('user')
+  const user = authStore.user
   if (!user) {
     router.push('/login')
     return
   }
-  const parsed = JSON.parse(user)
-  userInfo.value = parsed
-  form.id = parsed.id
-  form.nickname = parsed.nickname
-  form.avatar = parsed.avatar
-  form.age = parsed.age
-  form.infoVisible = parsed.infoVisible !== undefined ? parsed.infoVisible : 1
+  userInfo.value = user
+  form.id = user.id
+  form.nickname = user.nickname
+  form.avatar = user.avatar
+  form.age = user.age
+  form.infoVisible = user.infoVisible !== undefined ? user.infoVisible : 1
 })
 
 const handleAvatarUpload = async (file) => {
@@ -44,7 +45,7 @@ const updateProfile = async () => {
     const res = await axios.post('/api/sysUser/update', form)
     if (res.data.code === '200') {
       const nextUser = res.data.data
-      localStorage.setItem('user', JSON.stringify(nextUser))
+      authStore.login(nextUser)
       userInfo.value = nextUser
       showSuccessToast('资料已更新')
     } else {
@@ -56,6 +57,10 @@ const updateProfile = async () => {
 }
 
 const changePassword = async () => {
+  if (!pwdForm.oldPassword) {
+    showToast('请输入旧密码')
+    return
+  }
   if (!pwdForm.password || pwdForm.password.length < 3) {
     showToast('密码至少需要 3 位')
     return
@@ -67,10 +72,11 @@ const changePassword = async () => {
   try {
     await axios.post('/api/sysUser/password', {
       id: userInfo.value.id,
+      oldPassword: pwdForm.oldPassword,
       password: pwdForm.password
     })
     showSuccessToast('密码修改成功，请重新登录')
-    localStorage.removeItem('user')
+    authStore.logout()
     router.push('/login')
   } catch (error) {
     showFailToast('密码修改失败')
@@ -78,7 +84,7 @@ const changePassword = async () => {
 }
 
 const logout = () => {
-  localStorage.removeItem('user')
+  authStore.logout()
   showSuccessToast('已退出登录')
   router.push('/')
 }
@@ -118,6 +124,7 @@ const logout = () => {
 
       <van-tab title="修改密码" name="password">
         <div class="form-card">
+          <van-field v-model="pwdForm.oldPassword" label="旧密码" type="password" placeholder="请输入旧密码" />
           <van-field v-model="pwdForm.password" label="新密码" type="password" placeholder="请输入新密码" />
           <van-field v-model="pwdForm.confirmPassword" label="确认密码" type="password" placeholder="请再次输入" />
           <div class="action-block">

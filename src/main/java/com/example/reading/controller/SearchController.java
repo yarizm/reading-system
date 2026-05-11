@@ -1,10 +1,8 @@
 package com.example.reading.controller;
 
 import com.example.reading.common.Result;
-import com.example.reading.entity.SysUser;
-import com.example.reading.service.AuthTokenService;
+import com.example.reading.service.AuthContextService;
 import com.example.reading.service.BookSearchService;
-import com.example.reading.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -23,16 +21,10 @@ public class SearchController {
     private BookSearchService bookSearchService;
 
     @Autowired
-    private AuthTokenService authTokenService;
-
-    @Autowired
-    private ISysUserService sysUserService;
+    private AuthContextService authContextService;
 
     private boolean isAdmin(HttpServletRequest request) {
-        Long userId = authTokenService.resolveUserId(request);
-        if (userId == null) return false;
-        SysUser user = sysUserService.getById(userId);
-        return user != null && Integer.valueOf(1).equals(user.getRole());
+        return authContextService.isAdmin(request);
     }
 
     /** 全文搜索（支持关键词 + 分类筛选 + 分页） */

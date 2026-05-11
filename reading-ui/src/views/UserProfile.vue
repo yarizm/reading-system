@@ -78,25 +78,25 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import request from '../utils/request'
 import { WarningFilled, CollectionTag, Calendar, Lock } from '@element-plus/icons-vue'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const profile = ref(null)
 const loading = ref(true)
 const error = ref(false)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 onMounted(async () => {
-  const userStr = localStorage.getItem('user')
   let viewerId = null
-  if (userStr) {
-    const u = JSON.parse(userStr)
-    viewerId = u.id
+  if (authStore.user) {
+    viewerId = authStore.user.id
   }
 
   try {
-    const res = await axios.get(`/api/sysUser/profile/${route.params.id}`, {
+    const res = await request.get(`/api/sysUser/profile/${route.params.id}`, {
       params: { viewerId }
     })
     if (res.data.code === '200') {

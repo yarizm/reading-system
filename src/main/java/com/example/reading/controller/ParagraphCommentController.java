@@ -34,6 +34,9 @@ public class ParagraphCommentController {
                                                   @PathVariable Integer paragraphIndex,
                                                   @RequestParam(required = false) Long currentUserId,
                                                   HttpServletRequest request) {
+        if (!authContextService.canViewBook(bookId, request)) {
+            return Result.error("403", "Forbidden");
+        }
         return Result.success(commentMapper.selectByPositionWithLike(
                 bookId, chapterIndex, paragraphIndex, authContextService.currentUserId(request)));
     }
@@ -62,6 +65,9 @@ public class ParagraphCommentController {
 
         SysParagraphComment comment = commentMapper.selectById(commentId);
         if (comment == null) return Result.error("404", "Comment not found");
+        if (!authContextService.canViewBook(comment.getBookId(), request)) {
+            return Result.error("403", "Forbidden");
+        }
 
         String checkSql = "SELECT count(*) FROM sys_paragraph_like WHERE comment_id = ? AND user_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, commentId, userId);
@@ -91,14 +97,20 @@ public class ParagraphCommentController {
         if (!authContextService.isSelf(userId, request)) {
             return Result.error("403", "Forbidden");
         }
+        if (!authContextService.canViewBook(bookId, request)) {
+            return Result.error("403", "Forbidden");
+        }
         return Result.success(commentMapper.selectUserComments(userId, bookId));
     }
 
     @PostMapping("/add")
     public Result<?> add(@RequestBody SysParagraphComment comment, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || comment.getContent() == null) {
+        if (currentUserId == null || comment.getBookId() == null || comment.getContent() == null) {
             return Result.error("500", "Invalid parameters");
+        }
+        if (!authContextService.canViewBook(comment.getBookId(), request)) {
+            return Result.error("403", "Forbidden");
         }
         comment.setUserId(currentUserId);
         if (comment.getCreateTime() == null) comment.setCreateTime(LocalDateTime.now());

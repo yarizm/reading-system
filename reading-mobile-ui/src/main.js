@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import axios from 'axios'
+import { createPinia } from 'pinia'
 
 // Vant 组件
 import {
@@ -35,6 +36,7 @@ axios.interceptors.request.use((config) => {
 })
 
 const app = createApp(App)
+const pinia = createPinia()
 
 // 注册 Vant 组件
 const vantComponents = [
@@ -49,5 +51,6 @@ const vantComponents = [
 ]
 vantComponents.forEach(c => app.use(c))
 
+app.use(pinia)
 app.use(router)
 app.mount('#app')

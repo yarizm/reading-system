@@ -158,9 +158,11 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, ArrowLeft, Plus, ChatDotRound, Share, Delete, Select } from '@element-plus/icons-vue'
-import axios from 'axios'
+import request from '../utils/request'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
@@ -192,13 +194,12 @@ const shareMessage = ref('')
 let ws = null
 
 onMounted(() => {
-  const userStr = localStorage.getItem('user')
-  if (!userStr) {
+  if (!authStore.user) {
     ElMessage.warning('请先登录')
     router.push('/login')
     return
   }
-  userInfo.value = JSON.parse(userStr)
+  userInfo.value = authStore.user
   loadFriends()
   loadPendingRequests()
   loadReceivedShares()
@@ -247,7 +248,7 @@ const searchUsers = async () => {
   if (!searchKeyword.value.trim()) return
   searched.value = true
   try {
-    const res = await axios.get('/api/friend/search', {
+    const res = await request.get('/api/friend/search', {
       params: { keyword: searchKeyword.value, excludeUserId: userInfo.value.id }
     })
     searchResults.value = res.data.data || []
@@ -258,7 +259,7 @@ const searchUsers = async () => {
 
 const sendRequest = async (friendId) => {
   try {
-    const res = await axios.post('/api/friend/request', {
+    const res = await request.post('/api/friend/request', {
       userId: userInfo.value.id,
       friendId: friendId
     })
@@ -273,23 +274,23 @@ const sendRequest = async (friendId) => {
 }
 
 const loadFriends = async () => {
-  const res = await axios.get(`/api/friend/list/${userInfo.value.id}`)
+  const res = await request.get(`/api/friend/list/${userInfo.value.id}`)
   friends.value = res.data.data || []
 }
 
 const loadPendingRequests = async () => {
-  const res = await axios.get(`/api/friend/pending/${userInfo.value.id}`)
+  const res = await request.get(`/api/friend/pending/${userInfo.value.id}`)
   pendingRequests.value = res.data.data || []
 }
 
 const loadReceivedShares = async () => {
-  const res = await axios.get(`/api/bookShare/received/${userInfo.value.id}`)
+  const res = await request.get(`/api/bookShare/received/${userInfo.value.id}`)
   receivedShares.value = res.data.data || []
 }
 
 const loadFriendUnreadCounts = async () => {
   try {
-    const res = await axios.get(`/api/chat/conversations/${userInfo.value.id}`)
+    const res = await request.get(`/api/chat/conversations/${userInfo.value.id}`)
     const conversations = res.data.data || []
     const map = {}
     conversations.forEach(c => {
@@ -308,26 +309,26 @@ const getFriendUnread = (friendUserId) => {
 }
 
 const deleteShare = async (shareId) => {
-  await axios.delete(`/api/bookShare/${shareId}`)
+  await request.delete(`/api/bookShare/${shareId}`)
   ElMessage.success('已删除')
   loadReceivedShares()
 }
 
 const acceptRequest = async (requestId) => {
-  await axios.post(`/api/friend/accept/${requestId}`)
+  await request.post(`/api/friend/accept/${requestId}`)
   ElMessage.success('已接受好友请求')
   loadPendingRequests()
   loadFriends()
 }
 
 const rejectRequest = async (requestId) => {
-  await axios.post(`/api/friend/reject/${requestId}`)
+  await request.post(`/api/friend/reject/${requestId}`)
   ElMessage.info('已拒绝')
   loadPendingRequests()
 }
 
 const deleteFriend = async (friendshipId) => {
-  await axios.delete(`/api/friend/${friendshipId}`)
+  await request.delete(`/api/friend/${friendshipId}`)
   ElMessage.success('已删除好友')
   loadFriends()
 }
@@ -338,7 +339,7 @@ const goChat = (friendUserId) => {
 
 const goToBook = async (share) => {
   if (share.isRead === 0) {
-    await axios.post(`/api/bookShare/read/${share.shareId}`)
+    await request.post(`/api/bookShare/read/${share.shareId}`)
   }
   router.push(`/book/${share.bookId}`)
 }
@@ -349,7 +350,7 @@ const openShareDialog = async (friendUserId) => {
   shareMessage.value = ''
   // 加载我的书架
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     myShelf.value = res.data.data || []
   } catch (e) {
     myShelf.value = []
@@ -359,7 +360,7 @@ const openShareDialog = async (friendUserId) => {
 
 const confirmShare = async () => {
   try {
-    const res = await axios.post('/api/bookShare/send', {
+    const res = await request.post('/api/bookShare/send', {
       senderId: userInfo.value.id,
       receiverId: shareTargetUserId.value,
       bookId: selectedBookId.value,

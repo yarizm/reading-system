@@ -120,10 +120,12 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Share } from '@element-plus/icons-vue'
-import axios from 'axios'
+import request from '../utils/request'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const friendId = Number(route.params.friendId)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
@@ -144,16 +146,15 @@ const shareMsg = ref('')
 let pollTimer = null
 
 onMounted(async () => {
-  const userStr = localStorage.getItem('user')
-  if (!userStr) {
+  if (!authStore.user) {
     ElMessage.warning('请先登录')
     router.push('/login')
     return
   }
-  userInfo.value = JSON.parse(userStr)
+  userInfo.value = authStore.user
 
   try {
-    const res = await axios.get(`/api/sysUser/profile/${friendId}`)
+    const res = await request.get(`/api/sysUser/profile/${friendId}`)
     if (res.data.code === '200') {
       friendInfo.value = res.data.data
     }
@@ -174,7 +175,7 @@ onUnmounted(() => {
 
 const loadMessages = async () => {
   try {
-    const res = await axios.get('/api/chat/history', {
+    const res = await request.get('/api/chat/history', {
       params: { userId: userInfo.value.id, friendId }
     })
     const nextMessages = res.data.data || []
@@ -195,7 +196,7 @@ const loadMessages = async () => {
 
 const markAsRead = async () => {
   try {
-    await axios.post('/api/chat/read', null, {
+    await request.post('/api/chat/read', null, {
       params: { userId: userInfo.value.id, senderId: friendId }
     })
   } catch (error) {
@@ -208,7 +209,7 @@ const sendMessage = async () => {
   if (!text) return
 
   try {
-    await axios.post('/api/chat/send', {
+    await request.post('/api/chat/send', {
       senderId: userInfo.value.id,
       receiverId: friendId,
       content: text
@@ -230,7 +231,7 @@ const openShareDialog = async () => {
   selectedBookId.value = null
   shareMsg.value = ''
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     myShelf.value = res.data.data || []
   } catch (error) {
     myShelf.value = []
@@ -240,7 +241,7 @@ const openShareDialog = async () => {
 
 const confirmShare = async () => {
   try {
-    await axios.post('/api/bookShare/send', {
+    await request.post('/api/bookShare/send', {
       senderId: userInfo.value.id,
       receiverId: friendId,
       bookId: selectedBookId.value,

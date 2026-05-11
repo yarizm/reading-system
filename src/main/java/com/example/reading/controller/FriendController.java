@@ -122,8 +122,8 @@ public class FriendController {
         Long currentUserId = authContextService.currentUserId(request);
         if (currentUserId == null) return Result.error("403", "Forbidden");
         QueryWrapper<SysUser> qw = new QueryWrapper<>();
-        qw.like("username", keyword).or().like("nickname", keyword);
-        qw.ne("id", currentUserId);
+        qw.and(w -> w.like("username", keyword).or().like("nickname", keyword))
+                .ne("id", currentUserId);
         qw.last("LIMIT 20");
         List<SysUser> users = sysUserService.list(qw);
         users.forEach(u -> {

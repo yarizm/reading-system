@@ -7,11 +7,14 @@ import {
   Setting, MoreFilled, Share // NEW: 引入 Share 图标
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import request from '../utils/request'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { getAuthHeaders, withFileAccessToken } from '../utils/authHeaders'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const bookId = route.params.id
 
 // === 核心阅读状态 ===
@@ -84,6 +87,7 @@ const audioPlayback = reactive({
   chapterIndex: null,
   paragraphIndex: null
 })
+const playableAudioUrl = computed(() => withFileAccessToken(audioPlayback.audioUrl))
 const activeTab = ref('ai')
 const noteList = ref([])
 const menuVisible = ref(false)
@@ -160,8 +164,7 @@ const applyRouteReadTarget = () => {
 
 // === 初始化 ===
 onMounted(async () => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) userInfo.value = JSON.parse(userStr)
+  if (authStore.user) userInfo.value = authStore.user
 
   loadReadingSettings()
 
@@ -252,7 +255,7 @@ const startEyeCareTimer = () => {
 // === 数据加载 ===
 const loadBookInfo = async () => {
   try {
-    const infoRes = await axios.get(`/api/sysBook/${bookId}`)
+    const infoRes = await request.get(`/api/sysBook/${bookId}`)
     if (infoRes.data.code === '200') {
       bookInfo.value = infoRes.data.data
     }
@@ -269,13 +272,13 @@ const goToBookDetail = () => {
 
 const loadCatalog = async () => {
   try {
-    const res = await axios.get(`/api/sysBook/catalog/${bookId}`)
+    const res = await request.get(`/api/sysBook/catalog/${bookId}`)
     if (res.data.code === '200') {
       catalog.value = res.data.data
       if (catalog.value.length === 0) {
         ElMessage.warning('该书暂无章节信息，正在尝试自动解析...')
-        await axios.post(`/api/sysBook/analyze/${bookId}`)
-        const retryRes = await axios.get(`/api/sysBook/catalog/${bookId}`)
+        await request.post(`/api/sysBook/analyze/${bookId}`)
+        const retryRes = await request.get(`/api/sysBook/catalog/${bookId}`)
         catalog.value = retryRes.data.data
       }
     }
@@ -287,7 +290,7 @@ const loadCatalog = async () => {
 const loadProgress = async () => {
   if (!userInfo.value.id) return
   try {
-    const res = await axios.get('/api/bookshelf/detail', {
+    const res = await request.get('/api/bookshelf/detail', {
       params: { userId: userInfo.value.id, bookId: bookId }
     })
     if (res.data.data) {
@@ -310,7 +313,7 @@ const loadCurrentChapter = async () => {
   currentChapterTitle.value = catalog.value[chapterIndex.value].title
 
   try {
-    const res = await axios.get(`/api/sysBook/chapter/${chapterId}`)
+    const res = await request.get(`/api/sysBook/chapter/${chapterId}`)
     if (res.data.code === '200') {
       const text = res.data.data.content || ''
       lines.value = text.split(/\r?\n/).filter(line => line.trim() !== '')
@@ -370,7 +373,7 @@ const scrollToCatalogActive = () => {
 const saveProgress = async () => {
   if (!userInfo.value.id) return
   try {
-    await axios.post('/api/bookshelf/updateProgress', {
+    await request.post('/api/bookshelf/updateProgress', {
       userId: userInfo.value.id,
       bookId: bookId,
       currentChapterIndex: chapterIndex.value,
@@ -406,7 +409,7 @@ const checkShelfStatus = async () => {
   if (!userInfo.value.id) return
   isCheckingShelf.value = true
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     if (res.data.code === '200') {
       isAddedToShelf.value = res.data.data.some(item => item.bookId === parseInt(bookId))
     }
@@ -424,7 +427,7 @@ const toggleShelf = async () => {
     ElMessageBox.confirm('确定要取消收藏吗？阅读进度将不再保存。', '提示', { type: 'warning' })
         .then(async () => {
           try {
-            await axios.delete('/api/bookshelf/removeByBook', {
+            await request.delete('/api/bookshelf/removeByBook', {
               params: { userId: userInfo.value.id, bookId: bookId }
             })
             ElMessage.success('已取消收藏')
@@ -433,7 +436,7 @@ const toggleShelf = async () => {
         }).catch(() => {})
   } else {
     try {
-      const res = await axios.post('/api/bookshelf/add', {
+      const res = await request.post('/api/bookshelf/add', {
         userId: userInfo.value.id, bookId: bookId
       })
       if (res.data.code === '200') {
@@ -470,7 +473,7 @@ const ensureShareReady = () => {
 const loadShareFriends = async () => {
   isLoadingShareFriends.value = true
   try {
-    const res = await axios.get(`/api/friend/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/friend/list/${userInfo.value.id}`)
     shareFriendOptions.value = res.data.data || []
     return true
   } catch (error) {
@@ -513,7 +516,7 @@ const submitBookShare = async () => {
 
   isSubmittingBookShare.value = true
   try {
-    const res = await axios.post('/api/bookShare/send', {
+    const res = await request.post('/api/bookShare/send', {
       senderId: userInfo.value.id,
       receiverId: bookShareFriendId.value,
       bookId: Number(bookId),
@@ -544,7 +547,7 @@ const submitParagraphShare = async () => {
 
   isSubmittingParagraphShare.value = true
   try {
-    const res = await axios.post('/api/paragraphShare/send', {
+    const res = await request.post('/api/paragraphShare/send', {
       senderId: userInfo.value.id,
       receiverId: paragraphShareFriendId.value,
       bookId: Number(bookId),
@@ -569,7 +572,7 @@ const submitParagraphShare = async () => {
 const fetchParagraphComments = async (paragraphIndex) => {
   isLoadingComments.value = true
   try {
-    const res = await axios.get(`/api/paragraphComment/list/${bookId}/${chapterIndex.value}/${paragraphIndex}`, {
+    const res = await request.get(`/api/paragraphComment/list/${bookId}/${chapterIndex.value}/${paragraphIndex}`, {
       params: { currentUserId: userInfo.value.id }
     })
     if (res.data.code === '200') {
@@ -591,7 +594,7 @@ const submitParagraphComment = async () => {
 
   isSubmittingComment.value = true
   try {
-    const res = await axios.post('/api/paragraphComment/add', {
+    const res = await request.post('/api/paragraphComment/add', {
       userId: userInfo.value.id,
       bookId: bookId,
       chapterIndex: chapterIndex.value,
@@ -618,7 +621,7 @@ const submitParagraphComment = async () => {
 const deleteComment = (commentId) => {
   ElMessageBox.confirm('确定删除这条评论吗？', '提示', { type: 'warning' })
       .then(async () => {
-        await axios.delete(`/api/paragraphComment/${commentId}`, {
+        await request.delete(`/api/paragraphComment/${commentId}`, {
           params: { userId: userInfo.value.id }
         })
         ElMessage.success('已删除')
@@ -630,7 +633,7 @@ const deleteComment = (commentId) => {
 const toggleLike = async (comment) => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
   try {
-    const res = await axios.post('/api/paragraphComment/like', {
+    const res = await request.post('/api/paragraphComment/like', {
       commentId: comment.id,
       userId: userInfo.value.id
     })
@@ -649,7 +652,7 @@ const openMyComments = async () => {
 
 const fetchMyComments = async () => {
   if (!userInfo.value.id) return
-  const res = await axios.get(`/api/paragraphComment/my/${bookId}/${userInfo.value.id}`)
+  const res = await request.get(`/api/paragraphComment/my/${bookId}/${userInfo.value.id}`)
   if (res.data.code === '200') myCommentsList.value = res.data.data
 }
 
@@ -660,7 +663,7 @@ const jumpToMyComment = (comment) => {
     const chapterId = catalog.value[chapterIndex.value].id
     currentChapterTitle.value = catalog.value[chapterIndex.value].title
 
-    axios.get(`/api/sysBook/chapter/${chapterId}`).then(res => {
+    request.get(`/api/sysBook/chapter/${chapterId}`).then(res => {
       isLoading.value = false
       const text = res.data.data.content || ''
       lines.value = text.split(/\r?\n/).filter(line => line.trim() !== '')
@@ -747,7 +750,7 @@ const openAudioPlayer = async (payload) => {
   }
 
   try {
-    const res = await axios.post('/api/ai/audio/generate', payload)
+    const res = await request.post('/api/ai/audio/generate', payload)
     if (res.data.code !== '200' || !res.data.data?.audioUrl) {
       ElMessage.error(res.data.msg || '当前听书服务不可用，请稍后再试')
       audioPlayerVisible.value = false
@@ -797,7 +800,7 @@ const downloadCurrentAudio = () => {
   if (!audioPlayback.audioUrl) return
   const ext = audioPlayback.audioUrl.split('.').pop()?.split('?')[0] || 'mp3'
   const link = document.createElement('a')
-  link.href = audioPlayback.audioUrl
+  link.href = playableAudioUrl.value
   link.download = `${(audioPlayback.title || '朗读音频').replace(/[\\/:*?"<>|]/g, '_')}.${ext}`
   document.body.appendChild(link)
   link.click()
@@ -828,7 +831,7 @@ const submitAudioShare = async () => {
 
   isSubmittingAudioShare.value = true
   try {
-    const res = await axios.post('/api/audioShare/send', {
+    const res = await request.post('/api/audioShare/send', {
       senderId: userInfo.value.id,
       receiverId: audioShareFriendId.value,
       audioUrl: audioPlayback.audioUrl,
@@ -914,6 +917,7 @@ const sendChat = async (contextText = null, modeOverride = null, displayMsg = nu
     await fetchEventSource('/api/difyreading/analyze', {
       method: 'POST',
       headers: {
+        ...getAuthHeaders(),
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream'
       },
@@ -974,7 +978,7 @@ const saveNote = async (msgContent) => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
   const quote = selectedText.value || (msgContent.substring(0, 15) + '...')
   try {
-    await axios.post('/api/sysNote/add', {
+    await request.post('/api/sysNote/add', {
       userId: userInfo.value.id, bookId, selectedText: quote, content: msgContent
     })
     ElMessage.success('已保存笔记')
@@ -985,13 +989,13 @@ const saveNote = async (msgContent) => {
 const fetchNotes = async () => {
   if (!userInfo.value.id) return
   try {
-    const res = await axios.get(`/api/sysNote/list/${bookId}`, { params: { userId: userInfo.value.id } })
+    const res = await request.get(`/api/sysNote/list/${bookId}`, { params: { userId: userInfo.value.id } })
     if (res.data.code === '200') noteList.value = res.data.data
   } catch (e) { console.error(e) }
 }
 
 const handleDeleteNote = async (id) => {
-  await axios.delete(`/api/sysNote/${id}`)
+  await request.delete(`/api/sysNote/${id}`)
   fetchNotes()
 }
 
@@ -1290,7 +1294,7 @@ const goToUserProfile = (userId) => {
         <audio
             ref="currentAudio"
             class="audio-player-element"
-            :src="audioPlayback.audioUrl || undefined"
+            :src="playableAudioUrl || undefined"
             controls
             preload="metadata"
             @loadedmetadata="handleAudioLoadedMetadata"

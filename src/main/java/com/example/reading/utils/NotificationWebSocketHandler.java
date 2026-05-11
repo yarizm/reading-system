@@ -1,7 +1,7 @@
 package com.example.reading.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.example.reading.service.AuthTokenService;
+import com.example.reading.service.AuthContextService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -23,24 +23,30 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Component
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
+    private static final String USER_ID_ATTRIBUTE = "userId";
+
     // userId -> List<WebSocketSession>
     private static final ConcurrentHashMap<Long, List<WebSocketSession>> SESSIONS = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
-    private AuthTokenService authTokenService;
+    private AuthContextService authContextService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long userId = extractUserId(session);
-        if (userId != null) {
-            SESSIONS.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(session);
+        if (userId == null) {
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Unauthorized"));
+            return;
         }
+        session.getAttributes().put(USER_ID_ATTRIBUTE, userId);
+        SESSIONS.computeIfAbsent(userId, k -> new CopyOnWriteArrayList<>()).add(session);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        Long userId = extractUserId(session);
+        Object userIdAttribute = session.getAttributes().get(USER_ID_ATTRIBUTE);
+        Long userId = userIdAttribute instanceof Long ? (Long) userIdAttribute : null;
         if (userId != null) {
             List<WebSocketSession> userSessions = SESSIONS.get(userId);
             if (userSessions != null) {
@@ -98,7 +104,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
                 String val = query.split("userId=")[1].split("&")[0];
                 Long requestedUserId = Long.parseLong(val);
                 String token = query.split("token=")[1].split("&")[0];
-                Long tokenUserId = authTokenService.resolveUserId(token);
+                Long tokenUserId = authContextService.currentUserId(token);
                 return requestedUserId.equals(tokenUserId) ? requestedUserId : null;
             } catch (Exception e) {
                 return null;

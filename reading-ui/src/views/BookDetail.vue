@@ -147,15 +147,17 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, CollectionTag, Reading, Collection, Delete,
   ChatDotSquare, Close, Star, StarFilled
 } from '@element-plus/icons-vue'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const bookId = route.params.id
 
 // 数据
@@ -184,8 +186,7 @@ const totalComments = computed(() => {
 })
 
 onMounted(() => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) userInfo.value = JSON.parse(userStr)
+  if (authStore.user) userInfo.value = authStore.user
 
   loadBookDetail()
   loadComments()
@@ -194,14 +195,14 @@ onMounted(() => {
 
 const loadBookDetail = async () => {
   try {
-    const res = await axios.get(`/api/sysBook/${bookId}`)
+    const res = await request.get(`/api/sysBook/${bookId}`)
     if (res.data.code === '200') bookInfo.value = res.data.data
   } catch (e) { console.error(e) }
 }
 
 const loadComments = async () => {
   try {
-    const res = await axios.get(`/api/comment/list/${bookId}`, {
+    const res = await request.get(`/api/comment/list/${bookId}`, {
       params: { userId: userInfo.value.id }
     })
     if (res.data.code === '200') {
@@ -212,7 +213,7 @@ const loadComments = async () => {
 
 const checkShelf = async () => {
   if (!userInfo.value.id) return
-  const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+  const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
   if (res.data.code === '200') {
     inShelf.value = res.data.data.some(b => b.bookId === bookId)
   }
@@ -261,7 +262,7 @@ const submitComment = async () => {
       replyUserId: isReply ? (replyTarget.value ? replyTarget.value.userId : null) : null
     }
 
-    await axios.post('/api/comment/add', payload)
+    await request.post('/api/comment/add', payload)
 
     ElMessage.success(isReply ? '回复成功' : '发表成功')
     myComment.value = ''
@@ -282,7 +283,7 @@ const submitComment = async () => {
 const toggleLike = async (item) => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
   try {
-    const res = await axios.post('/api/comment/like', {
+    const res = await request.post('/api/comment/like', {
       commentId: item.id,
       userId: userInfo.value.id
     })
@@ -295,7 +296,7 @@ const toggleLike = async (item) => {
 
 const deleteComment = async (id) => {
   ElMessageBox.confirm('确认删除吗？', '提示', { type: 'warning' }).then(async () => {
-    await axios.delete(`/api/comment/${id}`)
+    await request.delete(`/api/comment/${id}`)
     ElMessage.success('已删除')
     loadComments()
   })
@@ -305,12 +306,12 @@ const toggleShelf = async () => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
   if (inShelf.value) {
     ElMessageBox.confirm('确定要移出书架吗？', '提示', { type: 'warning' }).then(async () => {
-      await axios.delete('/api/bookshelf/removeByBook', { params: { userId: userInfo.value.id, bookId: bookId } })
+      await request.delete('/api/bookshelf/removeByBook', { params: { userId: userInfo.value.id, bookId: bookId } })
       ElMessage.success('已移出书架')
       inShelf.value = false
     }).catch(() => {})
   } else {
-    await axios.post('/api/bookshelf/add', { userId: userInfo.value.id, bookId: bookId })
+    await request.post('/api/bookshelf/add', { userId: userInfo.value.id, bookId: bookId })
     ElMessage.success('加入成功')
     inShelf.value = true
   }

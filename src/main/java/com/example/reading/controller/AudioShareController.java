@@ -36,6 +36,9 @@ public class AudioShareController {
                 || request.getAudioUrl() == null || request.getAudioUrl().isBlank()) {
             return Result.error("500", "Invalid parameters");
         }
+        if (!authContextService.areFriends(currentUserId, request.getReceiverId())) {
+            return Result.error("403", "Only friends can receive shares");
+        }
         request.setSenderId(currentUserId);
 
         ChatMessage chatMessage = new ChatMessage();

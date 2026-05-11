@@ -32,6 +32,24 @@ public interface UserBookshelfMapper extends BaseMapper<UserBookshelf> {
             "ORDER BY s.last_read_time DESC")
     List<Map<String, Object>> selectMyShelf(@Param("userId") Long userId);
 
+    @Select("SELECT " +
+            " s.id, " +
+            " s.user_id AS userId, " +
+            " s.book_id AS bookId, " +
+            " s.last_read_time AS lastReadTime, " +
+            " IFNULL(s.current_chapter_index, 0) AS currentChapterIndex, " +
+            " b.title AS bookName, " +
+            " b.cover_url AS coverUrl, " +
+            " b.author, " +
+            " (SELECT COUNT(*) FROM sys_chapter c WHERE c.book_id = b.id) AS totalChapters, " +
+            " (SELECT title FROM sys_chapter c WHERE c.book_id = b.id AND c.sort = s.current_chapter_index LIMIT 1) AS currentChapterTitle " +
+            "FROM user_bookshelf s " +
+            "JOIN sys_book b ON s.book_id = b.id " +
+            "WHERE s.user_id = #{userId} " +
+            "AND (b.status = 2 OR b.status IS NULL) " +
+            "ORDER BY s.last_read_time DESC")
+    List<Map<String, Object>> selectPublicShelf(@Param("userId") Long userId);
+
     // === 新增：获取用户书架中所有书籍的标题（用于投喂给 AI） ===
     @Select("SELECT b.title FROM user_bookshelf s " +
             "LEFT JOIN sys_book b ON s.book_id = b.id " +

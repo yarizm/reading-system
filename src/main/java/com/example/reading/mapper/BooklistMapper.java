@@ -20,4 +20,11 @@ public interface BooklistMapper extends BaseMapper<Booklist> {
             "LEFT JOIN sys_book b ON bb.book_id = b.id " +
             "WHERE bb.booklist_id = #{booklistId}")
     List<Map<String, Object>> selectBooksByListId(@Param("booklistId") Long booklistId);
+
+    @Select("SELECT b.id, b.title, b.author, b.cover_url AS coverUrl, b.category " +
+            "FROM booklist_book bb " +
+            "JOIN sys_book b ON bb.book_id = b.id " +
+            "WHERE bb.booklist_id = #{booklistId} " +
+            "AND (b.status = 2 OR b.status IS NULL)")
+    List<Map<String, Object>> selectPublicBooksByListId(@Param("booklistId") Long booklistId);
 }

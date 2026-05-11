@@ -28,6 +28,10 @@ venv/
 .idea/
 .vscode/
 .DS_Store
+
+# Claude / Playwright
+.claude/
+.playwright-mcp/
 Thumbs.db
 *.iws
 *.iml

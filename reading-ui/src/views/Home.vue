@@ -188,9 +188,11 @@ import {
   Bell,
   ArrowLeft
 } from '@element-plus/icons-vue'
-import axios from 'axios'
+import request from '../utils/request'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
@@ -219,9 +221,8 @@ let blinkTimer = null
 let ws = null
 
 onMounted(() => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    userInfo.value = JSON.parse(userStr)
+  if (authStore.user) {
+    userInfo.value = authStore.user
   }
   loadHotBooks()
   loadRankBooks()
@@ -320,7 +321,7 @@ const goToFriends = () => {
 const loadUnreadCount = async () => {
   if (!userInfo.value.id) return
   try {
-    const res = await axios.get(`/api/chat/unread/${userInfo.value.id}`)
+    const res = await request.get(`/api/chat/unread/${userInfo.value.id}`)
     unreadCount.value = res.data.data || 0
   } catch (e) {
     // 忽略
@@ -330,12 +331,12 @@ const loadUnreadCount = async () => {
 const goToLogin = () => router.push('/login')
 
 const loadHotBooks = async () => {
-  const res = await axios.get('/api/sysBook/hot')
+  const res = await request.get('/api/sysBook/hot')
   hotBooks.value = res.data.data || []
 }
 
 const loadRankBooks = async () => {
-  const res = await axios.get('/api/sysBook/rank')
+  const res = await request.get('/api/sysBook/rank')
   rankBooks.value = res.data.data || []
 }
 
@@ -345,7 +346,7 @@ const loadRecommendBooks = async (refresh = false) => {
   try {
     // 传入 userId，让后端决定是走 AI 还是走随机
     // 如果没登录，userId 为 undefined，后端会自动处理
-    const res = await axios.get('/api/sysBook/recommend', {
+    const res = await request.get('/api/sysBook/recommend', {
       params: { userId: userInfo.value.id, refresh }
     })
 
@@ -367,7 +368,7 @@ const loadBooks = async () => {
   
   const url = isSearch ? '/api/search' : '/api/sysBook/list'
   
-  const res = await axios.get(url, {
+  const res = await request.get(url, {
     params: {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
@@ -381,7 +382,7 @@ const loadBooks = async () => {
 
 const handleUserCommand = (cmd) => {
   if (cmd === 'logout') {
-    localStorage.removeItem('user')
+    authStore.logout()
     userInfo.value = {}
     unreadCount.value = 0
     notifications.value = []
@@ -404,7 +405,7 @@ const querySearchAsync = async (queryString, cb) => {
     return;
   }
   try {
-    const res = await axios.get('/api/search', {
+    const res = await request.get('/api/search', {
       params: { keyword: queryString, pageNum: 1, pageSize: 5 }
     });
     if (res.data.code === '200') {

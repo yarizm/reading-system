@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useAuthStore } from '../stores/auth'
 
 // 定义路由规则
 const routes = [
     {
         path: '/',
         name: 'Home',
-        // 懒加载组件 (稍后创建)
         component: () => import('../views/Home.vue')
     },
     {
@@ -14,7 +15,7 @@ const routes = [
         component: () => import('../views/Login.vue')
     },
     {
-        path: '/read/:id', // :id 是动态参数
+        path: '/read/:id',
         name: 'Read',
         component: () => import('../views/Read.vue')
     },
@@ -26,61 +27,38 @@ const routes = [
     {
         path: '/admin',
         name: 'Admin',
-        component: () => import('../views/Admin.vue'),
-        // === 新增：独享路由守卫 ===
-        beforeEnter: (to, from, next) => {
-            // 1. 获取用户信息
-            const userStr = localStorage.getItem('user')
-            const user = userStr ? JSON.parse(userStr) : null
-
-            // 2. 判断逻辑
-            if (user && user.role === 1) {
-                // 是管理员，放行
-                next()
-            } else {
-                // 不是管理员，或者没登录
-                // 可以弹窗提示，或者直接踢回首页
-                alert('权限不足：只有管理员可以访问此页面')
-                next('/') // 跳转回首页
-            }
-        }
+        component: () => import('../views/Admin.vue')
     },
     {
         path: '/profile',
         name: 'Profile',
-        component: () => import('../views/Profile.vue') // 简单的个人信息修改页
+        component: () => import('../views/Profile.vue')
     },
-    // 在 routes 数组里添加：
     {
         path: '/book/:id',
         name: 'BookDetail',
         component: () => import('../views/BookDetail.vue')
     },
-    // 书单分享导入页
     {
         path: '/shelf/import/:shareCode',
         name: 'ImportBooklist',
         component: () => import('../views/ImportBooklist.vue')
     },
-    // 查看用户资料页
     {
         path: '/user/:id',
         name: 'UserProfile',
         component: () => import('../views/UserProfile.vue')
     },
-    // 用户书籍管理
     {
         path: '/my-books',
         name: 'MyBooks',
         component: () => import('../views/MyBooks.vue')
     },
-    // 好友中心
     {
         path: '/friends',
         name: 'Friends',
         component: () => import('../views/Friends.vue')
     },
-    // 聊天页面
     {
         path: '/chat/:friendId',
         name: 'Chat',
@@ -88,28 +66,48 @@ const routes = [
     },
 ]
 
-// 创建路由实例
 const router = createRouter({
     history: createWebHistory(),
     routes,
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
             return savedPosition
-        } else {
-            return { top: 0 }
         }
+        return { top: 0 }
     }
 })
 
-// 确保在路由跳转后强行将滚动条归零，防患未然
-router.afterEach(() => {
-    window.scrollTo(0, 0)
-    if (document.documentElement) {
-        document.documentElement.scrollTop = 0
+const publicRoutes = ['Home', 'Login', 'BookDetail']
+
+router.beforeEach(async (to, from, next) => {
+    const authStore = useAuthStore()
+
+    if (to.name === 'Login') {
+        next()
+        return
     }
-    if (document.body) {
-        document.body.scrollTop = 0
+
+    if (!authStore.isLoggedIn) {
+        if (publicRoutes.includes(to.name)) {
+            next()
+        } else {
+            next({ name: 'Login' })
+        }
+        return
     }
+
+    if (to.name === 'Admin') {
+        await authStore.fetchAndVerify()
+        if (authStore.isAdmin) {
+            next()
+        } else {
+            ElMessage.error('权限不足：只有管理员可以访问此页面')
+            next('/')
+        }
+        return
+    }
+
+    next()
 })
 
 export default router

@@ -320,18 +320,19 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' // 引入路由
-import axios from 'axios'
+import request from '../utils/request'
 import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {ArrowLeft, Plus, User, CircleCheck, CircleClose} from '@element-plus/icons-vue' // 引入图标
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const activeTab = ref('book')
 const uploadHeaders = getAuthHeaders()
 
 // 获取当前登录用户的ID，用于权限判断
-const userStr = localStorage.getItem('user')
-const currentLoggedUserId = ref(userStr ? JSON.parse(userStr).id : 0)
+const currentLoggedUserId = ref(authStore.user?.id || 0)
 
 // === 数据定义 ===
 const bookList = ref([])
@@ -375,7 +376,7 @@ const goHome = () => {
 const loadBooks = async (page=1) => {
   try {
     currentBookPage.value = page
-    const res = await axios.get('/api/sysBook/list', { params: { pageNum: page, pageSize: 10, isAdmin: true } })
+    const res = await request.get('/api/sysBook/list', { params: { pageNum: page, pageSize: 10, isAdmin: true } })
     bookList.value = res.data.data.records
     totalBooks.value = res.data.data.total || 0
   } catch (e) {
@@ -403,11 +404,11 @@ const saveBook = async () => {
   try {
     if (bookForm.value.id) {
       // 有 ID，走更新接口
-      await axios.put('/api/sysBook/update', bookForm.value)
+      await request.put('/api/sysBook/update', bookForm.value)
       ElMessage.success('更新成功')
     } else {
       // 无 ID，走新增接口
-      await axios.post('/api/sysBook/add', bookForm.value)
+      await request.post('/api/sysBook/add', bookForm.value)
       ElMessage.success('添加成功')
     }
     showBookDialog.value = false
@@ -419,7 +420,7 @@ const saveBook = async () => {
 
 const deleteBook = (id) => {
   ElMessageBox.confirm('确定删除吗？').then(async () => {
-    await axios.delete(`/api/sysBook/${id}`)
+    await request.delete(`/api/sysBook/${id}`)
     ElMessage.success('删除成功')
     loadBooks(currentBookPage.value)
   })
@@ -429,7 +430,7 @@ const deleteBook = (id) => {
 const loadUsers = async (page = 1) => {
   try {
     currentUserPage.value = page
-    const res = await axios.get('/api/sysUser/list', { params: { pageNum: page, pageSize: 10 } })
+    const res = await request.get('/api/sysUser/list', { params: { pageNum: page, pageSize: 10 } })
     if (res.data.code === '200') {
       userList.value = res.data.data.records
       totalUsers.value = res.data.data.total || 0
@@ -449,7 +450,7 @@ const openEditUser = (row) => {
 const saveUser = async () => {
   try {
     // 调用更新接口 (带上操作人 ID)
-    const res = await axios.post(`/api/sysUser/adminUpdate?operatorId=${currentLoggedUserId.value}`, userForm.value)
+    const res = await request.post(`/api/sysUser/adminUpdate?operatorId=${currentLoggedUserId.value}`, userForm.value)
     if (res.data.code === '200') {
       ElMessage.success('用户信息修改成功')
       showUserDialog.value = false
@@ -469,7 +470,7 @@ const deleteUser = (id) => {
   }
   ElMessageBox.confirm('确定删除该用户吗？此操作不可恢复。', '警告', { type: 'warning' })
       .then(async () => {
-        const res = await axios.delete(`/api/sysUser/${id}`)
+        const res = await request.delete(`/api/sysUser/${id}`)
         if (res.data.code === '200') {
           ElMessage.success('用户删除成功')
           loadUsers(currentUserPage.value)
@@ -487,7 +488,7 @@ const toggleBan = async (row) => {
   const actionName = newBanStatus ? '封禁' : '解封'
   try {
     await ElMessageBox.confirm(`确定要${actionName}该用户吗？`, '提示', { type: 'warning' })
-    const res = await axios.post(`/api/sysUser/ban/${row.id}?banned=${newBanStatus}`)
+    const res = await request.post(`/api/sysUser/ban/${row.id}?banned=${newBanStatus}`)
     if (res.data.code === '200') {
       ElMessage.success(res.data.data)
       loadUsers(currentUserPage.value)
@@ -505,10 +506,10 @@ const openUserRecords = (userId) => {
 
 const loadUserRecords = async () => {
   try {
-    const res1 = await axios.get(`/api/comment/user/${currentRecordsUserId.value}`)
+    const res1 = await request.get(`/api/comment/user/${currentRecordsUserId.value}`)
     userBookComments.value = res1.data.data.map(c => ({ ...c, isEditing: false, editContent: '' }))
     
-    const res2 = await axios.get(`/api/paragraphComment/user/${currentRecordsUserId.value}`)
+    const res2 = await request.get(`/api/paragraphComment/user/${currentRecordsUserId.value}`)
     userParagraphComments.value = res2.data.data.map(c => ({ ...c, isEditing: false, editContent: '' }))
   } catch (e) {
     ElMessage.error('加载记录失败')
@@ -517,7 +518,7 @@ const loadUserRecords = async () => {
 
 const saveBookComment = async (c) => {
   try {
-    const res = await axios.put('/api/comment/update', { id: c.id, content: c.editContent })
+    const res = await request.put('/api/comment/update', { id: c.id, content: c.editContent })
     if (res.data.code === '200') {
       ElMessage.success('修改成功')
       c.content = c.editContent
@@ -529,7 +530,7 @@ const saveBookComment = async (c) => {
 const deleteBookComment = async (id) => {
   try {
     await ElMessageBox.confirm('确定删除该条评论吗？', '提示', { type: 'warning' })
-    const res = await axios.delete(`/api/comment/${id}`)
+    const res = await request.delete(`/api/comment/${id}`)
     if (res.data.code === '200') {
         ElMessage.success('删除成功')
         loadUserRecords()
@@ -539,7 +540,7 @@ const deleteBookComment = async (id) => {
 
 const saveParagraphComment = async (c) => {
   try {
-    const res = await axios.put('/api/paragraphComment/update', { id: c.id, content: c.editContent })
+    const res = await request.put('/api/paragraphComment/update', { id: c.id, content: c.editContent })
     if (res.data.code === '200') {
       ElMessage.success('修改成功')
       c.content = c.editContent
@@ -553,7 +554,7 @@ const deleteParagraphComment = async (id) => {
     await ElMessageBox.confirm('确定删除该条评论吗？', '提示', { type: 'warning' })
     const userStr = localStorage.getItem('user')
     const uid = userStr ? JSON.parse(userStr).id : 0
-    const res = await axios.delete(`/api/paragraphComment/${id}?userId=${uid}`)
+    const res = await request.delete(`/api/paragraphComment/${id}?userId=${uid}`)
     if (res.data.code === '200') {
         ElMessage.success('删除成功')
         loadUserRecords()
@@ -567,7 +568,7 @@ const reqTypeTag = (t) => ({ new: 'success', edit: 'warning', delist: 'danger' }
 
 const loadReviewList = async () => {
   try {
-    const res = await axios.get('/api/sysBook/reviewRequests/pending')
+    const res = await request.get('/api/sysBook/reviewRequests/pending')
     if (res.data.code === '200') {
       reviewList.value = res.data.data
     }
@@ -584,7 +585,7 @@ const reviewRequest = async (id, action) => {
       cancelButtonText: '取消',
       type: action === 'approve' ? 'success' : 'warning'
     })
-    const res = await axios.post(`/api/sysBook/reviewRequest/${id}`, { action })
+    const res = await request.post(`/api/sysBook/reviewRequest/${id}`, { action })
     if (res.data.code === '200') {
       ElMessage.success(res.data.data || `已${label}`)
       loadReviewList()
@@ -634,7 +635,7 @@ const confirmReject = async () => {
     return
   }
   try {
-    const res = await axios.post(`/api/sysBook/reviewRequest/${rejectTargetId.value}`, {
+    const res = await request.post(`/api/sysBook/reviewRequest/${rejectTargetId.value}`, {
       action: 'reject',
       rejectReason: rejectReason.value.trim()
     })

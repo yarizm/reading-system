@@ -36,6 +36,9 @@ public class ChatController {
         if (currentUserId == null || msg.getReceiverId() == null) {
             return Result.error("403", "Forbidden");
         }
+        if (!authContextService.areFriends(currentUserId, msg.getReceiverId())) {
+            return Result.error("403", "Only friends can receive messages");
+        }
         msg.setSenderId(currentUserId);
         msg.setIsRead(0);
         chatMessageService.save(msg);

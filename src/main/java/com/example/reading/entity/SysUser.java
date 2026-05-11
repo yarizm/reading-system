@@ -103,4 +103,7 @@ public class SysUser implements Serializable {
     private Integer isBanned; // 0:正常 1:封禁
     @TableField(exist = false)
     private String token;
+
+    @TableField(exist = false)
+    private String oldPassword;
 }

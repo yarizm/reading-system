@@ -260,7 +260,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import request from '../utils/request'
 import { getAuthHeaders } from '../utils/authHeaders'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -276,8 +276,10 @@ import {
   Document,
   ArrowLeft
 } from '@element-plus/icons-vue'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const uploadHeaders = getAuthHeaders()
 const shelfList = ref([])
 const userInfo = ref({})
@@ -298,9 +300,8 @@ const myUploads = ref([])
 const uploadForm = ref({ title: '', author: '', category: '', description: '', coverUrl: '', filePath: '' })
 
 onMounted(() => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    userInfo.value = JSON.parse(userStr)
+  if (authStore.user) {
+    userInfo.value = authStore.user
     shelfVisible.value = userInfo.value.shelfVisible ?? 1
     loadShelf()
     loadBooklists()
@@ -313,7 +314,7 @@ onMounted(() => {
 // ===== 书架 =====
 const loadShelf = async () => {
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     if (res.data.code === '200') {
       shelfList.value = res.data.data
     }
@@ -347,7 +348,7 @@ const continueRead = (bookId) => {
 }
 
 const removeFromShelf = async (id) => {
-  await axios.delete(`/api/bookshelf/remove/${id}`)
+  await request.delete(`/api/bookshelf/remove/${id}`)
   ElMessage.success('已移出')
   loadShelf()
 }
@@ -360,12 +361,12 @@ const formatTime = (timeStr) => {
 // ===== 书架可见性 =====
 const toggleVisibility = async (val) => {
   try {
-    await axios.post('/api/sysUser/update', {
+    await request.post('/api/sysUser/update', {
       id: userInfo.value.id,
       shelfVisible: val
     })
     userInfo.value.shelfVisible = val
-    localStorage.setItem('user', JSON.stringify(userInfo.value))
+    authStore.login(userInfo.value)
     ElMessage.success(val === 1 ? '书架已设为公开' : '书架已设为私密')
   } catch (e) {
     ElMessage.error('设置失败')
@@ -376,7 +377,7 @@ const toggleVisibility = async (val) => {
 // ===== 书单 CRUD =====
 const loadBooklists = async () => {
   try {
-    const res = await axios.get(`/api/booklist/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/booklist/list/${userInfo.value.id}`)
     if (res.data.code === '200') {
       booklists.value = res.data.data
     }
@@ -388,7 +389,7 @@ const loadBooklists = async () => {
 const createBooklist = async () => {
   if (!newBooklist.value.name.trim()) return
   try {
-    const res = await axios.post('/api/booklist/create', {
+    const res = await request.post('/api/booklist/create', {
       userId: userInfo.value.id,
       name: newBooklist.value.name.trim(),
       description: newBooklist.value.description.trim()
@@ -406,7 +407,7 @@ const createBooklist = async () => {
 
 const deleteBooklist = async (id) => {
   try {
-    await axios.delete(`/api/booklist/delete/${id}`)
+    await request.delete(`/api/booklist/delete/${id}`)
     ElMessage.success('书单已删除')
     loadBooklists()
   } catch (e) {
@@ -416,7 +417,7 @@ const deleteBooklist = async (id) => {
 
 const addBookToList = async (booklistId, bookId) => {
   try {
-    const res = await axios.post('/api/booklist/addBook', {
+    const res = await request.post('/api/booklist/addBook', {
       booklistId,
       bookId
     })
@@ -432,7 +433,7 @@ const addBookToList = async (booklistId, bookId) => {
 
 const viewBooklistDetail = async (id) => {
   try {
-    const res = await axios.get(`/api/booklist/detail/${id}`)
+    const res = await request.get(`/api/booklist/detail/${id}`)
     if (res.data.code === '200') {
       detailBooklist.value = res.data.data
       showDetailDialog.value = true
@@ -444,7 +445,7 @@ const viewBooklistDetail = async (id) => {
 
 const removeBookFromList = async (booklistId, bookId) => {
   try {
-    await axios.delete(`/api/booklist/removeBook?booklistId=${booklistId}&bookId=${bookId}`)
+    await request.delete(`/api/booklist/removeBook?booklistId=${booklistId}&bookId=${bookId}`)
     ElMessage.success('已从书单移除')
     viewBooklistDetail(booklistId) // 刷新
   } catch (e) {
@@ -466,7 +467,7 @@ const copyShareLink = (bl) => {
 const submitUserUpload = async () => {
   if (!uploadForm.value.title || !uploadForm.value.filePath) return
   try {
-    const res = await axios.post('/api/sysBook/userUpload', {
+    const res = await request.post('/api/sysBook/userUpload', {
       ...uploadForm.value,
       uploaderId: userInfo.value.id
     })
@@ -479,7 +480,7 @@ const submitUserUpload = async () => {
       // 自动解析章节
       const bookId = res.data.data?.id
       if (bookId) {
-        try { await axios.post(`/api/sysBook/analyze/${bookId}`) } catch (e) { /* 解析失败不影响主流程 */ }
+        try { await request.post(`/api/sysBook/analyze/${bookId}`) } catch (e) { /* 解析失败不影响主流程 */ }
       }
     } else {
       ElMessage.error(res.data.msg || '上传失败')
@@ -491,7 +492,7 @@ const submitUserUpload = async () => {
 
 const openMyUploads = async () => {
   try {
-    const res = await axios.get(`/api/sysBook/myUploads/${userInfo.value.id}`)
+    const res = await request.get(`/api/sysBook/myUploads/${userInfo.value.id}`)
     if (res.data.code === '200') {
       myUploads.value = res.data.data
     }
@@ -503,7 +504,7 @@ const openMyUploads = async () => {
 
 const applyPublic = async (bookId) => {
   try {
-    const res = await axios.post(`/api/sysBook/applyPublic/${bookId}`, null, {
+    const res = await request.post(`/api/sysBook/applyPublic/${bookId}`, null, {
       params: { userId: userInfo.value.id }
     })
     if (res.data.code === '200') {

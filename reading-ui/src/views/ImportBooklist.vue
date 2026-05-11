@@ -44,12 +44,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import request from '../utils/request'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, Download } from '@element-plus/icons-vue'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const booklist = ref(null)
 const loading = ref(true)
 const error = ref(false)
@@ -57,11 +59,10 @@ const importing = ref(false)
 const userInfo = ref({})
 
 onMounted(async () => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) userInfo.value = JSON.parse(userStr)
+  if (authStore.user) userInfo.value = authStore.user
 
   try {
-    const res = await axios.get(`/api/booklist/share/${route.params.shareCode}`)
+    const res = await request.get(`/api/booklist/share/${route.params.shareCode}`)
     if (res.data.code === '200') {
       booklist.value = res.data.data
     } else {
@@ -77,7 +78,7 @@ onMounted(async () => {
 const doImport = async () => {
   importing.value = true
   try {
-    const res = await axios.post(`/api/booklist/import/${route.params.shareCode}?userId=${userInfo.value.id}`)
+    const res = await request.post(`/api/booklist/import/${route.params.shareCode}?userId=${userInfo.value.id}`)
     if (res.data.code === '200') {
       ElMessage.success(res.data.data || '导入成功')
       router.push('/shelf')
