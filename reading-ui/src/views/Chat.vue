@@ -29,7 +29,21 @@
           class="msg-avatar"
         />
         <div class="bubble-content">
-          <template v-if="getParagraphShare(msg)">
+          <template v-if="getBookShare(msg)">
+            <div class="book-share-card" @click="openSharedBook(msg)">
+              <div class="share-card-label">图书分享</div>
+              <div class="book-share-main">
+                <img :src="getBookShare(msg).coverUrl || defaultCover" class="book-share-cover" alt="" />
+                <div class="book-share-info">
+                  <div class="share-card-title">{{ getBookShare(msg).bookTitle || '分享的图书' }}</div>
+                  <div class="share-card-meta">{{ getBookShare(msg).bookAuthor || '作者未知' }}</div>
+                </div>
+              </div>
+              <div v-if="getBookShare(msg).message" class="share-card-note">{{ getBookShare(msg).message }}</div>
+              <div class="share-card-link">点击查看图书</div>
+            </div>
+          </template>
+          <template v-else-if="getParagraphShare(msg)">
             <div class="paragraph-share-card" @click="openSharedParagraph(msg)">
               <div class="share-card-label">段落分享</div>
               <div class="share-card-title">《{{ getParagraphShare(msg).bookTitle || '当前书籍' }}》</div>
@@ -132,6 +146,7 @@ const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQA
 
 const PARAGRAPH_SHARE_PREFIX = '__PARAGRAPH_SHARE__'
 const AUDIO_SHARE_PREFIX = '__AUDIO_SHARE__'
+const BOOK_SHARE_PREFIX = '__BOOK_SHARE__'
 
 const userInfo = ref({})
 const friendInfo = ref({})
@@ -265,6 +280,7 @@ const parseShareContent = (content, prefix) => {
 
 const getParagraphShare = (msg) => parseShareContent(msg.content, PARAGRAPH_SHARE_PREFIX)
 const getAudioShare = (msg) => parseShareContent(msg.content, AUDIO_SHARE_PREFIX)
+const getBookShare = (msg) => parseShareContent(msg.content, BOOK_SHARE_PREFIX)
 
 const formatSharePosition = (share) => {
   if (!share) return '来自聊天分享'
@@ -303,6 +319,19 @@ const openSharedAudio = (msg) => {
       paragraphIndex: share.paragraphIndex ?? undefined
     }
   })
+}
+
+const openSharedBook = async (msg) => {
+  const share = getBookShare(msg)
+  if (!share?.bookId) return
+  if (share.shareId && msg.senderId !== userInfo.value.id) {
+    try {
+      await request.post(`/api/bookShare/read/${share.shareId}`)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  router.push(`/book/${share.bookId}`)
 }
 
 const formatTime = (timeStr) => {
@@ -364,6 +393,14 @@ const formatTime = (timeStr) => {
   max-width: 75%;
 }
 
+.mine {
+  align-self: flex-end;
+}
+
+.theirs {
+  align-self: flex-start;
+}
+
 .msg-avatar {
   flex-shrink: 0;
   margin-top: 2px;
@@ -404,6 +441,7 @@ const formatTime = (timeStr) => {
   text-align: right;
 }
 
+.book-share-card,
 .paragraph-share-card,
 .audio-share-card {
   min-width: 250px;
@@ -415,10 +453,29 @@ const formatTime = (timeStr) => {
   cursor: pointer;
 }
 
+.mine .book-share-card,
 .mine .paragraph-share-card,
 .mine .audio-share-card {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.24);
+}
+
+.book-share-main {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.book-share-cover {
+  width: 44px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.book-share-info {
+  min-width: 0;
 }
 
 .share-card-label {

@@ -20,7 +20,6 @@
         JOIN sys_book b ON b.id = bs.book_id
         JOIN sys_user u ON u.id = bs.sender_id
         WHERE bs.receiver_id = #{userId}
-          AND (b.status = 2 OR b.status IS NULL OR b.uploader_id = #{userId})
         ORDER BY bs.create_time DESC
     </select>
 

@@ -246,6 +246,10 @@ const connectWebSocket = () => {
   ws.onmessage = (event) => {
     try {
       const msg = JSON.parse(event.data)
+      if (msg.type === 'chat' && msg.data?.shareType === 'book') {
+        loadUnreadCount()
+        return
+      }
       notifications.value.unshift(msg)
       // 触发闪烁动画
       triggerBlink()

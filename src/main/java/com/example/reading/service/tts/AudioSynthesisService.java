@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 
 @Service
@@ -27,9 +28,6 @@ public class AudioSynthesisService {
 
     @Value("${file.upload-path}")
     private String uploadPath;
-
-    @Value("${server.port:8090}")
-    private String serverPort;
 
     public AudioSynthesisService(List<TtsProvider> providers,
                                  TtsProperties ttsProperties,
@@ -68,9 +66,12 @@ public class AudioSynthesisService {
                     ? buildChapterCacheFile(request.getChapterId(), voiceKey, provider)
                     : buildSnippetFile(voiceKey, text, provider);
 
-            boolean cached = outputFile.exists();
+            boolean cached = outputFile.exists() && outputFile.length() > 0;
+            if (outputFile.exists() && outputFile.length() == 0) {
+                Files.deleteIfExists(outputFile.toPath());
+            }
             if (!cached) {
-                provider.synthesizeToFile(text, voiceKey, outputFile);
+                synthesizeToFile(text, voiceKey, provider, outputFile);
             }
 
             AudioGenerateResponse response = new AudioGenerateResponse();
@@ -88,7 +89,19 @@ public class AudioSynthesisService {
         } catch (Exception e) {
             log.error("Audio synthesis failed. sourceType={}, chapterId={}, bookId={}, voice={}",
                     request.getSourceType(), request.getChapterId(), request.getBookId(), request.getVoice(), e);
-            return Result.error("500", "当前听书服务不可用，请稍后再试");
+            return Result.error("500", "听书生成失败：" + safeMessage(e));
+        }
+    }
+
+    private void synthesizeToFile(String text, String voiceKey, TtsProvider provider, File outputFile) throws Exception {
+        try {
+            provider.synthesizeToFile(text, voiceKey, outputFile);
+            if (!outputFile.exists() || outputFile.length() == 0) {
+                throw new IllegalStateException("TTS provider returned empty audio");
+            }
+        } catch (Exception e) {
+            Files.deleteIfExists(outputFile.toPath());
+            throw e;
         }
     }
 
@@ -167,5 +180,13 @@ public class AudioSynthesisService {
 
     private String buildFileUrl(String fileName) {
         return "/files/" + fileName;
+    }
+
+    private String safeMessage(Throwable e) {
+        String message = e.getMessage();
+        if ((message == null || message.isBlank()) && e.getCause() != null) {
+            message = e.getCause().getMessage();
+        }
+        return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
     }
 }

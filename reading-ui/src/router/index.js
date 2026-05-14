@@ -22,17 +22,20 @@ const routes = [
     {
         path: '/shelf',
         name: 'Shelf',
-        component: () => import('../views/Shelf.vue')
+        component: () => import('../views/Shelf.vue'),
+        meta: { requireAuth: true }
     },
     {
         path: '/admin',
         name: 'Admin',
-        component: () => import('../views/Admin.vue')
+        component: () => import('../views/Admin.vue'),
+        meta: { requireAuth: true }
     },
     {
         path: '/profile',
         name: 'Profile',
-        component: () => import('../views/Profile.vue')
+        component: () => import('../views/Profile.vue'),
+        meta: { requireAuth: true }
     },
     {
         path: '/book/:id',
@@ -52,17 +55,20 @@ const routes = [
     {
         path: '/my-books',
         name: 'MyBooks',
-        component: () => import('../views/MyBooks.vue')
+        component: () => import('../views/MyBooks.vue'),
+        meta: { requireAuth: true }
     },
     {
         path: '/friends',
         name: 'Friends',
-        component: () => import('../views/Friends.vue')
+        component: () => import('../views/Friends.vue'),
+        meta: { requireAuth: true }
     },
     {
         path: '/chat/:friendId',
         name: 'Chat',
-        component: () => import('../views/Chat.vue')
+        component: () => import('../views/Chat.vue'),
+        meta: { requireAuth: true }
     },
 ]
 
@@ -77,22 +83,11 @@ const router = createRouter({
     }
 })
 
-const publicRoutes = ['Home', 'Login', 'BookDetail']
-
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
 
-    if (to.name === 'Login') {
-        next()
-        return
-    }
-
-    if (!authStore.isLoggedIn) {
-        if (publicRoutes.includes(to.name)) {
-            next()
-        } else {
-            next({ name: 'Login' })
-        }
+    if (to.meta.requireAuth && !authStore.isLoggedIn) {
+        next({ name: 'Login' })
         return
     }
 

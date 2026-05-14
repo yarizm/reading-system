@@ -88,6 +88,11 @@ const audioPlayback = reactive({
   paragraphIndex: null
 })
 const playableAudioUrl = computed(() => withFileAccessToken(audioPlayback.audioUrl))
+
+const getRequestErrorMessage = (error, fallback) => {
+  const data = error?.response?.data
+  return data?.msg || data?.detail || error?.message || fallback
+}
 const activeTab = ref('ai')
 const noteList = ref([])
 const menuVisible = ref(false)
@@ -766,7 +771,7 @@ const openAudioPlayer = async (payload) => {
       await currentAudio.value.play()
     }
   } catch (error) {
-    ElMessage.error('当前听书服务不可用，请稍后再试')
+    ElMessage.error(getRequestErrorMessage(error, '当前听书服务不可用，请稍后再试'))
     audioPlayerVisible.value = false
     stopAudioPlayback()
   } finally {

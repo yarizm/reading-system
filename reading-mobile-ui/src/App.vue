@@ -45,6 +45,7 @@ const connectWs = () => {
       const msg = JSON.parse(event.data)
       if (msg.type === 'chat') {
         loadUnread()
+        if (msg.data?.shareType === 'book') return
         showNotify({ type: 'primary', message: '收到新消息' })
       } else if (msg.type === 'friend_request') {
         showNotify({ type: 'primary', message: `${msg.data?.nickname || '某人'} 想加你为好友` })

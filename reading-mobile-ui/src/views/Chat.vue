@@ -12,6 +12,7 @@ const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQA
 
 const PARAGRAPH_SHARE_PREFIX = '__PARAGRAPH_SHARE__'
 const AUDIO_SHARE_PREFIX = '__AUDIO_SHARE__'
+const BOOK_SHARE_PREFIX = '__BOOK_SHARE__'
 
 const userInfo = ref({})
 const friendInfo = ref({})
@@ -143,6 +144,7 @@ const parseShareContent = (content, prefix) => {
 
 const getParagraphShare = (message) => parseShareContent(message.content, PARAGRAPH_SHARE_PREFIX)
 const getAudioShare = (message) => parseShareContent(message.content, AUDIO_SHARE_PREFIX)
+const getBookShare = (message) => parseShareContent(message.content, BOOK_SHARE_PREFIX)
 
 const formatSharePosition = (share) => {
   if (!share) return '来自聊天分享'
@@ -181,6 +183,19 @@ const openSharedAudio = (message) => {
       paragraphIndex: share.paragraphIndex ?? undefined
     }
   })
+}
+
+const openSharedBook = async (message) => {
+  const share = getBookShare(message)
+  if (!share?.bookId) return
+  if (share.shareId && message.senderId !== userInfo.value.id) {
+    try {
+      await axios.post(`/api/bookShare/read/${share.shareId}`)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  router.push(`/book/${share.bookId}`)
 }
 
 const formatTime = (timeStr) => {
@@ -226,7 +241,20 @@ const formatTime = (timeStr) => {
         />
 
         <div class="bubble-wrap">
-          <div v-if="getParagraphShare(message)" class="paragraph-share-card" @click="openSharedParagraph(message)">
+          <div v-if="getBookShare(message)" class="book-share-card" @click="openSharedBook(message)">
+            <div class="share-card-label">图书分享</div>
+            <div class="book-share-main">
+              <img :src="getBookShare(message).coverUrl || defaultCover" class="book-share-cover" alt="" />
+              <div class="book-share-info">
+                <div class="share-card-title">{{ getBookShare(message).bookTitle || '分享的图书' }}</div>
+                <div class="share-card-meta">{{ getBookShare(message).bookAuthor || '作者未知' }}</div>
+              </div>
+            </div>
+            <div v-if="getBookShare(message).message" class="share-card-note">{{ getBookShare(message).message }}</div>
+            <div class="share-card-link">点击查看图书</div>
+          </div>
+
+          <div v-else-if="getParagraphShare(message)" class="paragraph-share-card" @click="openSharedParagraph(message)">
             <div class="share-card-label">段落分享</div>
             <div class="share-card-title">《{{ getParagraphShare(message).bookTitle || '当前书籍' }}》</div>
             <div class="share-card-meta">{{ formatSharePosition(getParagraphShare(message)) }}</div>
@@ -399,6 +427,7 @@ const formatTime = (timeStr) => {
   text-align: right;
 }
 
+.book-share-card,
 .paragraph-share-card,
 .audio-share-card {
   min-width: 220px;
@@ -410,11 +439,30 @@ const formatTime = (timeStr) => {
   box-shadow: 0 10px 26px rgba(93, 67, 43, 0.06);
 }
 
+.mine .book-share-card,
 .mine .paragraph-share-card,
 .mine .audio-share-card {
   background: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.26);
   color: #fff;
+}
+
+.book-share-main {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.book-share-cover {
+  width: 44px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.book-share-info {
+  min-width: 0;
 }
 
 .share-card-label {

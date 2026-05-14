@@ -66,6 +66,11 @@ const audioPlayback = reactive({
 })
 const playableAudioUrl = computed(() => withFileAccessToken(audioPlayback.audioUrl))
 
+const getRequestErrorMessage = (error, fallback) => {
+  const data = error?.response?.data
+  return data?.msg || data?.detail || error?.message || fallback
+}
+
 // Reading settings
 const readingConfig = reactive({
   fontSize: 18, lineHeight: 1.8, theme: 'default', voice: 'cherry'
@@ -469,7 +474,7 @@ const openAudioPlayer = async (payload) => {
   } catch (e) {
     audioPlayerVisible.value = false
     stopAudioPlayback()
-    showFailToast('当前听书服务不可用，请稍后再试')
+    showFailToast(getRequestErrorMessage(e, '当前听书服务不可用，请稍后再试'))
   } finally {
     isAudioLoading.value = false
   }

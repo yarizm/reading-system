@@ -47,6 +47,8 @@ mybatis-plus:
 file:
   upload-path: D:/WORK/reading-system-files/  # 请确保这个盘符存在，或者改成你喜欢的路径
 app:
+  security:
+    trust-proxy-headers: ${APP_SECURITY_TRUST_PROXY_HEADERS:false}
   auth:
     token-secret: ${APP_AUTH_TOKEN_SECRET:${random.uuid}}
     token-ttl-millis: ${APP_AUTH_TOKEN_TTL_MILLIS:86400000}

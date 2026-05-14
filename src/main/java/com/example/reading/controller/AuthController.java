@@ -55,15 +55,31 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public Result<?> register(@RequestBody Map<String, Object> params) {
+    public Result<?> register(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+        String target = (String) params.get("target");
+        if (StrUtil.isBlank(target)) {
+            return Result.error("400", "Invalid parameters");
+        }
+
+        String clientIp = IpUtil.getClientIp(request);
+        String targetKey = "register:target:" + target;
+        String ipKey = "register:ip:" + clientIp;
+        if (!rateLimitService.isAllowed(targetKey, 5, 300)) {
+            return Result.error("429", "Registration attempts too frequent, please try later");
+        }
+        if (!rateLimitService.isAllowed(ipKey, 20, 300)) {
+            return Result.error("429", "Operation too frequent, please try later");
+        }
+
         try {
             authService.register(
-                    (String) params.get("target"),
+                    target,
                     (String) params.get("code"),
                     (String) params.get("password"),
                     (String) params.get("nickname"),
                     (Integer) params.get("age")
             );
+            rateLimitService.reset(targetKey);
             return Result.success("注册成功");
         } catch (Exception e) {
             return Result.error("400", e.getMessage());

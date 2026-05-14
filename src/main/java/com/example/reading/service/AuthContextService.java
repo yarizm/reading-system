@@ -1,9 +1,11 @@
 package com.example.reading.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.reading.entity.BookShare;
 import com.example.reading.entity.Friendship;
 import com.example.reading.entity.SysBook;
 import com.example.reading.entity.SysUser;
+import com.example.reading.mapper.BookShareMapper;
 import com.example.reading.mapper.FriendshipMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,9 @@ public class AuthContextService {
 
     @Autowired
     private FriendshipMapper friendshipMapper;
+
+    @Autowired
+    private BookShareMapper bookShareMapper;
 
     @Autowired
     private ISysBookService sysBookService;
@@ -94,12 +99,21 @@ public class AuthContextService {
         boolean uploader = currentUserId != null
                 && book.getUploaderId() != null
                 && book.getUploaderId().equals(currentUserId);
-        return isPublicBook(book) || uploader || isAdmin(currentUserId);
+        boolean sharedAccess = !Integer.valueOf(4).equals(book.getStatus())
+                && hasReceivedBookShare(book.getId(), currentUserId);
+        return isPublicBook(book) || uploader || isAdmin(currentUserId) || sharedAccess;
     }
 
     public boolean canAccessBook(SysBook book, Long currentUserId) {
         if (book == null || currentUserId == null) return false;
         boolean uploader = book.getUploaderId() != null && book.getUploaderId().equals(currentUserId);
         return isPublicBook(book) || uploader || isAdmin(currentUserId);
+    }
+
+    private boolean hasReceivedBookShare(Long bookId, Long currentUserId) {
+        if (bookId == null || currentUserId == null) return false;
+        QueryWrapper<BookShare> query = new QueryWrapper<>();
+        query.eq("book_id", bookId).eq("receiver_id", currentUserId);
+        return bookShareMapper.selectCount(query) > 0;
     }
 }

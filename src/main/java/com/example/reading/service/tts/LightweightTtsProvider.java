@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.netty.http.client.HttpClient;
 
 import java.io.File;
@@ -49,16 +50,24 @@ public class LightweightTtsProvider implements TtsProvider {
             outputFile.getParentFile().mkdirs();
         }
 
-        Boolean wrote = webClient.post()
-                .uri("/synthesize")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.valueOf("audio/mpeg"), MediaType.APPLICATION_OCTET_STREAM)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class)
-                .as(dataBuffers -> DataBufferUtils.write(dataBuffers, outputFile.toPath()))
-                .thenReturn(Boolean.TRUE)
-                .block(Duration.ofMillis(ttsProperties.getLightweight().getTimeoutMs()));
+        Boolean wrote;
+        try {
+            wrote = webClient.post()
+                    .uri("/synthesize")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.valueOf("audio/mpeg"), MediaType.APPLICATION_OCTET_STREAM)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class)
+                    .as(dataBuffers -> DataBufferUtils.write(dataBuffers, outputFile.toPath()))
+                    .thenReturn(Boolean.TRUE)
+                    .block(Duration.ofMillis(ttsProperties.getLightweight().getTimeoutMs()));
+        } catch (WebClientResponseException e) {
+            String responseBody = e.getResponseBodyAsString();
+            throw new IllegalStateException("Lightweight TTS service failed: HTTP "
+                    + e.getStatusCode().value()
+                    + (responseBody == null || responseBody.isBlank() ? "" : " - " + responseBody), e);
+        }
 
         if (!Boolean.TRUE.equals(wrote) || !outputFile.exists() || outputFile.length() == 0) {
             throw new IllegalStateException("Lightweight TTS service returned empty audio");

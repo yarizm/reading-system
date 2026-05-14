@@ -7,6 +7,7 @@
 - FastAPI
 - uvicorn
 - edge-tts
+- ffmpeg (used to merge long text chunks into one valid MP3)
 
 ## 入口与端口
 
@@ -27,6 +28,8 @@ python -m venv .venv
 .venv\Scripts\activate
 python -m pip install -r requirements.txt
 ```
+
+Long text synthesis requires `ffmpeg` to be available on `PATH`. The Docker image installs it automatically. For local runs, install it with your system package manager before starting uvicorn.
 
 ## 本地启动
 
