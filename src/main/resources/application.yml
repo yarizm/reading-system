@@ -70,6 +70,11 @@ dify:
   recommend:
     api-url: ${DIFY_CHAT_URL}
     api-key: ${DIFY_RECOMMEND_KEY}
+  kb:
+    api-url: ${DIFY_KB_URL}
+    api-key: ${DIFY_KB_KEY}
+    dataset-id: ${DIFY_KB_DATASET_ID}
+    chapter-delay-ms: 200
 
 logging:
   pattern:

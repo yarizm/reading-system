@@ -13,6 +13,7 @@ const defaultCover = 'https://via.placeholder.com/150'
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const bookInfo = ref({})
+const bookLoadError = ref(false)
 const commentList = ref([])
 const userInfo = ref({})
 const inShelf = ref(false)
@@ -39,9 +40,17 @@ onMounted(() => {
 })
 
 const loadBookDetail = async () => {
-  const res = await axios.get(`/api/sysBook/${bookId}`)
-  if (res.data.code === '200') {
-    bookInfo.value = res.data.data
+  try {
+    const res = await axios.get(`/api/sysBook/${bookId}`)
+    if (res.data.code === '200') {
+      bookInfo.value = res.data.data
+      bookLoadError.value = false
+    } else {
+      bookLoadError.value = true
+    }
+  } catch (e) {
+    console.error(e)
+    bookLoadError.value = true
   }
 }
 
@@ -181,7 +190,12 @@ const shareBook = async () => {
 </script>
 
 <template>
-  <div class="detail-page">
+  <div v-if="bookLoadError" class="detail-page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh;">
+    <van-empty image="error" description="该书籍不可访问或不存在" />
+    <p style="color: #999; font-size: 13px; margin-bottom: 20px;">书籍可能未公开、已下架或已被删除</p>
+    <van-button type="primary" round block style="width: 60%;" @click="$router.push('/')">回到首页</van-button>
+  </div>
+  <div v-else class="detail-page">
     <van-nav-bar title="图书详情" left-arrow @click-left="$router.back()" />
 
     <section class="hero-card">

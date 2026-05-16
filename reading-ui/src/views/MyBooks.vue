@@ -49,7 +49,7 @@
                   <el-button type="success" size="small" @click="submitForReview(book.id)">提交审核</el-button>
                 </template>
                 <template v-else-if="book.status === 1">
-                  <span class="pending-hint">审核中，请耐心等待</span>
+                  <el-button type="primary" size="small" @click="openEditDialog(book)">修改提交信息</el-button>
                 </template>
                 <template v-else-if="book.status === 2">
                   <el-button type="primary" size="small" @click="openEditDialog(book)">编辑信息</el-button>
@@ -137,7 +137,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showEditDialog = false">取消</el-button>
-        <el-button v-if="!isUpload && editForm.status !== 2" type="primary" @click="saveBook">保存</el-button>
+        <el-button v-if="editForm.status !== 2" type="primary" @click="saveBook">保存</el-button>
         <el-button v-if="!isUpload && editForm.status === 2" type="warning" @click="saveBook">
           保存并提交编辑审核
         </el-button>

@@ -14,6 +14,7 @@ import com.example.reading.mapper.BookReviewRequestMapper;
 import com.example.reading.dto.BookEditDTO;
 import com.example.reading.dto.ReviewActionDTO;
 import com.example.reading.service.AuthContextService;
+import com.example.reading.service.DifyKnowledgeBaseService;
 import com.example.reading.service.IBookRecommendationService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.ISysUserService;
@@ -70,6 +71,9 @@ public class SysBookController {
     @Autowired
     private BookReviewRequestMapper reviewRequestMapper;
 
+    @Autowired
+    private DifyKnowledgeBaseService difyKnowledgeBaseService;
+
     private final Gson gson = new Gson();
 
     @Autowired
@@ -105,6 +109,16 @@ public class SysBookController {
     private void tryDeleteFromEs(Long bookId) {
         try { bookSearchService.deleteFromEs(bookId); }
         catch (Exception e) { log.error("Failed to delete book from ES. bookId={}", bookId, e); }
+    }
+
+    private void trySyncToKb(Long bookId) {
+        try { difyKnowledgeBaseService.syncOneBookToKb(bookId); }
+        catch (Exception e) { log.error("Failed to sync book to KB. bookId={}", bookId, e); }
+    }
+
+    private void tryDeleteFromKb(Long bookId) {
+        try { difyKnowledgeBaseService.deleteFromKb(bookId); }
+        catch (Exception e) { log.error("Failed to delete book from KB. bookId={}", bookId, e); }
     }
 
     // ===================== 通用功能 =====================
@@ -152,6 +166,7 @@ public class SysBookController {
         sysBook.setCreateTime(LocalDateTime.now());
         sysBookService.save(sysBook);
         trySyncToEs(sysBook.getId());
+        trySyncToKb(sysBook.getId());
         return Result.success();
     }
 
@@ -164,6 +179,7 @@ public class SysBookController {
         }
         sysBookService.updateById(sysBook);
         trySyncToEs(sysBook.getId());
+        trySyncToKb(sysBook.getId());
         return Result.success();
     }
 
@@ -176,6 +192,7 @@ public class SysBookController {
         }
         sysBookService.removeById(id);
         tryDeleteFromEs(id);
+        tryDeleteFromKb(id);
         return Result.success();
     }
 
@@ -267,7 +284,7 @@ public class SysBookController {
         if (!isUploader(existing, request)) {
             return Result.error("403", "无权操作该书籍");
         }
-        if (existing.getStatus() != null && existing.getStatus() != 0 && existing.getStatus() != 3 && existing.getStatus() != 4) {
+        if (existing.getStatus() != null && existing.getStatus() != 0 && existing.getStatus() != 1 && existing.getStatus() != 3 && existing.getStatus() != 4) {
             return Result.error("500", "当前状态不允许直接编辑");
         }
         if (dto.getTitle() != null) existing.setTitle(dto.getTitle());
@@ -396,6 +413,7 @@ public class SysBookController {
                     book.setStatus(2);
                     sysBookService.updateById(book);
                     trySyncToEs(book.getId());
+                    trySyncToKb(book.getId());
                 }
                 case "edit" -> {
                     SysBook changes = gson.fromJson(request.getNewBookData(), SysBook.class);
@@ -408,11 +426,13 @@ public class SysBookController {
                     if (changes.getFilePath() != null) book.setFilePath(changes.getFilePath());
                     sysBookService.updateById(book);
                     trySyncToEs(book.getId());
+                    trySyncToKb(book.getId());
                 }
                 case "delist" -> {
                     book.setStatus(4);
                     sysBookService.updateById(book);
                     tryDeleteFromEs(book.getId());
+                    tryDeleteFromKb(book.getId());
                 }
                 default -> {
                     return Result.error("400", "不支持的审核请求类型");
@@ -552,6 +572,7 @@ public class SysBookController {
         }
 
         trySyncToEs(bookId);
+        trySyncToKb(bookId);
         return Result.success("成功解析出 " + chapters.size() + " 个章节");
     }
 

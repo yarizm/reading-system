@@ -1,6 +1,7 @@
 package com.example.reading.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -16,4 +17,6 @@ public class SysChapter {
     private Integer wordCount;
     private Integer sort; // 排序号，0, 1, 2...
     private String audioUrl; // 章节对应的TTS音频文件URL
+    @TableField("kb_document_id")
+    private String kbDocumentId;
 }

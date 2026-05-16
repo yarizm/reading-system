@@ -1,5 +1,18 @@
 <template>
-  <div class="book-detail-container page-glass-container">
+  <div v-if="bookLoadError" class="book-detail-container page-glass-container">
+    <div class="error-state" style="text-align: center; padding: 80px 20px;">
+      <el-empty description="该书籍不可访问或不存在">
+        <template #default>
+          <p style="color: #999; margin-bottom: 16px;">书籍可能未公开、已下架或已被删除</p>
+        </template>
+      </el-empty>
+      <div>
+        <el-button type="primary" @click="router.back()">返回</el-button>
+        <el-button @click="router.push('/')">回到首页</el-button>
+      </div>
+    </div>
+  </div>
+  <div v-else class="book-detail-container page-glass-container">
     <el-card class="info-card" shadow="never">
       <div class="info-wrapper">
         <div class="cover-box">
@@ -162,6 +175,7 @@ const bookId = route.params.id
 
 // 数据
 const bookInfo = ref({})
+const bookLoadError = ref(false)
 const commentList = ref([])
 const userInfo = ref({})
 const inShelf = ref(false)
@@ -196,8 +210,16 @@ onMounted(() => {
 const loadBookDetail = async () => {
   try {
     const res = await request.get(`/api/sysBook/${bookId}`)
-    if (res.data.code === '200') bookInfo.value = res.data.data
-  } catch (e) { console.error(e) }
+    if (res.data.code === '200') {
+      bookInfo.value = res.data.data
+      bookLoadError.value = false
+    } else {
+      bookLoadError.value = true
+    }
+  } catch (e) {
+    console.error(e)
+    bookLoadError.value = true
+  }
 }
 
 const loadComments = async () => {

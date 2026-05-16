@@ -5,6 +5,10 @@ import { showToast, showSuccessToast, showFailToast, showConfirmDialog } from 'v
 import axios from 'axios'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { getAuthHeaders, withFileAccessToken } from '../utils/authHeaders'
+import { marked } from 'marked'
+
+marked.setOptions({ breaks: true, gfm: true })
+const renderMarkdown = (text) => marked.parse(text || '')
 
 const route = useRoute()
 const router = useRouter()
@@ -593,7 +597,8 @@ const sendChat = async (ctx, modeOverride, displayMsg) => {
       body: JSON.stringify({
         text: textToAnalyze, mode: instruction,
         conversationId: currentConversationId.value,
-        bookName: bookInfo.value.title
+        bookName: bookInfo.value.title,
+        bookId: Number(bookId)
       }),
       onmessage(event) {
         const d = JSON.parse(event.data)
@@ -940,7 +945,7 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
                 <p>你好，我是你的智能书童</p>
               </div>
               <div v-for="(msg, i) in chatList" :key="i" :class="['chat-row', msg.role === 'user' ? 'mine' : 'theirs']">
-                <div class="chat-bubble">{{ msg.content }}</div>
+                <div class="chat-bubble markdown-body" v-html="renderMarkdown(msg.content)"></div>
                 <div v-if="msg.role === 'ai' && msg.content" class="bubble-action" @click="saveNote(msg.content)">💾 保存笔记</div>
               </div>
             </div>
@@ -1134,9 +1139,23 @@ const themeClass = computed(() => `theme-${readingConfig.theme}`)
 .chat-bubble {
   display: inline-block; max-width: 85%; padding: 10px 14px;
   border-radius: 14px; font-size: 14px; line-height: 1.6;
-  text-align: left; white-space: pre-wrap; word-break: break-all;
+  text-align: left; word-break: break-all;
 }
+.chat-bubble.markdown-body :deep(p) { margin: 0 0 6px 0; }
+.chat-bubble.markdown-body :deep(p:last-child) { margin-bottom: 0; }
+.chat-bubble.markdown-body :deep(ul), .chat-bubble.markdown-body :deep(ol) { margin: 4px 0; padding-left: 18px; }
+.chat-bubble.markdown-body :deep(li) { margin: 2px 0; }
+.chat-bubble.markdown-body :deep(h1), .chat-bubble.markdown-body :deep(h2), .chat-bubble.markdown-body :deep(h3) { margin: 6px 0 3px 0; font-size: 1.05em; font-weight: 700; }
+.chat-bubble.markdown-body :deep(code) { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+.chat-bubble.markdown-body :deep(pre) { background: rgba(0,0,0,0.04); padding: 8px 12px; border-radius: 6px; overflow-x: auto; margin: 6px 0; }
+.chat-bubble.markdown-body :deep(pre code) { background: none; padding: 0; }
+.chat-bubble.markdown-body :deep(blockquote) { border-left: 2px solid rgba(0,0,0,0.12); padding-left: 10px; margin: 6px 0; opacity: 0.8; }
+.chat-bubble.markdown-body :deep(strong) { font-weight: 700; }
+.chat-bubble.markdown-body :deep(a) { color: inherit; }
 .mine .chat-bubble { background: var(--color-primary); color: #fff; border-bottom-right-radius: 4px; }
+.mine .chat-bubble.markdown-body :deep(code) { background: rgba(255,255,255,0.2); color: #fff; }
+.mine .chat-bubble.markdown-body :deep(pre) { background: rgba(255,255,255,0.12); }
+.mine .chat-bubble.markdown-body :deep(blockquote) { border-left-color: rgba(255,255,255,0.3); }
 .theirs .chat-bubble { background: var(--color-bg-warm); color: var(--color-text); border-bottom-left-radius: 4px; }
 .bubble-action { font-size: 11px; color: var(--color-text-muted); margin-top: 4px; cursor: pointer; }
 .chat-input { padding: 8px 12px; border-top: 1px solid var(--color-border-light); background: var(--color-bg-card); }

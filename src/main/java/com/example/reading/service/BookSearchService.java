@@ -66,7 +66,10 @@ public class BookSearchService {
      */
     public void syncOneBookToEs(Long bookId) {
         SysBook book = sysBookMapper.selectById(bookId);
-        if (book == null) return;
+        if (book == null) {
+            deleteFromEs(bookId);
+            return;
+        }
         if (book.getStatus() != null && !Integer.valueOf(2).equals(book.getStatus())) {
             deleteFromEs(bookId);
             return;

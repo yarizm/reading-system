@@ -4,13 +4,17 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, Microphone, EditPen, ChatLineRound, DocumentCopy, Delete, DocumentAdd, Notebook, UserFilled, Service, Position, Operation,
   InfoFilled, Collection, ChatDotRound, Star, StarFilled, Comment, Loading,
-  Setting, MoreFilled, Share // NEW: 引入 Share 图标
+  Setting, MoreFilled, Share, DArrowLeft, DArrowRight
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '../utils/request'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { getAuthHeaders, withFileAccessToken } from '../utils/authHeaders'
 import { useAuthStore } from '../stores/auth'
+import { marked } from 'marked'
+
+marked.setOptions({ breaks: true, gfm: true })
+const renderMarkdown = (text) => marked.parse(text || '')
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +103,9 @@ const menuVisible = ref(false)
 const menuStyle = ref({ top: '0px', left: '0px' })
 const selectedText = ref('')
 const drawerVisible = ref(false)
+const drawerWidth = ref(400)
+const drawerDirection = ref('rtl')
+const isResizing = ref(false)
 const chatList = ref([])
 const inputMessage = ref('')
 const isThinking = ref(false)
@@ -368,10 +375,12 @@ const jumpToChapter = (index) => {
 
 const scrollToCatalogActive = () => {
   nextTick(() => {
-    const activeEl = document.getElementById(`catalog-item-${chapterIndex.value}`)
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: 'auto', block: 'center' })
-    }
+    setTimeout(() => {
+      const activeEl = document.getElementById(`catalog-item-${chapterIndex.value}`)
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'auto', block: 'center' })
+      }
+    }, 350) // 等 el-drawer 滑入动画结束再滚动
   })
 }
 
@@ -881,6 +890,36 @@ const toggleSidebar = () => {
   if (drawerVisible.value) setTimeout(() => scrollToBottom(), 100)
 }
 
+const toggleDrawerDirection = () => {
+  drawerDirection.value = drawerDirection.value === 'rtl' ? 'ltr' : 'rtl'
+}
+
+const startResize = (e) => {
+  isResizing.value = true
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  e.preventDefault()
+}
+
+const handleResize = (e) => {
+  if (!isResizing.value) return
+  const viewportWidth = window.innerWidth
+  let newWidth
+  if (drawerDirection.value === 'rtl') {
+    newWidth = viewportWidth - e.clientX
+  } else {
+    newWidth = e.clientX
+  }
+  newWidth = Math.min(800, Math.max(300, newWidth))
+  drawerWidth.value = newWidth
+}
+
+const stopResize = () => {
+  isResizing.value = false
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+}
+
 const handleGlobalClick = (e) => {
   const menu = document.querySelector('.ai-menu')
   if (menuVisible.value && menu && !menu.contains(e.target)) {
@@ -931,7 +970,8 @@ const sendChat = async (contextText = null, modeOverride = null, displayMsg = nu
         text: textToAnalyze,
         mode: instruction,
         conversationId: currentConversationId.value, // 首次为空，后续有值
-        bookName: bookInfo.value.title // 🌟 把你 Vue 里的书籍标题传过去
+        bookName: bookInfo.value.title,
+	        bookId: Number(bookId)
       }),
       onmessage(event) {
         const dataJson = JSON.parse(event.data);
@@ -1401,7 +1441,16 @@ const goToUserProfile = (userId) => {
       <div class="menu-item" @mousedown.prevent="handleAiAction('SUMMARY')"><el-icon><DocumentCopy /></el-icon> 提炼</div>
     </div>
 
-    <el-drawer v-model="drawerVisible" :title="aiTitle" direction="rtl" size="400px" :modal="false" class="ai-drawer">
+    <el-drawer v-model="drawerVisible" :direction="drawerDirection" :size="drawerWidth + 'px'" :modal="false" class="ai-drawer">
+      <template #header>
+        <div class="drawer-title-bar">
+          <span>{{ aiTitle }}</span>
+          <el-button link size="small" @click="toggleDrawerDirection" :title="drawerDirection === 'rtl' ? '切换到左侧' : '切换到右侧'">
+            <el-icon><DArrowLeft v-if="drawerDirection === 'rtl'" /><DArrowRight v-else /></el-icon>
+          </el-button>
+        </div>
+      </template>
+      <div class="resize-handle" :class="drawerDirection === 'rtl' ? 'resize-left' : 'resize-right'" @mousedown="startResize"></div>
       <el-tabs v-model="activeTab" stretch>
         <el-tab-pane label="AI 助手" name="ai">
           <div class="chat-layout">
@@ -1412,7 +1461,7 @@ const goToUserProfile = (userId) => {
               </div>
               <div v-for="(msg, index) in chatList" :key="index" class="chat-row" :class="msg.role === 'user' ? 'row-right' : 'row-left'">
                 <div class="avatar-wrapper"><el-avatar :size="32" :icon="msg.role === 'user' ? UserFilled : Service" :style="{ background: msg.role === 'user' ? '#409eff' : '#36cfc9' }" /></div>
-                <div class="bubble-wrapper"><div class="bubble-content">{{ msg.content }}</div><div class="msg-actions" v-if="msg.role === 'ai' && msg.content"><el-icon class="action-icon" @click="saveNote(msg.content)"><DocumentAdd /></el-icon></div></div>
+                <div class="bubble-wrapper"><div class="bubble-content markdown-body" v-html="renderMarkdown(msg.content)"></div><div class="msg-actions" v-if="msg.role === 'ai' && msg.content"><el-icon class="action-icon" @click="saveNote(msg.content)"><DocumentAdd /></el-icon></div></div>
               </div>
             </div>
             <div class="chat-input-area"><el-input v-model="inputMessage" placeholder="输入你的想法..." :disabled="isThinking" @keyup.enter="sendChat(null)"><template #append><el-button @click="sendChat(null)" :loading="isThinking"><el-icon><Position /></el-icon></el-button></template></el-input></div>
@@ -1564,9 +1613,9 @@ const goToUserProfile = (userId) => {
 .t-high { background: #000; color: #fff; font-weight: bold; border: 1px solid #555; }
 
 /* === Catalog === */
-.catalog-list { padding: 8px 12px; }
-.catalog-item { padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,0.03); cursor: pointer; font-size: 15px; transition: all 0.2s ease; border-radius: 8px; }
-.catalog-item:hover { background: rgba(0,0,0,0.02); color: #0066cc; transform: translateX(4px); }
+.catalog-list { padding: 8px 12px; contain: layout style; }
+.catalog-item { padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,0.03); cursor: pointer; font-size: 15px; border-radius: 8px; transition: background-color 0.15s, color 0.15s; }
+.catalog-item:hover { background: rgba(0,0,0,0.02); color: #0066cc; }
 .catalog-item.active { color: #0066cc; font-weight: 600; background: rgba(0,102,204,0.06); }
 
 /* === Book Info Dialog === */
@@ -1699,7 +1748,16 @@ const goToUserProfile = (userId) => {
 .menu-item:hover { background: rgba(255,255,255,0.15); }
 @keyframes fadeInMenu { from { opacity: 0; transform: translateY(8px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+/* GPU 层提升：消除 el-drawer 滑入时的重绘卡顿 */
+:deep(.el-drawer__body) { will-change: transform; }
+:deep(.el-drawer__header) { will-change: transform; }
+
 /* === AI Chat === */
+.drawer-title-bar { display: flex; align-items: center; justify-content: space-between; flex: 1; }
+.resize-handle { position: absolute; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 10; background: transparent; transition: background 0.2s; }
+.resize-handle:hover { background: rgba(0,0,0,0.06); }
+.resize-left { left: 0; }
+.resize-right { right: 0; }
 .chat-layout { display: flex; flex-direction: column; height: calc(100vh - 110px); }
 .chat-history-box { flex: 1; overflow-y: auto; padding: 20px; background-color: rgba(0,0,0,0.01); }
 .chat-row { display: flex; margin-bottom: 24px; align-items: flex-start; }
@@ -1707,9 +1765,28 @@ const goToUserProfile = (userId) => {
 .row-right { flex-direction: row-reverse; }
 .avatar-wrapper { flex-shrink: 0; margin: 0 12px; }
 .bubble-wrapper { max-width: 80%; }
-.bubble-content { padding: 12px 18px; border-radius: 16px; font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.bubble-content { padding: 12px 18px; border-radius: 16px; font-size: 15px; line-height: 1.6; word-break: break-all; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.bubble-content.markdown-body :deep(p) { margin: 0 0 8px 0; }
+.bubble-content.markdown-body :deep(p:last-child) { margin-bottom: 0; }
+.bubble-content.markdown-body :deep(ul), .bubble-content.markdown-body :deep(ol) { margin: 4px 0; padding-left: 20px; }
+.bubble-content.markdown-body :deep(li) { margin: 2px 0; }
+.bubble-content.markdown-body :deep(h1), .bubble-content.markdown-body :deep(h2), .bubble-content.markdown-body :deep(h3) { margin: 8px 0 4px 0; font-size: 1.1em; font-weight: 700; }
+.bubble-content.markdown-body :deep(code) { background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: 'SF Mono', Monaco, Consolas, monospace; }
+.bubble-content.markdown-body :deep(pre) { background: rgba(0,0,0,0.04); padding: 10px 14px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+.bubble-content.markdown-body :deep(pre code) { background: none; padding: 0; }
+.bubble-content.markdown-body :deep(blockquote) { border-left: 3px solid rgba(0,0,0,0.15); padding-left: 12px; margin: 8px 0; color: rgba(0,0,0,0.6); }
+.bubble-content.markdown-body :deep(table) { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.bubble-content.markdown-body :deep(th), .bubble-content.markdown-body :deep(td) { border: 1px solid rgba(0,0,0,0.1); padding: 6px 10px; text-align: left; }
+.bubble-content.markdown-body :deep(strong) { font-weight: 700; }
+.bubble-content.markdown-body :deep(em) { font-style: italic; }
+.bubble-content.markdown-body :deep(a) { color: inherit; text-decoration: underline; }
 .row-left .bubble-content { background: #ffffff; color: #1d1d1f; border: 1px solid rgba(0,0,0,0.05); border-top-left-radius: 4px; }
+.row-left .bubble-content.markdown-body :deep(code) { background: rgba(0,0,0,0.06); }
+.row-left .bubble-content.markdown-body :deep(pre) { background: rgba(0,0,0,0.04); }
 .row-right .bubble-content { background: #0066cc; color: #ffffff; border-top-right-radius: 4px; }
+.row-right .bubble-content.markdown-body :deep(code) { background: rgba(255,255,255,0.2); color: #fff; }
+.row-right .bubble-content.markdown-body :deep(pre) { background: rgba(255,255,255,0.12); }
+.row-right .bubble-content.markdown-body :deep(blockquote) { border-left-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.85); }
 .chat-input-area { padding: 16px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); border-top: 1px solid rgba(0,0,0,0.05); }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #86868b; gap: 16px; }
 

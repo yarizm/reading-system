@@ -39,6 +39,7 @@ public class DifyAiController {
         public String mode;
         public String conversationId;
         public String bookName;
+        public Long bookId;
     }
 
     /** 将选中文本发送给 Dify 进行流式分析 */
@@ -57,6 +58,9 @@ public class DifyAiController {
         inputs.put("selected_text", request.text);
         inputs.put("custom_mode", request.mode);
         inputs.put("book_name", request.bookName != null ? request.bookName : "未知书籍");
+        if (request.bookId != null) {
+            inputs.put("book_id", String.valueOf(request.bookId));
+        }
         payload.put("inputs", inputs);
         payload.put("response_mode", "streaming");
         payload.put("user", "user-" + currentUserId);

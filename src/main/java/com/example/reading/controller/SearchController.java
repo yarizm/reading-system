@@ -23,6 +23,9 @@ public class SearchController {
     @Autowired
     private AuthContextService authContextService;
 
+    @Autowired
+    private com.example.reading.service.DifyKnowledgeBaseService difyKnowledgeBaseService;
+
     private boolean isAdmin(HttpServletRequest request) {
         return authContextService.isAdmin(request);
     }
@@ -51,5 +54,15 @@ public class SearchController {
         }
         int count = bookSearchService.syncAllBooksToEs();
         return Result.success("成功同步 " + count + " 本书到 Elasticsearch 索引");
+    }
+
+    /** 全量同步已公开书籍到 Dify Knowledge Base（管理员手动触发） */
+    @PostMapping("/syncKb")
+    public Result<?> syncAllKb(HttpServletRequest request) {
+        if (!isAdmin(request)) {
+            return Result.error("403", "Forbidden");
+        }
+        difyKnowledgeBaseService.syncAllBooksToKb();
+        return Result.success("已触发全量 KB 同步（异步执行），请查看日志获取进度");
     }
 }
