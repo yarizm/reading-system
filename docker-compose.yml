@@ -68,8 +68,8 @@ services:
       FILE_UPLOAD_PATH: /app/uploads
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       QWEN_API_KEY: ${QWEN_API_KEY}
-      DIFY_CHAT_URL: ${DIFY_DOCKER_CHAT_URL:-http://docker-api-1:5001/v1/chat-messages}
-      DIFY_KB_URL: ${DIFY_DOCKER_KB_URL:-http://docker-api-1:5001/v1}
+      DIFY_CHAT_URL: ${DIFY_CHAT_URL:-https://api.dify.ai/v1/chat-messages}
+      DIFY_KB_URL: ${DIFY_KB_URL:-https://api.dify.ai/v1}
       DIFY_READING_KEY: ${DIFY_READING_KEY}
       DIFY_RECOMMEND_KEY: ${DIFY_RECOMMEND_KEY}
       DIFY_KB_KEY: ${DIFY_KB_KEY}
@@ -85,9 +85,6 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-    networks:
-      - default
-      - dify
     restart: unless-stopped
 
   desktop-frontend:
@@ -111,9 +108,6 @@ services:
 networks:
   default:
     name: reading-system_default
-  dify:
-    external: true
-    name: docker_default
 
 volumes:
   mysql_data:

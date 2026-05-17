@@ -43,7 +43,6 @@ logs/
 uploads/
 reading-system-files/
 .env
-/docs/
 /downloaded_books/
 src/main/resources/db/old/
 
@@ -64,3 +63,8 @@ src/main/resources/db/old/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
+
+# nouse files
+docs/nothing
+
+

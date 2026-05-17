@@ -23,7 +23,7 @@ jobs:
           cache: maven
 
       - name: Test backend
-        run: mvn test -q
+        run: ./mvnw test -q
 
   reading-ui:
     name: Desktop frontend build

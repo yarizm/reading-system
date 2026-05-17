@@ -59,10 +59,11 @@
 | `reading-ui/src/__tests__` | 桌面端组件测试 |
 | `reading-mobile-ui` | 移动端 Vue 前端 |
 | `lightweight-tts-service` | 轻量 TTS FastAPI 服务 |
-| `docker-compose.yml` | 本地全栈 Docker Compose |
+| `docker-compose.yml` | 本地全栈 Docker Compose，默认不依赖外部 Docker 网络 |
+| `docker-compose.dify.yml` | 可选 Dify Docker 网络覆盖配置 |
 | `docker-compose.tts.yml` | 单独启动 TTS 服务 |
 | `Dockerfile` | 后端多阶段构建 |
-| `docs/` | 架构、API 和答辩材料 |
+| `docs/` | 架构、API 和答辩材料，允许正常提交跟踪 |
 
 ## 环境变量
 
@@ -89,7 +90,7 @@ DIFY_KB_DATASET_ID=your-dataset-uuid
 
 ## Docker 一键启动
 
-本仓库当前推荐用 Docker Compose 做本地完整体验。
+本仓库当前推荐用 Docker Compose 做本地完整体验。默认配置只启动本仓库服务，不要求本机存在 Dify 的 `docker_default` 外部网络。
 
 ```bash
 cp .env.example .env
@@ -118,6 +119,16 @@ docker compose down -v
 ```
 
 `down -v` 会删除 MySQL、Redis、Elasticsearch 和上传文件数据卷，仅在需要重置环境时使用。
+
+### 连接本地 Docker Dify
+
+如果 Dify 也在同一台机器的 Docker Compose 中运行，并且需要后端容器通过 Dify 容器网络访问它，可以额外叠加 override 文件：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dify.yml up -d
+```
+
+该方式会把 `backend` 接入 `${DIFY_DOCKER_NETWORK:-docker_default}`，并默认使用 `http://docker-api-1:5001/v1` 作为 Dify 内网地址。网络名或地址不一致时，在 `.env` 中覆盖 `DIFY_DOCKER_NETWORK`、`DIFY_DOCKER_CHAT_URL` 和 `DIFY_DOCKER_KB_URL`。
 
 ## 手动本地启动
 
@@ -231,7 +242,7 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 
 ```powershell
 cd reading-ui
-npm test
+npm test -- --run
 ```
 
 前端构建：
@@ -257,7 +268,7 @@ python -m py_compile app.py
 git diff --check
 ```
 
-GitHub Actions 当前会运行后端测试、桌面端测试和两个前端构建；CI 不连接真实 MySQL、Redis、Elasticsearch，也不需要真实外部 API Key。
+GitHub Actions 当前使用 Maven Wrapper 运行后端 JUnit 测试，并运行桌面端测试和两个前端构建；CI 不连接真实 MySQL、Redis、Elasticsearch，也不需要真实外部 API Key。
 
 ## 常见问题
 
@@ -287,7 +298,7 @@ docker compose up -d
 ### AI 阅读助手无响应
 
 - 检查 `DIFY_CHAT_URL`、`DIFY_READING_KEY` 是否有效
-- Dify 也在 Docker 中运行时，后端容器不能用 `localhost` 访问 Dify，需要使用同网络下的服务名
+- Dify 也在 Docker 中运行时，后端容器不能用 `localhost` 访问 Dify；使用 `docker-compose.dify.yml` 接入 Dify 网络，或在 `.env` 中配置可访问的 Dify 地址
 - Nginx 代理 SSE 时需要关闭 buffering，仓库内前端 Nginx 配置已包含 `proxy_buffering off`
 
 ### TTS 不可用
