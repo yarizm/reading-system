@@ -39,12 +39,15 @@
 | --- | --- |
 | `src/main` | Spring Boot 后端源码 |
 | `src/main/resources/application.yml` | 后端主配置文件 |
-| `src/main/resources/db` | 现有数据库补充脚本和迁移脚本 |
+| `src/main/resources/db/migration` | Flyway 数据库迁移脚本（V0 基线） |
 | `src/main/resources/mapper` | MyBatis XML Mapper |
 | `reading-ui` | 桌面端 Vue 前端 |
 | `reading-mobile-ui` | 移动端 Vue 前端 |
 | `lightweight-tts-service` | 轻量 TTS 服务 |
-| `docker-compose.tts.yml` | 仅用于启动 TTS 服务的 Docker Compose 配置 |
+| `docker-compose.yml` | Docker Compose 全栈一键部署 |
+| `docker-compose.tts.yml` | 单独启动 TTS 服务的 Docker Compose 配置 |
+| `Dockerfile` | 后端多阶段构建 |
+| `docs/` | 架构说明和 API 参考 |
 | `mvnw`, `mvnw.cmd`, `.mvn/wrapper/` | Maven Wrapper |
 | `pom.xml` | 后端 Maven 配置 |
 
@@ -120,29 +123,51 @@ CREATE DATABASE smartreader
   DEFAULT COLLATE utf8mb4_unicode_ci;
 ```
 
-当前仓库存在以下 SQL 文件：
+数据库迁移由 Flyway 自动管理。应用启动时自动执行 `src/main/resources/db/migration/` 下的脚本：
 
-| 文件 | 作用 | 备注 |
-| --- | --- | --- |
-| `src/main/resources/db/auth.sql` | 给 `sys_user` 增加手机号/邮箱字段，并创建验证码记录表 | 依赖已存在的 `sys_user` |
-| `src/main/resources/db/booklist.sql` | 创建书单相关表，并给 `sys_user` 增加书架可见性字段 | 依赖已存在的 `sys_user` |
-| `src/main/resources/db/social.sql` | 创建好友、聊天和图书分享相关表 | 分模块脚本 |
-| `src/main/resources/db/migration_user_upload.sql` | 给 `sys_book` 和 `sys_user` 增加上传审核相关字段 | 依赖已存在的 `sys_book`、`sys_user` |
+| 版本 | 说明 |
+| --- | --- |
+| V0 | 完整建表（15 张表），包含所有历史增量迁移 |
 
-这些脚本是补充/迁移脚本或局部脚本，不是完整一键初始化 SQL。当前仓库暂未提供完整一键初始化 SQL，也没有明确的初始管理员账号或测试数据脚本。首次部署仍需要根据项目实际数据库结构准备用户、图书、章节、评论、书架等基础表，再按功能需要执行上述补充脚本。
+> 已有数据库首次启动时，Flyway 会检测到已有表并自动创建基线（`baseline-on-migrate: true`），不会重复建表。
 
-如果已经具备基础表，建议执行顺序为：
+## Docker 一键部署（推荐）
 
-```text
-1. src/main/resources/db/auth.sql
-2. src/main/resources/db/booklist.sql
-3. src/main/resources/db/social.sql
-4. src/main/resources/db/migration_user_upload.sql
+> 仅限本地开发使用。生产环境需启用 Elasticsearch 安全认证，并替换默认密钥。
+
+### 前置条件
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) 或 Docker Engine 已安装
+
+### 启动
+```bash
+# 1. 配置环境变量
+cp .env.example .env
+# 编辑 .env 填入你的密钥
+
+# 2. 启动全栈（MySQL + Redis + ES + 后端 + 桌面端 + 移动端 + TTS）
+docker compose up -d
+
+# 3. 查看状态
+docker compose ps
 ```
 
-后续建议补充 `sql/init.sql` 或 Flyway/Liquibase 迁移。
+### 访问地址
+| 服务 | 地址 |
+| --- | --- |
+| 桌面端 | http://localhost:5173 |
+| 移动端 | http://localhost:5174 |
+| 后端 API | http://localhost:8090 |
+| TTS 健康检查 | http://localhost:8091/health |
 
-## 快速启动
+### 停止
+```bash
+docker compose down          # 停止并保留数据卷
+docker compose down -v       # 停止并清空数据
+```
+
+---
+
+## 快速启动（手动）
 
 ### 1. 准备基础环境
 
@@ -269,18 +294,50 @@ npm run dev
 
 ## Docker Compose 说明
 
-当前仓库只提供 `docker-compose.tts.yml`，它只用于启动轻量 TTS 服务。
+全栈部署使用 `docker compose up -d`（详见上方 [Docker 一键部署](#docker-一键部署推荐)）。如需单独启动 TTS 服务，使用 `docker compose -f docker-compose.tts.yml up -d`。
 
-它不包含：
+## 常见问题（Docker 部署）
 
-- MySQL
-- Redis
-- Elasticsearch
-- Spring Boot 后端
-- 桌面端前端
-- 移动端前端
+### 配置变更
 
-当前仓库暂未提供完整系统一键部署的 `docker-compose.yml`。后续建议补充完整 Compose，用于启动 MySQL、Redis、Elasticsearch、后端、前端和 TTS。
+| 现象 | 原因 | 解决 |
+|------|------|------|
+| 修改 `.env` 后仍使用旧值 | 系统环境变量优先级 > `.env` 文件 | 系统环境变量中临时覆盖，或重启终端后再 `docker compose up -d` |
+| `restart` 后配置不生效 | restart 只重启进程，不更新容器配置 | 使用 `docker compose down <service> && docker compose up -d <service>` |
+| 修改迁移脚本后启动失败 `FlywayValidateException` | 已应用的迁移 checksum 不匹配 | `DELETE FROM flyway_schema_history WHERE version='0'` 后重启 |
+| 中文搜索分词效果不佳 | 容器 ES 不含 IK 插件 | 替换为带 IK 的 ES 镜像，或修改 `EsBookDoc.java` 分词器配置 |
+
+### 迁移数据
+
+| 现象 | 原因 | 解决 |
+|------|------|------|
+| 所有数据为空 | 容器数据库是全新的 | 从旧库导出 SQL 后用 `--default-character-set=utf8mb4` 导入 |
+| 中文乱码 | 导入时连接编码为 latin1 | 导入命令必须加 `--default-character-set=utf8mb4` |
+| 封面/头像不显示 | 容器内无旧文件 | `docker cp` 旧文件到容器 `/app/uploads/` |
+
+### 环境冲突
+
+| 现象 | 原因 | 解决 |
+|------|------|------|
+| `port 3306/6379/9200 already in use` | 本地服务未停 | `Stop-Service MySQL80`，关掉本地 Redis/ES |
+| `docker compose up` 卡在拉取镜像 | ES 镜像 740MB，国内慢 | 配 Docker 镜像加速器 |
+| Redis 缓存不生效 | 跨网络 DNS 混淆到外部容器 | 已用完整容器名，若自行修改网络配置需注意 |
+
+### Dify 连接（Dify 同样以 Docker 运行时）
+
+| 现象 | 原因 | 解决 |
+|------|------|------|
+| AI 助手无响应 | 后端容器内 `localhost` ≠ 宿主机 | docker-compose.yml 已配置 `docker-api-1:5001`，若 Dify 端口不同需修改 |
+| 对话末尾显示"连接中断" | Dify SSE 非正常关闭 | 已内置容错，若仍出现检查 Nginx 是否含 `proxy_buffering off` |
+
+### 首次部署检查清单
+
+1. [ ] 从 `.env.example` 复制 `.env` 并填入真实密钥
+2. [ ] 停止本地 MySQL、Redis、ES 服务（避免端口冲突）
+3. [ ] 执行 `docker compose up -d`，等待 `reading-backend` 显示 `Up`
+4. [ ] 如果数据库是空的：导入旧数据（`--default-character-set=utf8mb4`）
+5. [ ] 如果封面/头像缺失：`docker cp` 旧上传目录到容器
+6. [ ] 访问 `http://localhost:5173` 验证
 
 ## AI 与听书说明
 

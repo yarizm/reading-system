@@ -1,0 +1,35 @@
+# Maven
+target/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Docs
+docs/
+*.md
+
+# TTS (already has its own Dockerfile)
+lightweight-tts-service/
+
+# Frontends (already have their own Dockerfiles)
+reading-ui/node_modules/
+reading-mobile-ui/node_modules/

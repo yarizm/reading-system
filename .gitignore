@@ -45,6 +45,7 @@ reading-system-files/
 .env
 /docs/
 /downloaded_books/
+src/main/resources/db/old/
 
 # Eclipse
 .apt_generated

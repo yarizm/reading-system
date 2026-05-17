@@ -1000,9 +1000,12 @@ const sendChat = async (contextText = null, modeOverride = null, displayMsg = nu
       },
       onerror(err) {
         console.error("流式输出异常:", err);
-        chatList.value[aiMsgIndex].content += '\n[网络异常，连接中断]';
+        // 已收到内容 → 正常结束，否则提示异常
+        if (!chatList.value[aiMsgIndex].content) {
+          chatList.value[aiMsgIndex].content += '\n[网络异常，连接中断]';
+        }
         isThinking.value = false;
-        throw err; // 阻止疯狂重连
+        throw err;
       }
     });
   } catch (error) {

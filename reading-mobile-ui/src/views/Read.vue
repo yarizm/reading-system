@@ -609,7 +609,7 @@ const sendChat = async (ctx, modeOverride, displayMsg) => {
         if (d.event === 'error') chatList.value[aiIdx].content += '\n[出错]'
       },
       onclose() { isThinking.value = false },
-      onerror(err) { isThinking.value = false; chatList.value[aiIdx].content += '\n[连接中断]'; throw err }
+      onerror(err) { isThinking.value = false; if (!chatList.value[aiIdx].content) { chatList.value[aiIdx].content += '\n[连接中断]' }; throw err }
     })
   } catch (e) { isThinking.value = false }
 }

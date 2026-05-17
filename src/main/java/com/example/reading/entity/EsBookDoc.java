@@ -20,21 +20,21 @@ public class EsBookDoc {
     private Long id;
 
     /**
-     * 书名 - 使用 ik_max_word 最细粒度分词，搜索时使用 ik_smart 智能分词
+     * 书名
      */
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+    @Field(type = FieldType.Text, analyzer = "cjk")
     private String title;
 
     /**
      * 作者
      */
-    @Field(type = FieldType.Text, analyzer = "ik_smart")
+    @Field(type = FieldType.Text, analyzer = "cjk")
     private String author;
 
     /**
      * 简介
      */
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+    @Field(type = FieldType.Text, analyzer = "cjk")
     private String description;
 
     /**
@@ -51,8 +51,7 @@ public class EsBookDoc {
 
     /**
      * 所有章节正文拼接 - 核心搜索内容
-     * 使用 ik_max_word 建立最细粒度的倒排索引
      */
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+    @Field(type = FieldType.Text, analyzer = "cjk")
     private String chapterContents;
 }

@@ -9,7 +9,7 @@ on:
 
 jobs:
   backend:
-    name: Backend compile
+    name: Backend test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,8 +22,8 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Compile backend
-        run: mvn -q -DskipTests compile
+      - name: Test backend
+        run: mvn test -q
 
   reading-ui:
     name: Desktop frontend build
@@ -42,6 +42,10 @@ jobs:
       - name: Install dependencies
         working-directory: reading-ui
         run: npm ci
+
+      - name: Test
+        working-directory: reading-ui
+        run: npm test
 
       - name: Build
         working-directory: reading-ui

@@ -1,0 +1,122 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: reading-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: smartreader
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: reading-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: reading-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: false
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  tts:
+    build: ./lightweight-tts-service
+    container_name: reading-tts
+    ports:
+      - "8091:8091"
+    restart: unless-stopped
+
+  backend:
+    build: .
+    container_name: reading-backend
+    ports:
+      - "8090:8090"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://reading-mysql:3306/smartreader?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATA_REDIS_HOST: reading-redis
+      SPRING_ELASTICSEARCH_URIS: http://reading-elasticsearch:9200
+      TTS_LIGHTWEIGHT_BASE_URL: http://tts:8091
+      FILE_UPLOAD_PATH: /app/uploads
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      QWEN_API_KEY: ${QWEN_API_KEY}
+      DIFY_CHAT_URL: ${DIFY_DOCKER_CHAT_URL:-http://docker-api-1:5001/v1/chat-messages}
+      DIFY_KB_URL: ${DIFY_DOCKER_KB_URL:-http://docker-api-1:5001/v1}
+      DIFY_READING_KEY: ${DIFY_READING_KEY}
+      DIFY_RECOMMEND_KEY: ${DIFY_RECOMMEND_KEY}
+      DIFY_KB_KEY: ${DIFY_KB_KEY}
+      DIFY_KB_DATASET_ID: ${DIFY_KB_DATASET_ID}
+      APP_AUTH_TOKEN_SECRET: ${APP_AUTH_TOKEN_SECRET:-change_this_to_a_long_random_secret}
+      SPRING_FLYWAY_BASELINE_VERSION: 0
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - default
+      - dify
+    restart: unless-stopped
+
+  desktop-frontend:
+    build: ./reading-ui
+    container_name: reading-desktop-ui
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mobile-frontend:
+    build: ./reading-mobile-ui
+    container_name: reading-mobile-ui
+    ports:
+      - "5174:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  default:
+    name: reading-system_default
+  dify:
+    external: true
+    name: docker_default
+
+volumes:
+  mysql_data:
+  redis_data:
+  es_data:
+  uploads:

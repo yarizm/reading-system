@@ -50,7 +50,7 @@ public class DifyAiController {
         if (currentUserId == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        SseEmitter emitter = new SseEmitter(60000L);
+        SseEmitter emitter = new SseEmitter(300000L); // 5分钟，足够 RAG 检索 + LLM 生成
 
         Map<String, Object> payload = new HashMap<>();
 
@@ -82,6 +82,8 @@ public class DifyAiController {
             realDifyUrl = realDifyUrl.replace("/workflows/run", "/chat-messages");
         }
 
+        final boolean[] hasContent = {false};
+
         WebClient.create().post()
                 .uri(realDifyUrl)
                 .header("Authorization", "Bearer " + difyApiKey)
@@ -91,12 +93,20 @@ public class DifyAiController {
                 .subscribe(
                         chunk -> {
                             try {
+                                hasContent[0] = true;
                                 emitter.send(chunk);
                             } catch (Exception e) {
                                 emitter.completeWithError(e);
                             }
                         },
-                        emitter::completeWithError,
+                        error -> {
+                            // 已收到内容后上游断开 → 正常结束，否则转发错误
+                            if (hasContent[0]) {
+                                emitter.complete();
+                            } else {
+                                emitter.completeWithError(error);
+                            }
+                        },
                         emitter::complete
                 );
 

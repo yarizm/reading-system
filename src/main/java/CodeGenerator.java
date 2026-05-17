@@ -34,7 +34,7 @@ public class CodeGenerator {
                             .pathInfo(Collections.singletonMap(OutputFile.xml, projectPath + "/src/main/resources/mapper"));
                 })
                 .strategyConfig(builder -> {
-                    builder.addInclude("sys_user", "sys_book", "user_bookshelf", "book_comment", "ai_interaction_log") // 设置需要生成的表名
+                    builder.addInclude("sys_user", "sys_book", "user_bookshelf") // 设置需要生成的表名
                             // Entity 实体类策略
                             .entityBuilder()
                             .enableLombok() // 自动添加 @Data 注解
