@@ -1,6 +1,5 @@
 <template>
-  <div class="home-wrapper">
-    <div class="home-container page-glass-container">
+  <div class="home-container page-glass-container">
       <div class="nav-header">
       <div class="logo">📚 智能书籍管理系统</div>
       <div class="nav-right">
@@ -107,7 +106,7 @@
     </div>
 
     <div class="recommend-section recommend-grid" v-loading="recommendLoading" element-loading-text="AI 正在分析你的阅读口味..." v-if="!isSearchMode">
-      <div class="book-card-simple book-card" v-for="book in recommendBooks" :key="book.id" @click="goToDetail(book.id)">
+      <div class="book-card-simple book-card hover-float" v-for="book in recommendBooks" :key="book.id" @click="goToDetail(book.id)">
         <div class="cover-wrapper">
           <img :src="book.coverUrl || defaultCover" class="simple-cover book-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
           <div class="hover-mask">点击阅读</div>
@@ -128,7 +127,7 @@
     </div>
     <div class="section-title" v-else><el-icon><Reading /></el-icon> 探索书库</div>
     <div class="book-grid">
-      <el-card v-for="book in tableData" :key="book.id" class="book-card" shadow="hover" :body-style="{ padding: '0px' }" @click="goToDetail(book.id)">
+      <el-card v-for="book in tableData" :key="book.id" class="book-card hover-float" shadow="hover" :body-style="{ padding: '0px' }" @click="goToDetail(book.id)">
         <img :src="book.coverUrl || defaultCover" class="book-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
         <div class="book-info">
           <div class="book-title" :title="book.title">{{ book.title }}</div>
@@ -168,7 +167,6 @@
         </div>
       </div>
     </transition>
-    </div>
   </div>
 </template>
 
@@ -176,7 +174,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-// === 修改点 2: 引入 Refresh 图标 ===
 import {
   Search,
   StarFilled,
@@ -449,10 +446,6 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 /* ==================================================
    Modernized UI Styles for Home.vue
 ================================================== */
-.home-wrapper {
-  min-height: 100vh;
-  width: 100%;
-}
 .home-container {
   padding: 0 24px 40px;
   color: #2a211c;
@@ -469,16 +462,17 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(255, 253, 249, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(60, 40, 20, 0.08);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.7); /* 更透一点 */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  transition: all var(--transition-base);
 }
 .logo {
   font-size: 22px;
   font-weight: 800;
-  color: #2e2520;
+  color: var(--text-primary);
   letter-spacing: 1px;
 }
 .nav-right {
@@ -488,12 +482,12 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .nav-item {
   font-size: 15px;
-  color: #5a5048;
+  color: var(--text-secondary);
   font-weight: 500;
-  transition: color 0.2s ease;
+  transition: color var(--transition-fast);
 }
 .nav-item:hover {
-  color: #8b6f52;
+  color: var(--primary-color);
 }
 .user-avatar-box {
   display: flex;
@@ -509,7 +503,7 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .username {
   font-size: 14px;
-  color: #2e2520;
+  color: var(--text-primary);
   font-weight: 600;
 }
 .unread-badge {
@@ -613,19 +607,20 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   cursor: pointer;
   padding: 8px 24px;
   border-radius: 20px;
-  color: #3d3632;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.25s ease;
-  background: #fffdf9;
-  border: 1px solid rgba(60, 40, 20, 0.08);
-  box-shadow: 0 2px 6px rgba(60, 40, 20, 0.03);
+  transition: all var(--transition-base);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
-.tag-item:hover {
-  color: #8b6f52;
-  border-color: rgba(139, 111, 82, 0.3);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(139, 111, 82, 0.08);
+.tag-item:hover, .tag-item.active {
+  color: #fff;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* === Carousel + Rank Section === */
@@ -792,42 +787,48 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .book-card-simple {
   cursor: pointer;
-  background: #fffdf9;
-  border-radius: 12px;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(0,0,0,0.04);
-  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.03);
+  transition: all var(--transition-bounce);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 .book-card-simple:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary-color);
 }
 .cover-wrapper {
   position: relative;
-  height: 220px;
-  background-color: #ebe3d5;
+  height: 230px;
+  background-color: var(--border-color);
   overflow: hidden;
+  border-bottom: 1px solid var(--border-color);
 }
 .simple-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: inset 6px 0 12px rgba(0,0,0,0.15);
+  border-radius: 2px 8px 8px 2px;
 }
 .book-card-simple:hover .simple-cover {
-  transform: scale(1.06);
+  transform: scale(1.05) translateX(2px);
 }
 .hover-mask {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(to top, rgba(139, 111, 82, 0.9), rgba(60, 40, 20, 0.2));
-  color: #fffdf9;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: all 0.3s ease;
   font-weight: 700;
   font-size: 15px;
   letter-spacing: 1px;
@@ -846,10 +847,10 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #2e2520;
+  color: var(--text-primary);
 }
 .simple-author {
-  color: #6b5e53;
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
 }
@@ -869,23 +870,30 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
 }
 .book-card {
   cursor: pointer;
-  background: #fffdf9;
-  border-radius: 12px;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(0,0,0,0.04);
-  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.03);
+  transition: all var(--transition-bounce);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 .book-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary-color);
 }
 .book-cover {
   width: 100%;
-  height: 240px;
+  height: 250px;
   object-fit: cover;
-  background-color: #ebe3d5;
-  border-bottom: 1px solid rgba(60, 40, 20, 0.04);
+  background-color: var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: inset 6px 0 12px rgba(0,0,0,0.15);
+  border-radius: 2px 8px 8px 2px;
+}
+.book-card:hover .book-cover {
+  transform: scale(1.05) translateX(2px);
 }
 .book-info {
   padding: 16px;
@@ -896,18 +904,18 @@ const goToDetail = (id) => { router.push(`/book/${id}`) }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #2e2520;
+  color: var(--text-primary);
   font-size: 15px;
 }
 .book-author {
   font-size: 13px;
-  color: #6b5e53;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   font-weight: 500;
 }
 .book-desc {
   font-size: 13px;
-  color: #6b5e53;
+  color: var(--text-secondary);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;

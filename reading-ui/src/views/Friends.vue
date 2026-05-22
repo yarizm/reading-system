@@ -390,14 +390,14 @@ const formatDate = (timeStr) => {
 
 .section-card {
   margin-bottom: 20px;
-  border: 1px solid #e8e0d6;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
 .card-title {
   font-weight: 600;
   font-size: 15px;
-  color: #3d3632;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -418,14 +418,15 @@ const formatDate = (timeStr) => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 4px;
-  border-bottom: 1px solid #f5f0e8;
-  transition: background 0.15s;
+  border-bottom: 1px solid var(--border-color);
+  transition: background var(--transition-fast);
 }
 .user-item:last-child, .friend-item:last-child, .request-item:last-child {
   border-bottom: none;
 }
 .user-item:hover, .friend-item:hover, .request-item:hover {
-  background: #faf7f2;
+  background: var(--surface-color);
+  border-radius: var(--radius-sm);
 }
 .user-left {
   display: flex;
@@ -440,11 +441,11 @@ const formatDate = (timeStr) => {
 .user-name {
   font-size: 14px;
   font-weight: 600;
-  color: #3d3632;
+  color: var(--text-primary);
 }
 .user-sub {
   font-size: 12px;
-  color: #6b5e53;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -465,13 +466,14 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 12px;
   padding: 10px 4px;
-  border-bottom: 1px solid #f5f0e8;
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition-fast);
   position: relative;
 }
 .share-item:hover {
-  background: #faf7f2;
+  background: var(--surface-color);
+  border-radius: var(--radius-sm);
 }
 .share-item:last-child {
   border-bottom: none;
@@ -491,7 +493,7 @@ const formatDate = (timeStr) => {
 .share-book-title {
   font-weight: 600;
   font-size: 14px;
-  color: #3d3632;
+  color: var(--text-primary);
   margin-bottom: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -502,17 +504,17 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b5e53;
+  color: var(--text-secondary);
   margin-bottom: 2px;
 }
 .share-msg {
   font-size: 12px;
-  color: #7a6e63;
+  color: var(--text-secondary);
   font-style: italic;
 }
 .share-time {
   font-size: 11px;
-  color: #8a7d72;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 .new-tag {
@@ -567,15 +569,15 @@ const formatDate = (timeStr) => {
   border-radius: 6px;
   padding: 6px;
   text-align: center;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
   position: relative;
 }
 .share-book-item:hover {
-  background: #faf7f2;
+  background: var(--surface-color);
 }
 .share-book-item.selected {
-  border-color: #8b6f52;
-  background: #faf5ed;
+  border-color: var(--primary-color);
+  background: var(--surface-color);
 }
 .share-book-cover {
   width: 100%;
@@ -588,7 +590,7 @@ const formatDate = (timeStr) => {
 .share-book-name {
   font-size: 12px;
   margin-top: 6px;
-  color: #3d3632;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -597,21 +599,21 @@ const formatDate = (timeStr) => {
   position: absolute;
   top: 4px;
   right: 4px;
-  color: #8b6f52;
+  color: var(--primary-color);
   font-size: 18px;
 }
 /* === 玻璃拟态卡片覆写 === */
 :deep(.el-card) {
-  background: rgba(255, 255, 255, 0.45) !important;
+  background: var(--surface-color) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
-  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
-  transition: all 0.3s ease;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all var(--transition-base);
 }
 :deep(.el-card__header) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 .section-card {
   margin-bottom: 20px;

@@ -198,7 +198,7 @@ const confirmShare = async () => {
 
 <template>
   <div class="friends-page">
-    <section class="hero-card">
+    <section class="hero-card glass-panel fade-in-up" style="animation-delay: 0.1s">
       <div class="hero-copy">
         <div class="hero-eyebrow">Friend Hub</div>
         <h1 class="hero-title">好友中心</h1>
@@ -207,7 +207,7 @@ const confirmShare = async () => {
       <div class="hero-badge">{{ friends.length }} 位好友</div>
     </section>
 
-    <section class="search-card">
+    <section class="search-card glass-panel fade-in-up" style="animation-delay: 0.2s">
       <div class="section-title">搜索用户</div>
       <div class="section-tip">按用户名或昵称查找新的书友。</div>
       <van-search
@@ -232,7 +232,7 @@ const confirmShare = async () => {
       <van-empty v-if="searched && searchResults.length === 0" description="没有找到匹配的用户" image="search" />
     </section>
 
-    <section v-if="pendingRequests.length > 0" class="content-card">
+    <section v-if="pendingRequests.length > 0" class="content-card glass-panel fade-in-up" style="animation-delay: 0.3s">
       <div class="section-title">好友申请</div>
       <div class="section-tip">这些用户正在等待你的处理。</div>
       <div class="request-list">
@@ -252,7 +252,7 @@ const confirmShare = async () => {
       </div>
     </section>
 
-    <section class="content-card">
+    <section class="content-card glass-panel fade-in-up" style="animation-delay: 0.4s">
       <div class="section-title">我的好友</div>
       <div class="section-tip">点击头像可查看主页，点击按钮可直接聊天或分享图书。</div>
       <van-empty v-if="friends.length === 0" description="还没有好友，先从搜索开始吧" image="network" />
@@ -276,7 +276,7 @@ const confirmShare = async () => {
       </div>
     </section>
 
-    <section class="content-card">
+    <section class="content-card glass-panel fade-in-up" style="animation-delay: 0.5s">
       <div class="section-title">收到的图书分享</div>
       <div class="section-tip">别人推荐给你的书，点开就能继续看。</div>
       <van-empty v-if="receivedShares.length === 0" description="暂时还没有收到图书分享" image="search" />
@@ -323,18 +323,13 @@ const confirmShare = async () => {
 .friends-page {
   min-height: 100vh;
   padding: 18px 16px calc(84px + var(--safe-bottom));
-  background:
-    radial-gradient(circle at top right, rgba(211, 193, 170, 0.24), transparent 32%),
-    linear-gradient(180deg, #f8f2ea 0%, #f5eee4 42%, #faf6f0 100%);
+  background: var(--bg-color);
 }
 
 .hero-card,
 .search-card,
 .content-card {
   padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 252, 247, 0.96);
-  box-shadow: 0 18px 38px rgba(93, 67, 43, 0.08);
 }
 
 .hero-card {
@@ -343,14 +338,13 @@ const confirmShare = async () => {
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 16px;
-  background: linear-gradient(145deg, rgba(255, 250, 244, 0.98), rgba(246, 234, 220, 0.92));
 }
 
 .hero-eyebrow {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: #a17752;
+  color: var(--primary-color);
   text-transform: uppercase;
 }
 
@@ -358,22 +352,22 @@ const confirmShare = async () => {
   margin: 8px 0 6px;
   font-family: var(--font-serif), serif;
   font-size: 26px;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .hero-desc {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: #77604c;
+  color: var(--text-secondary);
 }
 
 .hero-badge {
   padding: 10px 12px;
   border-radius: 999px;
-  background: rgba(143, 117, 87, 0.12);
+  background: var(--surface-color);
   font-size: 12px;
-  color: #6d5644;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -385,7 +379,7 @@ const confirmShare = async () => {
 .section-title {
   font-family: var(--font-serif), serif;
   font-size: 20px;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .section-tip {
@@ -393,7 +387,7 @@ const confirmShare = async () => {
   margin-bottom: 12px;
   font-size: 12px;
   line-height: 1.65;
-  color: #8a725d;
+  color: var(--text-secondary);
 }
 
 .search-list,
@@ -410,9 +404,9 @@ const confirmShare = async () => {
 .friend-card,
 .share-card {
   padding: 14px;
-  border-radius: 18px;
-  background: rgba(250, 245, 238, 0.92);
-  box-shadow: 0 10px 26px rgba(93, 67, 43, 0.05);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .user-card,
@@ -438,14 +432,14 @@ const confirmShare = async () => {
 .user-name {
   font-size: 15px;
   font-weight: 700;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .user-sub,
 .share-meta {
   margin-top: 4px;
   font-size: 12px;
-  color: #8a725d;
+  color: var(--text-secondary);
 }
 
 .request-actions,
@@ -478,14 +472,14 @@ const confirmShare = async () => {
 .share-title {
   font-size: 15px;
   font-weight: 700;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .share-message {
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.7;
-  color: #644d3c;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
@@ -504,14 +498,14 @@ const confirmShare = async () => {
 .popup-title {
   font-family: var(--font-serif), serif;
   font-size: 22px;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .popup-tip {
   margin-top: 6px;
   font-size: 12px;
   line-height: 1.65;
-  color: #8a725d;
+  color: var(--text-secondary);
 }
 
 .popup-grid {
@@ -526,13 +520,13 @@ const confirmShare = async () => {
 .popup-book-card {
   padding: 6px;
   border: 2px solid transparent;
-  border-radius: 16px;
-  background: rgba(250, 245, 238, 0.86);
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .popup-book-card.selected {
-  border-color: #9c7a58;
+  border-color: var(--primary-color);
   transform: translateY(-2px);
 }
 
@@ -547,7 +541,7 @@ const confirmShare = async () => {
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.4;
-  color: #4f3b2d;
+  color: var(--text-primary);
   text-align: center;
 }
 

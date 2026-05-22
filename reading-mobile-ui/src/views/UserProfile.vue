@@ -50,9 +50,9 @@ const addFriend = async () => {
 
 <template>
   <div class="user-profile-page">
-    <van-nav-bar title="用户资料" left-arrow @click-left="$router.back()" />
+    <van-nav-bar title="用户资料" left-arrow @click-left="$router.back()" :border="false" class="glass-header" />
 
-    <section class="profile-card">
+    <section class="profile-card glass-panel fade-in-up" style="animation-delay: 0.1s">
       <van-image round width="80" height="80" :src="profile.avatar || defaultAvatar" />
       <h1 class="profile-name">{{ profile.nickname || profile.username }}</h1>
       <p v-if="profile.infoVisible === 1 && profile.age" class="profile-meta">{{ profile.age }} 岁</p>
@@ -68,7 +68,7 @@ const addFriend = async () => {
       </van-button>
     </section>
 
-    <section class="shelf-card">
+    <section class="shelf-card glass-panel fade-in-up" style="animation-delay: 0.2s">
       <div class="section-title">TA 的书架</div>
       <div class="section-tip">如果对方公开了收藏，这里会展示正在读或已经收藏的书。</div>
       <div v-if="shelfBooks.length > 0" class="shelf-scroll">
@@ -86,18 +86,13 @@ const addFriend = async () => {
 .user-profile-page {
   min-height: 100vh;
   padding-bottom: calc(48px + var(--safe-bottom));
-  background:
-    radial-gradient(circle at top right, rgba(214, 191, 165, 0.18), transparent 26%),
-    linear-gradient(180deg, #f8f2ea 0%, #f5eee4 44%, #faf6f0 100%);
+  background: var(--bg-color);
 }
 
 .profile-card,
 .shelf-card {
   margin: 16px;
   padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 252, 247, 0.96);
-  box-shadow: 0 18px 38px rgba(93, 67, 43, 0.08);
 }
 
 .profile-card {
@@ -108,13 +103,13 @@ const addFriend = async () => {
   margin: 12px 0 4px;
   font-family: var(--font-serif), serif;
   font-size: 24px;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .profile-meta {
   margin: 0;
   font-size: 13px;
-  color: #846d59;
+  color: var(--text-secondary);
 }
 
 .profile-action {
@@ -124,7 +119,7 @@ const addFriend = async () => {
 .section-title {
   font-family: var(--font-serif), serif;
   font-size: 20px;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .section-tip {
@@ -132,7 +127,7 @@ const addFriend = async () => {
   margin-bottom: 14px;
   font-size: 12px;
   line-height: 1.65;
-  color: #8a725d;
+  color: var(--text-secondary);
 }
 
 .shelf-scroll {
@@ -159,7 +154,7 @@ const addFriend = async () => {
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.45;
-  color: #4f3b2d;
+  color: var(--text-primary);
   text-align: center;
 }
 </style>

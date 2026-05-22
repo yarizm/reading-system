@@ -103,3 +103,9 @@ Spring Boot does NOT auto-load `.env` files. Set via IDE run config, shell, or d
 ## CI
 
 GitHub Actions (`.github/workflows/test.yml`) runs compile/build checks only — no real MySQL/Redis/ES connections, no tests, no API keys needed. Four parallel jobs: backend compile, desktop build, mobile build, TTS Python check.
+
+## Known Issues & Quirks
+
+### Windows Scrollbar Layout Shift
+Windows 垂直滚动条（~17px）在有/无滚动内容时出现/消失，会导致 `background-size: cover` 的背景图缩放和居中容器偏移，产生"不同页面容器宽度不一"的错觉。
+**当前方案**: `.page-glass-container` 使用 `position: absolute; height: calc(100vh - 48px)` 脱离文档流，将滚动隔离在容器内部，避免 body 级滚动条。不要将该类改回流式布局。

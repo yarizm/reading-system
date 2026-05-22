@@ -1,0 +1,124 @@
+<template>
+  <van-popup
+    :show="show"
+    @update:show="$emit('update:show', $event)"
+    position="bottom"
+    :style="{ height: '85%' }"
+    class="ai-drawer"
+  >
+    <div class="drawer-header">
+      <div class="drawer-title">智能书童</div>
+      <van-icon name="cross" class="close-btn" @click="$emit('update:show', false)" />
+    </div>
+
+    <van-tabs :active="activeTab" sticky @update:active="$emit('update:activeTab', $event)">
+      <van-tab title="AI 助手" name="ai">
+        <div class="chat-layout">
+          <div class="chat-history-box" id="mobile-chat-box">
+            <van-empty v-if="chatList.length === 0" description="你好，我是你的智能书童" />
+            <div
+              v-for="(msg, index) in chatList"
+              :key="index"
+              class="chat-row"
+              :class="msg.role === 'user' ? 'row-right' : 'row-left'"
+            >
+              <div class="bubble-wrapper">
+                <div class="bubble-content markdown-body" v-html="renderMarkdown(msg.content)"></div>
+                <div class="msg-actions" v-if="msg.role === 'ai' && msg.content">
+                  <span class="action-text" @click="$emit('save-note', msg.content)">保存为笔记</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <van-field
+              :model-value="inputMessage"
+              @update:model-value="$emit('update:inputMessage', $event)"
+              center
+              clearable
+              placeholder="输入你的想法..."
+              :disabled="isThinking"
+            >
+              <template #button>
+                <van-button size="small" type="primary" :loading="isThinking" @click="$emit('send-chat', null)">发送</van-button>
+              </template>
+            </van-field>
+          </div>
+        </div>
+      </van-tab>
+
+      <van-tab title="我的笔记" name="note">
+        <div class="note-list-container">
+          <van-empty v-if="noteList.length === 0" description="暂无笔记" />
+          <div class="note-card" v-for="note in noteList" :key="note.id">
+            <div class="note-header">
+              <span class="note-time">{{ note.createTime?.replace('T', ' ') }}</span>
+              <van-icon name="delete-o" color="#ee0a24" size="18" @click="$emit('delete-note', note.id)" />
+            </div>
+            <div class="note-quote">“{{ note.selectedText.substring(0, 30) }}...”</div>
+            <div class="note-content">{{ note.content }}</div>
+          </div>
+        </div>
+      </van-tab>
+    </van-tabs>
+  </van-popup>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { marked } from 'marked'
+
+marked.setOptions({ breaks: true, gfm: true })
+const renderMarkdown = (text) => marked.parse(text || '')
+
+const props = defineProps({
+  show: Boolean,
+  activeTab: String,
+  chatList: Array,
+  inputMessage: String,
+  isThinking: Boolean,
+  noteList: Array
+})
+
+const emit = defineEmits([
+  'update:show', 'update:activeTab', 'update:inputMessage',
+  'send-chat', 'save-note', 'delete-note'
+])
+</script>
+
+<style scoped>
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.theme-dark .drawer-header { border-bottom-color: #333; }
+.drawer-title { font-weight: bold; font-size: 16px; }
+.close-btn { font-size: 20px; color: #999; padding: 5px; }
+
+.chat-layout { display: flex; flex-direction: column; height: calc(85vh - 100px); }
+.chat-history-box { flex: 1; overflow-y: auto; padding: 15px; }
+.chat-row { display: flex; margin-bottom: 15px; }
+.row-left { justify-content: flex-start; }
+.row-right { justify-content: flex-end; }
+.bubble-wrapper { max-width: 85%; }
+.bubble-content { padding: 10px; border-radius: 8px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+.row-left .bubble-content { background-color: #f2f3f5; color: #333; }
+.theme-dark .row-left .bubble-content { background-color: #2b2b2b; color: #eee; }
+.row-right .bubble-content { background-color: #e1f3d8; color: #333; }
+.theme-dark .row-right .bubble-content { background-color: #1e3a1e; color: #eee; }
+.msg-actions { text-align: right; margin-top: 5px; }
+.action-text { font-size: 12px; color: #1989fa; cursor: pointer; }
+
+.note-list-container { height: calc(85vh - 100px); overflow-y: auto; padding: 15px; background: #f7f8fa; }
+.theme-dark .note-list-container { background: #111; }
+.note-card { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+.theme-dark .note-card { background: #1e1e1e; }
+.note-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.note-time { font-size: 12px; color: #999; }
+.note-quote { font-style: italic; color: #666; font-size: 13px; border-left: 3px solid #ccc; padding-left: 8px; margin-bottom: 8px; }
+.note-content { font-size: 14px; line-height: 1.5; }
+.theme-dark .note-content { color: #ccc; }
+</style>

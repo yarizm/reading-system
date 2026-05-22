@@ -135,20 +135,20 @@ const handleReset = async () => {
 
 <template>
   <div class="login-page">
-    <van-nav-bar left-arrow @click-left="$router.push('/')" />
+    <van-nav-bar left-arrow @click-left="$router.push('/')" :border="false" />
 
-    <section class="hero-card">
+    <section class="hero-card glass-panel fade-in-up" style="animation-delay: 0.1s">
       <div class="hero-eyebrow">Smart Reading</div>
       <h1 class="hero-title">{{ pageTitle }}</h1>
       <p class="hero-desc">{{ pageSubtitle }}</p>
     </section>
 
-    <div v-if="mode !== 'reset'" class="mode-tabs">
+    <div v-if="mode !== 'reset'" class="mode-tabs fade-in-up" style="animation-delay: 0.2s">
       <span :class="{ active: mode === 'login' }" @click="mode = 'login'">登录</span>
       <span :class="{ active: mode === 'register' }" @click="mode = 'register'">注册</span>
     </div>
 
-    <section class="form-card">
+    <section class="form-card glass-panel fade-in-up" style="animation-delay: 0.3s">
       <template v-if="mode === 'login'">
         <van-tabs v-model:active="loginMethod" shrink animated class="method-tabs">
           <van-tab title="密码登录" name="password" />
@@ -224,22 +224,49 @@ const handleReset = async () => {
 .login-page {
   min-height: 100vh;
   padding-bottom: calc(48px + var(--safe-bottom));
-  background:
-    radial-gradient(circle at top right, rgba(214, 191, 165, 0.26), transparent 30%),
-    linear-gradient(180deg, #f8f2ea 0%, #f5eee4 44%, #faf6f0 100%);
+  background: var(--bg-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  top: -10%; left: -10%; width: 250px; height: 250px;
+  background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+  opacity: 0.15; filter: blur(40px);
+  animation: float-slow 12s ease-in-out infinite alternate;
+}
+.login-page::after {
+  content: '';
+  position: absolute;
+  bottom: 0%; right: -10%; width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--primary-hover) 0%, transparent 70%);
+  opacity: 0.1; filter: blur(50px);
+  animation: float-slow 16s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes float-slow {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(20px, -30px); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  opacity: 0;
+  transform: translateY(15px);
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .hero-card,
 .form-card {
   margin: 16px;
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 252, 247, 0.96);
-  box-shadow: 0 18px 38px rgba(93, 67, 43, 0.08);
-}
-
-.hero-card {
-  background: linear-gradient(145deg, rgba(255, 250, 244, 0.98), rgba(246, 234, 220, 0.92));
+  padding: 24px;
 }
 
 .hero-eyebrow {
@@ -247,21 +274,20 @@ const handleReset = async () => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #a17752;
+  color: var(--primary-color);
 }
 
 .hero-title {
   margin: 8px 0 6px;
-  font-family: var(--font-serif), serif;
-  font-size: 28px;
-  color: #3d2c1f;
+  font-size: 26px;
+  color: var(--text-primary);
 }
 
 .hero-desc {
   margin: 0;
   font-size: 13px;
-  line-height: 1.8;
-  color: #78614d;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 
 .mode-tabs {
@@ -269,17 +295,20 @@ const handleReset = async () => {
   gap: 18px;
   padding: 0 18px;
   margin-top: 6px;
+  position: relative;
+  z-index: 2;
 }
 
 .mode-tabs span {
   position: relative;
   font-size: 15px;
-  color: #8a725d;
+  color: var(--text-secondary);
   padding-bottom: 6px;
+  transition: color var(--transition-fast);
 }
 
 .mode-tabs span.active {
-  color: #4f3b2d;
+  color: var(--text-primary);
   font-weight: 700;
 }
 
@@ -291,7 +320,7 @@ const handleReset = async () => {
   bottom: 0;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #8f7557, #c1a173);
+  background: var(--primary-color);
 }
 
 .method-tabs {
@@ -300,12 +329,19 @@ const handleReset = async () => {
 
 .submit-btn {
   margin-top: 18px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
+  box-shadow: none;
 }
 
 .aux-link {
   margin-top: 12px;
   font-size: 13px;
-  color: #8f7557;
+  color: var(--primary-color);
 }
 
 .aux-link.center {

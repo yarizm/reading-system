@@ -1,78 +1,182 @@
-/* === 全局样式 === */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
 
-/* 引入 Google Fonts — 衬线标题 + 无衬线正文 */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+/* === 全局设计系统变量 (Design System Tokens) === */
+:root {
+  /* 调色板 - 现代灵动模式 (Modern Vibrant) */
+  --bg-color: #f8fafc;
+  --surface-color: rgba(255, 255, 255, 0.75);
+  --primary-color: #4f46e5; /* Indigo 600 */
+  --primary-hover: #4338ca; /* Indigo 700 */
+  --text-primary: #0f172a; /* Slate 900 */
+  --text-secondary: #64748b; /* Slate 500 */
+  --border-color: rgba(226, 232, 240, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  
+  /* 多层阴影体系 (Premium Shadows) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02), 0 2px 4px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+  --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  
+  /* 交互过渡 */
+  --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease-out;
+  --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-round: 50%;
+
+  /* Element Plus 覆盖 */
+  --el-color-primary: var(--primary-color);
+  --el-color-primary-light-3: #818cf8;
+  --el-border-radius-base: var(--radius-sm);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+}
+
+
+
+/* 引入精选字体 */
 
 html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background-image: url('./assets/home_bg.png');
-    background-color: #faf8f5;
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    color: #2a211c;
-    overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  /* 现代无衬线字体栈 */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #2c2118; /* 搭配木质底图的深色基底 */
+  /* 魔法森林/流光木纹：将高饱和流体光斑与你原本的木质书架图片进行深度融合 (overlay) */
+  background-image: 
+    radial-gradient(circle at 10% 20%, hsla(353, 100%, 86%, 0.9) 0%, transparent 50%),
+    radial-gradient(circle at 90% 10%, hsla(225, 100%, 88%, 0.8) 0%, transparent 50%),
+    radial-gradient(circle at 50% 80%, hsla(339, 100%, 84%, 0.9) 0%, transparent 50%),
+    radial-gradient(circle at 90% 90%, hsla(200, 100%, 85%, 0.8) 0%, transparent 50%),
+    url('./assets/home_bg.png');
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover;
+  background-blend-mode: overlay, overlay, overlay, overlay, normal;
+  background-attachment: fixed;
+  animation: fluid-bg 20s ease-in-out infinite alternate;
+  color: var(--text-primary);
+  overflow-x: hidden;
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+@keyframes fluid-bg {
+  0% { background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%, center; }
+  100% { background-position: 20% 30%, -15% 20%, 10% -15%, -20% -10%, center; }
 }
 
 #app {
-    height: 100%;
-    width: 100%;
+  height: 100%;
+  width: 100%;
 }
 
 *, *::before, *::after {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 a {
-    text-decoration: none;
-    color: inherit;
+  text-decoration: none;
+  color: inherit;
 }
 
-/* 滚动条 — 偏暖灰调 */
+/* === 毛玻璃效果公用类 (Glassmorphism) === */
+.glass-panel {
+  background: var(--surface-color);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  border-top-color: var(--glass-border);
+  border-left-color: var(--glass-border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-bounce);
+}
+.glass-panel:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* === 按钮通用发光与过渡 === */
+.el-button {
+  transition: all var(--transition-fast) !important;
+}
+.el-button:hover {
+  transform: translateY(-1px);
+}
+.el-button:active {
+  transform: translateY(1px);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* 滚动条 */
 ::-webkit-scrollbar {
-    width: 7px;
-    height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #f0ece6;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: #c4b9ab;
-    border-radius: 4px;
+  background: rgba(139, 111, 82, 0.3);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #9e9183;
+  background: rgba(139, 111, 82, 0.6);
 }
 
 /* 全局透明边缘按钮复写 */
 .glass-btn {
-    background: rgba(255, 255, 255, 0.4) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid rgba(139, 111, 82, 0.5) !important;
-    color: #4a3628 !important;
-    box-shadow: 0 4px 12px rgba(60, 40, 20, 0.05) !important;
-    transition: all 0.3s ease !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(139, 111, 82, 0.5) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all var(--transition-fast) !important;
+  border-radius: var(--radius-sm) !important;
 }
 .glass-btn:hover {
-    background: rgba(255, 255, 255, 0.8) !important;
-    border-color: #8b6f52 !important;
-    transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: var(--primary-color) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
 }
 
-/* === 全局统一页头 === */
+/* 全局微动画辅助类 */
+.hover-float {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.hover-float:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity var(--transition-fast);
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* 全局统一页头 */
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  border-bottom: 1px solid rgba(60, 40, 20, 0.10);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
@@ -84,9 +188,10 @@ a {
 }
 .page-header .back-btn {
   font-size: 15px;
-  color: #4a3e35;
+  color: var(--text-primary);
+  transition: color var(--transition-fast);
 }
-.page-header .back-btn:hover { color: #8b6f52; }
+.page-header .back-btn:hover { color: var(--primary-color); }
 .page-header .header-title-box {
   display: flex;
   flex-direction: column;
@@ -94,39 +199,82 @@ a {
 .page-header .header-title-box h2 {
   margin: 0;
   font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
+  color: var(--text-primary);
   font-size: 22px;
   font-weight: 600;
 }
 .page-header .header-title-box .subtitle {
-  color: #6b5e53;
+  color: var(--text-secondary);
   font-size: 13px;
   margin: 4px 0 0 0;
 }
-.page-header .header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
 
-/* === 全局统一半透明容器 === */
+/* 全局统一半透明容器 (Floating Glass Card) */
 .page-glass-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  background-color: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  min-height: 100vh;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+  width: 100% !important;
+  max-width: 1240px !important;
+  position: absolute; /* 脱离文档流，彻底杜绝外层 margin 导致 body 撑开出现滚动条 */
+  top: 24px;
+  left: 0;
+  right: 0;
+  margin: 0 auto !important; /* 绝对定位居中 */
+  border-radius: 24px; /* 增加大圆角 */
+  background-color: rgba(255, 255, 255, 0.65); /* 调整透明度适配新背景 */
+  backdrop-filter: blur(30px) saturate(120%); /* 增加饱和度让透过去的网格和光斑更好看 */
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+  height: calc(100vh - 48px); /* 设定固定高度，使容器内部滚动 */
+  overflow-y: auto; /* 内部滚动 */
+  overflow-x: hidden;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.6) inset; /* 高级浮空阴影与内发光 */
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: background-color var(--transition-base);
 }
 
-/* === Element Plus 全局暖棕主题 === */
-:root {
-  --el-color-primary: #8b6f52;
-  --el-color-primary-light-3: #a38c75;
-  --el-color-primary-light-5: #bdae9c;
-  --el-color-primary-light-7: #d6ccc2;
-  --el-color-primary-light-9: #f0ece4;
-  --el-color-primary-dark-2: #6b5040;
+/* 自定义卡片内部滚动条 */
+.page-glass-container::-webkit-scrollbar {
+  width: 6px;
+}
+.page-glass-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 24px 0; /* 避开圆角区域 */
+}
+.page-glass-container::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+.page-glass-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+/* === 阅读页面全局主题变量覆盖 === */
+html.theme-green {
+  --el-bg-color: #f4fbf0;
+  --el-bg-color-overlay: #eaf5df;
+  --el-text-color-primary: #2e4a2d;
+  --el-text-color-regular: #4a6649;
+  --el-border-color-light: #c5dcb3;
+  --el-border-color-lighter: #dceccf;
+  --el-fill-color-blank: #fdfcf8;
+}
+
+html.theme-high-contrast.dark {
+  --el-bg-color: #000000;
+  --el-bg-color-overlay: #000000;
+  --el-text-color-primary: #ffffff;
+  --el-border-color-light: #555555;
+  --el-border-color-lighter: #333333;
+  --el-fill-color-blank: #000000;
+}
+
+/* ==================================================
+   NProgress 进度条自定义样式
+================================================== */
+#nprogress .bar {
+  background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%) !important;
+  height: 3px !important;
+  box-shadow: 0 0 10px #ff9a9e, 0 0 5px #ff9a9e !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #ff9a9e, 0 0 5px #ff9a9e !important;
 }

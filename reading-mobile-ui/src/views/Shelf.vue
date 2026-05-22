@@ -10,6 +10,7 @@ const userInfo = ref({})
 const shelfList = ref([])
 const shelfVisible = ref(1)
 const booklists = ref([])
+const loading = ref(false)
 const showCreateSheet = ref(false)
 const showBooklistPopup = ref(false)
 const showDetailPopup = ref(false)
@@ -32,9 +33,14 @@ onMounted(() => {
 })
 
 const loadShelf = async () => {
-  const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
-  if (res.data.code === '200') {
-    shelfList.value = res.data.data || []
+  loading.value = true
+  try {
+    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    if (res.data.code === '200') {
+      shelfList.value = res.data.data || []
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -132,7 +138,7 @@ const copyShareLink = (booklist) => {
 
 <template>
   <div class="shelf-page">
-    <section class="hero-card">
+    <section class="hero-card glass-panel fade-in-up" style="animation-delay: 0.1s">
       <div class="hero-copy">
         <div class="hero-eyebrow">我的阅读空间</div>
         <h1 class="hero-title">书架与书单</h1>
@@ -153,37 +159,43 @@ const copyShareLink = (booklist) => {
       </div>
     </section>
 
-    <section class="stats-row">
-      <div class="stat-card">
+    <section class="stats-row fade-in-up" style="animation-delay: 0.2s">
+      <div class="stat-card glass-panel">
         <div class="stat-value">{{ shelfList.length }}</div>
         <div class="stat-label">书架藏书</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card glass-panel">
         <div class="stat-value">{{ finishedCount }}</div>
         <div class="stat-label">已读完成</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card glass-panel">
         <div class="stat-value">{{ booklists.length }}</div>
         <div class="stat-label">我的书单</div>
       </div>
     </section>
 
-    <section class="tool-row">
+    <section class="tool-row fade-in-up" style="animation-delay: 0.3s">
       <van-button round plain icon="bars" class="tool-btn" @click="showBooklistPopup = true">查看书单</van-button>
       <van-button round plain icon="plus" class="tool-btn" @click="showCreateSheet = true">新建书单</van-button>
     </section>
 
-    <van-empty v-if="shelfList.length === 0" description="书架还是空的，去首页挑一本到心仪的书吧" image="search">
+    <van-empty v-if="shelfList.length === 0 && !loading" description="书架还是空的，去首页挑一本到心仪的书吧" image="search">
       <van-button type="primary" round size="small" @click="$router.push('/')">去首页看看</van-button>
     </van-empty>
 
-    <section v-else class="shelf-grid">
-      <article
-        v-for="item in shelfList"
-        :key="item.id"
-        class="shelf-card"
-        @click="continueRead(item.bookId)"
-      >
+    <section v-else class="shelf-grid fade-in-up" style="animation-delay: 0.4s">
+      <template v-if="loading">
+        <div v-for="i in 4" :key="i" class="shelf-card glass-panel" style="padding: 12px">
+          <van-skeleton title :row="3" />
+        </div>
+      </template>
+      <template v-else>
+        <article
+          v-for="item in shelfList"
+          :key="item.id"
+          class="shelf-card glass-panel hover-float"
+          @click="continueRead(item.bookId)"
+        >
         <div class="cover-box">
           <img :src="item.coverUrl || 'https://via.placeholder.com/120x160'" class="card-cover" alt="" />
           <div class="cover-badge">{{ calcPercent(item) >= 100 ? '已读完' : `${calcPercent(item)}%` }}</div>
@@ -201,10 +213,11 @@ const copyShareLink = (booklist) => {
           />
           <div class="card-meta">
             <span class="card-time">{{ formatTime(item.lastReadTime) }}</span>
-            <van-icon name="delete-o" size="18" color="#d35645" @click.stop="removeFromShelf(item.id)" />
+            <van-icon name="delete-o" size="18" color="var(--danger-color)" @click.stop="removeFromShelf(item.id)" />
           </div>
         </div>
-      </article>
+        </article>
+      </template>
     </section>
 
     <van-popup v-model:show="showCreateSheet" position="bottom" round>
@@ -287,9 +300,7 @@ const copyShareLink = (booklist) => {
 .shelf-page {
   min-height: 100vh;
   padding: 18px 16px calc(88px + var(--safe-bottom));
-  background:
-    radial-gradient(circle at top right, rgba(215, 195, 168, 0.28), transparent 34%),
-    linear-gradient(180deg, #f7f0e7 0%, #f4ede3 38%, #f9f5ef 100%);
+  background: var(--bg-color);
 }
 
 .hero-card {
@@ -297,9 +308,6 @@ const copyShareLink = (booklist) => {
   justify-content: space-between;
   gap: 16px;
   padding: 20px 18px;
-  border-radius: 22px;
-  background: linear-gradient(145deg, rgba(255, 250, 244, 0.98), rgba(246, 234, 220, 0.9));
-  box-shadow: 0 18px 40px rgba(93, 67, 43, 0.09);
 }
 
 .hero-copy {
@@ -319,14 +327,14 @@ const copyShareLink = (booklist) => {
   font-family: var(--font-serif), serif;
   font-size: 26px;
   line-height: 1.2;
-  color: #3d2c1f;
+  color: var(--text-primary);
 }
 
 .hero-desc {
   margin: 0;
   font-size: 13px;
   line-height: 1.75;
-  color: #77604c;
+  color: var(--text-secondary);
 }
 
 .hero-side {
@@ -351,7 +359,7 @@ const copyShareLink = (booklist) => {
 
 .switch-status {
   font-size: 12px;
-  color: #5d4738;
+  color: var(--text-secondary);
   text-align: right;
 }
 
@@ -364,22 +372,19 @@ const copyShareLink = (booklist) => {
 
 .stat-card {
   padding: 14px 12px;
-  border-radius: 18px;
-  background: rgba(255, 252, 247, 0.92);
-  box-shadow: 0 10px 24px rgba(93, 67, 43, 0.06);
   text-align: center;
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #493426;
+  color: var(--text-primary);
 }
 
 .stat-label {
   margin-top: 4px;
   font-size: 12px;
-  color: #8a725d;
+  color: var(--text-secondary);
 }
 
 .tool-row {
@@ -403,9 +408,8 @@ const copyShareLink = (booklist) => {
 
 .shelf-card {
   overflow: hidden;
-  border-radius: 20px;
-  background: rgba(255, 252, 247, 0.95);
-  box-shadow: 0 16px 34px rgba(93, 67, 43, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 
 .cover-box {
@@ -438,7 +442,7 @@ const copyShareLink = (booklist) => {
 .card-title {
   font-size: 15px;
   font-weight: 700;
-  color: #3d2c1f;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -448,7 +452,7 @@ const copyShareLink = (booklist) => {
 .card-progress,
 .card-time {
   font-size: 12px;
-  color: #8a725d;
+  color: var(--text-secondary);
 }
 
 .card-author {

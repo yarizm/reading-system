@@ -9,7 +9,7 @@
 
     <template v-if="profile && !error">
       <!-- 用户信息卡片 -->
-      <div class="profile-card">
+      <div class="profile-card glass-panel">
         <el-avatar :size="80" :src="profile.avatar || defaultAvatar" class="user-avatar" />
         <div class="user-info">
           <h2 class="user-nickname">{{ profile.nickname || '匿名用户' }}</h2>
@@ -53,7 +53,7 @@
           <el-empty v-if="!profile.shelfList || profile.shelfList.length === 0" description="书架空空如也" />
           <div class="book-grid" v-else>
             <div
-                class="book-card"
+                class="book-card glass-panel hover-float"
                 v-for="item in profile.shelfList"
                 :key="item.bookId"
                 @click="$router.push(`/book/${item.bookId}`)"
@@ -128,12 +128,6 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 24px;
   padding: 28px 32px;
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05);
   margin-bottom: 28px;
 }
 .user-avatar {
@@ -142,8 +136,8 @@ const formatDate = (timeStr) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .user-nickname {
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
+  font-family: var(--font-serif), serif;
+  color: var(--text-primary);
   font-size: 22px;
   margin: 0 0 8px;
 }
@@ -157,7 +151,7 @@ const formatDate = (timeStr) => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #6b5e53;
+  color: var(--text-secondary);
 }
 
 /* === 书架区域 === */
@@ -173,8 +167,8 @@ const formatDate = (timeStr) => {
   border-bottom: 1px solid rgba(60, 40, 20, 0.08);
 }
 .section-header h3 {
-  font-family: 'Noto Serif SC', serif;
-  color: #2e2520;
+  font-family: var(--font-serif), serif;
+  color: var(--text-primary);
   margin: 0;
   font-size: 18px;
 }
@@ -212,17 +206,7 @@ const formatDate = (timeStr) => {
 }
 .book-card {
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-.book-card:hover {
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 24px rgba(60, 40, 20, 0.1);
-  transform: translateY(-4px);
+  padding: 0;
 }
 .book-cover {
   width:100%;
@@ -237,7 +221,7 @@ const formatDate = (timeStr) => {
 .book-title {
   font-weight: 600;
   font-size: 14px;
-  color: #3d3632;
+  color: var(--text-primary);
   margin-bottom: 3px;
   white-space: nowrap;
   overflow: hidden;
@@ -245,7 +229,7 @@ const formatDate = (timeStr) => {
 }
 .book-author {
   font-size: 12px;
-  color: #9b8e82;
+  color: var(--text-secondary);
 }
 
 /* === 返回 === */

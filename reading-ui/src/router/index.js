@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import NProgress from 'nprogress'
+import 'nprogress/nprogress.css'
+
+// 进度条配置
+NProgress.configure({ showSpinner: false, speed: 400, minimum: 0.15 })
 
 // 定义路由规则
 const routes = [
@@ -84,6 +89,10 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+    // 开启进度条
+    if (to.path !== from.path) {
+        NProgress.start()
+    }
     const authStore = useAuthStore()
 
     if (to.meta.requireAuth && !authStore.isLoggedIn) {
@@ -103,6 +112,11 @@ router.beforeEach(async (to, from, next) => {
     }
 
     next()
+})
+
+router.afterEach(() => {
+    // 关闭进度条
+    NProgress.done()
 })
 
 export default router

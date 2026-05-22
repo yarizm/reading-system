@@ -147,7 +147,7 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 
 <template>
   <div class="home-page">
-    <div class="home-header">
+    <div class="home-header glass-header">
       <div class="header-copy">
         <div class="header-brand">智能阅读</div>
         <div class="header-subtitle">发现好书、延续阅读、和书友分享阅读瞬间</div>
@@ -156,11 +156,11 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
         <van-button size="small" round type="primary" class="login-btn" @click="goToLogin">登录</van-button>
       </div>
       <div class="header-right" v-else>
-        <van-icon name="manager-o" size="24" color="#8b6f52" @click="goToProfile" />
+        <van-icon name="manager-o" size="24" color="var(--primary-color)" @click="goToProfile" />
       </div>
     </div>
 
-    <div class="hero-card">
+    <div class="hero-card glass-panel hover-float">
       <div class="hero-title">{{ welcomeTitle }}</div>
       <div class="hero-desc">从热门推荐、智能推荐和书库探索里，快速找到下一本适合你的书。</div>
       <div class="hero-actions">
@@ -308,9 +308,7 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 .home-page {
   min-height: 100vh;
   padding-bottom: 60px;
-  background:
-    radial-gradient(circle at top, rgba(139, 111, 82, 0.12), transparent 34%),
-    linear-gradient(180deg, #f7f2e8 0%, #fdfcf8 38%, #f5efe5 100%);
+  background: var(--bg-color);
 }
 
 .home-header {
@@ -318,6 +316,9 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   align-items: flex-start;
   justify-content: space-between;
   padding: 18px 16px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-copy {
@@ -342,18 +343,13 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 .hero-card {
   margin: 8px 16px 12px;
   padding: 18px 16px 14px;
-  border-radius: 18px;
-  background: rgba(255, 253, 249, 0.88);
-  border: 1px solid rgba(139, 111, 82, 0.08);
-  box-shadow: 0 10px 28px rgba(60, 40, 20, 0.07);
-  backdrop-filter: blur(12px);
 }
 
 .hero-title {
   font-size: 20px;
   font-weight: 800;
   line-height: 1.3;
-  color: var(--color-text);
+  color: var(--text-primary);
   font-family: var(--font-serif);
 }
 
@@ -361,7 +357,7 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .hero-actions {
@@ -377,10 +373,10 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fffdf9 0%, #f5eee4 100%);
-  border: 1px solid rgba(139, 111, 82, 0.08);
-  color: #6b5440;
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 700;
 }

@@ -6,6 +6,7 @@ import { createPinia } from 'pinia'
 // 1. 引入 Element Plus 及其样式
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 // 引入图标库
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'

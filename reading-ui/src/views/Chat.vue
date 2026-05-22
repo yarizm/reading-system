@@ -348,7 +348,6 @@ const formatTime = (timeStr) => {
 
 <style scoped>
 .chat-container {
-  min-height: unset; /* 覆盖 page-glass-container 的 min-height: 100vh */
   height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;

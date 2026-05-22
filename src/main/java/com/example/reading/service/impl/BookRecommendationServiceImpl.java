@@ -43,6 +43,8 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
     private static final String RECOMMEND_CACHE_KEY_PREFIX = "recommend:uid:";
     private static final long RECOMMEND_CACHE_EXPIRE_HOURS = 2L;
+    private static final String CIRCUIT_BREAKER_KEY = "recommend:dify:circuit_breaker";
+    private static final long CIRCUIT_BREAKER_EXPIRE_MINUTES = 5L;
 
     private final UserBookshelfMapper userBookshelfMapper;
     private final SysBookMapper sysBookMapper;
@@ -82,6 +84,16 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
                 }
             }
 
+            // 检查熔断器：如果短时间内多次失败，直接走随机回退，不再等待 30 秒超时
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(CIRCUIT_BREAKER_KEY))) {
+                log.info("AI recommendation circuit breaker is open, using random fallback directly for userId={}", userId);
+                List<SysBook> fallbackBooks = randomFallback();
+                if (!refresh) {
+                    writeRecommendCache(userId, fallbackBooks);
+                }
+                return fallbackBooks;
+            }
+
             Set<Long> targetBookIds = getUserBookIds(userId);
             if (targetBookIds.isEmpty()) {
                 return randomFallback();
@@ -106,8 +118,18 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
             writeRecommendCache(userId, books);
             return books;
         } catch (Exception ex) {
-            log.warn("AI recommendation failed, fallback to random recommendation. userId={}", userId, ex);
-            return randomFallback();
+            log.warn("AI recommendation failed, fallback to random recommendation. userId={}, reason={}", userId, ex.getMessage());
+            
+            // 触发异常时开启熔断器，短时间内不再请求 Dify
+            try {
+                redisTemplate.opsForValue().set(CIRCUIT_BREAKER_KEY, "1", CIRCUIT_BREAKER_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                log.warn("Failed to set circuit breaker", e);
+            }
+
+            List<SysBook> fallbackBooks = randomFallback();
+            writeRecommendCache(userId, fallbackBooks); // 将随机回退的结果也存入缓存
+            return fallbackBooks;
         }
     }
 

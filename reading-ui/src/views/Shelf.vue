@@ -40,16 +40,30 @@
       </div>
     </div>
 
-    <el-empty v-if="shelfList.length === 0" description="书架空空如也，快去书城看看吧">
+    <el-empty v-if="shelfList.length === 0 && !loading" description="书架空空如也，快去书城看看吧">
       <el-button type="primary" @click="$router.push('/')">去逛逛</el-button>
     </el-empty>
 
     <div class="book-grid" v-else>
-      <div
-          class="shelf-card"
-          v-for="item in shelfList"
-          :key="item.id"
-      >
+      <el-skeleton v-if="loading" animated :count="8" class="shelf-skeleton">
+        <template #template>
+          <div class="shelf-card glass-panel" style="padding-bottom: 20px;">
+            <el-skeleton-item variant="image" style="width: 100%; height: 270px;" />
+            <div style="padding: 14px;">
+              <el-skeleton-item variant="h3" style="width: 50%; margin-bottom: 8px;" />
+              <el-skeleton-item variant="text" style="width: 80%;" />
+              <el-skeleton-item variant="text" style="width: 100%; margin-top: 20px;" />
+            </div>
+          </div>
+        </template>
+      </el-skeleton>
+
+      <template v-else>
+        <div
+            class="shelf-card glass-panel hover-float"
+            v-for="item in shelfList"
+            :key="item.id"
+        >
         <div class="cover-box" @click="continueRead(item.bookId)">
           <img :src="item.coverUrl || 'https://via.placeholder.com/150'" class="book-cover"  alt=""/>
           <div class="hover-mask">
@@ -106,7 +120,8 @@
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </template>
     </div>
 
     <!-- ====== 创建书单 Dialog ====== -->
@@ -259,11 +274,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import request from '../utils/request'
 import { getAuthHeaders } from '../utils/authHeaders'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   VideoPlay,
   Delete,
@@ -284,6 +299,7 @@ const uploadHeaders = getAuthHeaders()
 const shelfList = ref([])
 const userInfo = ref({})
 const shelfVisible = ref(1)
+const loading = ref(false)
 
 // 书单相关
 const booklists = ref([])
@@ -313,6 +329,7 @@ onMounted(() => {
 
 // ===== 书架 =====
 const loadShelf = async () => {
+  loading.value = true
   try {
     const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     if (res.data.code === '200') {
@@ -320,6 +337,8 @@ const loadShelf = async () => {
     }
   } catch (error) {
     console.error('书架加载失败', error)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -589,53 +608,49 @@ const statusTagType = (status) => {
 }
 
 .shelf-card {
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 12px;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 12px rgba(60, 40, 20, 0.05);
-}
-.shelf-card:hover {
-  border-color: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 16px 32px rgba(60, 40, 20, 0.1);
-  transform: translateY(-4px);
 }
 
-/* === 封面区域 === */
+.shelf-skeleton {
+  display: contents;
+}
+
+/* === 封面区域 (3D Book Cover) === */
 .cover-box {
-  height: 270px;
+  height: 280px;
   position: relative;
   cursor: pointer;
   overflow: hidden;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: #f1f5f9;
+  border-bottom: 1px solid var(--border-color);
 }
 .book-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: inset 6px 0 12px rgba(0,0,0,0.15); /* 书脊内阴影 */
+  border-radius: 2px 8px 8px 2px;
 }
 .cover-box:hover .book-cover {
-  transform: scale(1.03);
+  transform: scale(1.05) translateX(2px);
 }
 .hover-mask {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(40, 28, 16, 0.35);
-  backdrop-filter: blur(1px);
-  color: #f0ece4;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.25s;
-  gap: 6px;
+  transition: all 0.3s ease;
+  gap: 8px;
   font-weight: 600;
   font-size: 14px;
 }
@@ -644,14 +659,15 @@ const statusTagType = (status) => {
 }
 .read-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  background: #6a8c5a;
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
   color: #fff;
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 /* === 信息区域 === */
@@ -664,7 +680,7 @@ const statusTagType = (status) => {
 .book-title {
   font-weight: 600;
   font-size: 15px;
-  color: #3d3632;
+  color: var(--text-primary);
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
@@ -672,7 +688,7 @@ const statusTagType = (status) => {
 }
 .book-author {
   font-size: 12px;
-  color: #6b5e53;
+  color: var(--text-secondary);
   margin-bottom: 14px;
 }
 
@@ -680,30 +696,47 @@ const statusTagType = (status) => {
 .progress-box {
   margin-top: auto;
   margin-bottom: 12px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(248, 250, 252, 0.5);
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
 }
 .chapter-info {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 .chapter-label {
-  color: #6b5e53;
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 .chapter-name {
-  color: #8b6f52;
-  font-weight: 500;
+  color: var(--primary-color);
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 120px;
+}
+
+/* === 书籍卡片体系 === */
+.book-item {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-bounce);
+}
+.book-item:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--primary-color);
 }
 
 /* === 底部操作栏 === */
@@ -711,7 +744,7 @@ const statusTagType = (status) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid rgba(60, 40, 20, 0.06);
+  border-top: 1px solid var(--border-color);
   padding-top: 12px;
 }
 .action-btns {
@@ -721,7 +754,7 @@ const statusTagType = (status) => {
 }
 .time-text {
   font-size: 12px;
-  color: #8a7d72;
+  color: var(--text-secondary);
 }
 
 /* === 书单抽屉 === */

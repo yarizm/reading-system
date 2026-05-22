@@ -1,6 +1,6 @@
 <template>
   <div class="login-container">
-    <div class="login-card">
+    <div class="login-card glass-panel fade-in-up">
       <div class="title">
         <h2>{{ pageTitle }}</h2>
         <p>智慧阅读 · 让每一页都有温度</p>
@@ -283,33 +283,58 @@ const handleReset = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  /* 背景依靠全局 style.css 的 home_bg.png */
+  position: relative;
+  overflow: hidden;
+}
+
+/* 简单的轻量级动态背景光晕效果 */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: -10%; right: -10%; width: 400px; height: 400px;
+  background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+  opacity: 0.15; filter: blur(50px);
+  animation: float-slow 15s ease-in-out infinite alternate;
+}
+.login-container::after {
+  content: '';
+  position: absolute;
+  bottom: -10%; left: -10%; width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--primary-hover) 0%, transparent 70%);
+  opacity: 0.1; filter: blur(60px);
+  animation: float-slow 20s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes float-slow {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-30px, 50px); }
 }
 
 .login-card {
   width: 420px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   padding: 40px 38px 36px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 16px 40px rgba(80, 60, 40, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  z-index: 10;
 }
-.login-card:hover {
-  box-shadow: 0 24px 50px rgba(80, 60, 40, 0.15);
-  transform: translateY(-2px);
+
+.fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 :deep(.el-input__wrapper) {
   background: rgba(255, 255, 255, 0.5) !important;
-  box-shadow: 0 0 0 1px rgba(139, 111, 82, 0.2) inset !important;
-  transition: all 0.3s;
+  box-shadow: 0 0 0 1px var(--border-color) inset !important;
+  transition: all var(--transition-base);
+  border-radius: var(--radius-sm);
 }
 :deep(.el-input__wrapper.is-focus) {
-  background: rgba(255, 255, 255, 0.8) !important;
-  box-shadow: 0 0 0 1px rgba(139, 111, 82, 0.6) inset !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 0 0 1px var(--primary-color) inset !important;
 }
 
 .title {
@@ -337,7 +362,7 @@ const handleReset = async () => {
   transition: all 0.2s;
 }
 .auth-tabs span.active {
-  color: #5a4435;
+  color: var(--text-primary);
   font-weight: 600;
 }
 .auth-tabs span.active::after {
@@ -347,7 +372,7 @@ const handleReset = async () => {
   left: 0;
   width: 100%;
   height: 3px;
-  background: #8b6f52;
+  background: var(--primary-color);
   border-radius: 2px;
 }
 
@@ -371,16 +396,17 @@ const handleReset = async () => {
   width: 100%;
   height: 42px;
   font-size: 15px;
-  background: linear-gradient(135deg, #8b6f52 0%, #6b5040 100%);
+  background: var(--primary-color);
   border: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(107, 80, 64, 0.3);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
   letter-spacing: 2px;
-  transition: all 0.3s;
+  transition: all var(--transition-base);
 }
 .submit-btn:hover { 
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(107, 80, 64, 0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: var(--primary-hover);
 }
 
 .back-login {
