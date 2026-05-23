@@ -20,24 +20,32 @@ public class DegradeEnvironmentPostProcessor implements EnvironmentPostProcessor
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        log.info("DegradeEnvironmentPostProcessor running — checking infrastructure switches");
+
         Map<String, Object> additionalProperties = new HashMap<>();
         String currentExcludes = environment.getProperty("spring.autoconfigure.exclude", "");
 
         boolean esEnabled = environment.getProperty("app.elasticsearch.enabled", Boolean.class, true);
         if (!esEnabled) {
-            log.warn("app.elasticsearch.enabled is false. Disabling Elasticsearch auto-configuration...");
+            log.warn("app.elasticsearch.enabled is false. Disabling ALL Elasticsearch auto-configuration...");
             currentExcludes += (currentExcludes.isEmpty() ? "" : ",") +
+                    // Data & repositories
                     "org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration," +
                     "org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration," +
-                    "org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration";
+                    "org.springframework.boot.autoconfigure.data.elasticsearch.ReactiveElasticsearchRepositoriesAutoConfiguration," +
+                    // Clients
+                    "org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration," +
+                    "org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration," +
+                    "org.springframework.boot.autoconfigure.elasticsearch.ReactiveElasticsearchClientAutoConfiguration";
         }
 
         boolean redisEnabled = environment.getProperty("app.redis.enabled", Boolean.class, true);
         if (!redisEnabled) {
-            log.warn("app.redis.enabled is false. Disabling Redis auto-configuration...");
+            log.warn("app.redis.enabled is false. Disabling ALL Redis auto-configuration...");
             currentExcludes += (currentExcludes.isEmpty() ? "" : ",") +
                     "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
-                    "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration";
+                    "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration," +
+                    "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration";
         }
 
         if (!currentExcludes.isEmpty()) {
