@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>智能阅读系统 - 项目说明</title>
-  <meta name="description" content="智能阅读系统项目说明页，包含功能概览、系统结构、模块说明和启动方式。" />
+  <title>智能阅读系统 — 全栈在线阅读平台</title>
+  <meta name="description" content="Spring Boot + Vue 3 全栈项目，支持 AI 阅读助手、听书、书架管理、好友社交、Docker 一键部署。" />
   <style>
     :root {
       --bg: #f6f3ee;
@@ -23,13 +23,9 @@
       --container: 1120px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html {
-      scroll-behavior: smooth;
-    }
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
@@ -41,14 +37,8 @@
       line-height: 1.65;
     }
 
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
     code {
       padding: 2px 8px;
@@ -67,10 +57,7 @@
       border-bottom: 1px solid rgba(138, 106, 79, 0.08);
     }
 
-    .nav-inner,
-    .hero,
-    .section-inner,
-    .footer-inner {
+    .nav-inner, .hero, .section-inner, .footer-inner {
       width: min(var(--container), calc(100% - 40px));
       margin: 0 auto;
     }
@@ -98,9 +85,7 @@
       color: var(--text-secondary);
     }
 
-    .hero-wrap {
-      padding: 56px 0 24px;
-    }
+    .hero-wrap { padding: 56px 0 24px; }
 
     .hero {
       padding: 40px;
@@ -109,6 +94,9 @@
       border: 1px solid rgba(138, 106, 79, 0.09);
       box-shadow: var(--shadow);
     }
+
+    .ci-badge { margin-bottom: 12px; }
+    .ci-badge img { height: 20px; }
 
     .eyebrow {
       display: inline-block;
@@ -136,6 +124,12 @@
       color: var(--text-secondary);
     }
 
+    .hero .subtitle {
+      margin-top: 8px;
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
     .hero-meta {
       display: flex;
       flex-wrap: wrap;
@@ -152,43 +146,38 @@
       color: var(--text-secondary);
     }
 
-    .section {
-      padding: 26px 0 0;
+    .hero-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
     }
 
-    .section-inner {
-      padding: 20px 0;
+    .hero-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
     }
+    .hero-links a:hover { background: #6d523d; text-decoration: none; }
+    .hero-links a.secondary { background: var(--surface-soft); color: var(--accent); border: 1px solid var(--line); }
+    .hero-links a.secondary:hover { background: var(--accent-soft); }
 
-    .section-head {
-      margin-bottom: 18px;
-    }
+    .section { padding: 26px 0 0; }
+    .section-inner { padding: 20px 0; }
+    .section-head { margin-bottom: 18px; }
+    .section-head h2 { margin: 0 0 8px; font-size: 28px; line-height: 1.2; }
+    .section-head p { margin: 0; max-width: 720px; color: var(--text-secondary); font-size: 15px; }
 
-    .section-head h2 {
-      margin: 0 0 8px;
-      font-size: 28px;
-      line-height: 1.2;
-    }
-
-    .section-head p {
-      margin: 0;
-      max-width: 720px;
-      color: var(--text-secondary);
-      font-size: 15px;
-    }
-
-    .grid {
-      display: grid;
-      gap: 18px;
-    }
-
-    .grid-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .grid-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .grid { display: grid; gap: 18px; }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     .card {
       padding: 22px;
@@ -198,38 +187,20 @@
       box-shadow: var(--shadow);
     }
 
-    .card h3 {
-      margin: 0 0 10px;
-      font-size: 18px;
-    }
+    .card h3 { margin: 0 0 10px; font-size: 18px; }
+    .card p, .card li { color: var(--text-secondary); font-size: 14px; }
+    .card ul { margin: 10px 0 0; padding-left: 18px; }
 
-    .card p,
-    .card li {
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
+    .stack-list, .step-list { display: grid; gap: 12px; }
 
-    .card ul {
-      margin: 10px 0 0;
-      padding-left: 18px;
-    }
-
-    .stack-list,
-    .step-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .stack-item,
-    .step-item {
+    .stack-item, .step-item {
       padding: 16px 18px;
       border-radius: var(--radius-md);
       background: var(--surface-soft);
       border: 1px solid var(--line);
     }
 
-    .stack-item strong,
-    .step-item strong {
+    .stack-item strong, .step-item strong {
       display: block;
       margin-bottom: 6px;
       font-size: 15px;
@@ -246,8 +217,7 @@
       border: 1px solid rgba(138, 106, 79, 0.08);
     }
 
-    th,
-    td {
+    th, td {
       text-align: left;
       padding: 14px 16px;
       border-bottom: 1px solid var(--line);
@@ -255,42 +225,38 @@
       font-size: 14px;
     }
 
-    th {
-      background: #fbf8f3;
-      color: var(--text);
-      font-weight: 600;
+    th { background: #fbf8f3; color: var(--text); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+
+    .highlight-box {
+      margin-top: 24px;
+      padding: 18px 22px;
+      border-radius: var(--radius-md);
+      background: #faf7f1;
+      border: 1px solid rgba(138, 106, 79, 0.15);
+      font-size: 14px;
+      color: var(--text-secondary);
     }
 
-    tr:last-child td {
-      border-bottom: none;
-    }
+    .highlight-box strong { color: var(--text); }
 
-    .footer {
-      padding: 48px 0 60px;
-    }
-
+    .footer { padding: 48px 0 60px; }
     .footer-inner {
       padding: 22px 0 0;
       border-top: 1px solid rgba(138, 106, 79, 0.12);
       color: var(--text-muted);
       font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
     }
+    .footer-inner a { margin-left: 16px; }
 
     @media (max-width: 900px) {
-      .grid-3,
-      .grid-2 {
-        grid-template-columns: 1fr;
-      }
-
-      .hero {
-        padding: 28px 22px;
-      }
-
-      .nav-inner {
-        align-items: flex-start;
-        flex-direction: column;
-        padding: 14px 0;
-      }
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .hero { padding: 28px 22px; }
+      .nav-inner { align-items: flex-start; flex-direction: column; padding: 14px 0; }
     }
   </style>
 </head>
@@ -299,28 +265,43 @@
     <div class="nav-inner">
       <div class="brand">智能阅读系统</div>
       <div class="nav-links">
-        <a href="#overview">概览</a>
         <a href="#features">功能</a>
-        <a href="#architecture">结构</a>
+        <a href="#engineering">工程</a>
         <a href="#modules">模块</a>
         <a href="#quickstart">启动</a>
+        <a href="architecture.md">架构</a>
+        <a href="API.md">API</a>
       </div>
     </div>
   </nav>
 
   <div class="hero-wrap">
     <section class="hero" id="overview">
-      <span class="eyebrow">Project Overview</span>
-      <h1>一个围绕阅读、互动和 AI 辅助能力构建的多端系统</h1>
+      <div class="ci-badge">
+        <a href="https://github.com/yarizm/reading-system/actions/workflows/test.yml">
+          <img src="https://github.com/yarizm/reading-system/actions/workflows/test.yml/badge.svg" alt="CI Status" />
+        </a>
+      </div>
+      <span class="eyebrow">Spring Boot 3.2 + Vue 3 全栈项目</span>
+      <h1>智能阅读系统</h1>
       <p>
-        项目包含 Spring Boot 后端、桌面端 Web、移动端 H5，以及独立的轻量 TTS 服务。
-        功能重点放在图书阅读、书架管理、评论互动、好友社交、AI 问答、推荐和听书。
+        前后端分离的在线阅读平台，覆盖图书阅读、书架管理、评论互动、好友私聊、AI 问答、知识库同步、推荐和听书。
+      </p>
+      <p class="subtitle">
+        支持 Docker Compose 一键部署，含 Flyway 数据库迁移、基础设施降级容错和多端前端。
       </p>
       <div class="hero-meta">
-        <span>Java 17 / Spring Boot 3</span>
-        <span>Vue 3 / Vite</span>
-        <span>MySQL / Redis / Elasticsearch</span>
-        <span>Dify / TTS / WebSocket</span>
+        <span>Java 17 / Spring Boot 3.2</span>
+        <span>Vue 3 / Vite / Element Plus / Vant</span>
+        <span>MySQL 8 / Redis 7 / Elasticsearch 8</span>
+        <span>Dify / DashScope / edge-tts</span>
+        <span>Docker Compose / Nginx</span>
+        <span>Flyway / MyBatis-Plus / WebSocket</span>
+      </div>
+      <div class="hero-links">
+        <a href="https://github.com/yarizm/reading-system">GitHub</a>
+        <a href="architecture.md" class="secondary">架构文档</a>
+        <a href="API.md" class="secondary">API 参考</a>
       </div>
     </section>
   </div>
@@ -329,60 +310,78 @@
     <div class="section-inner">
       <div class="section-head">
         <h2>功能范围</h2>
-        <p>按业务拆分，当前系统的核心能力主要集中在阅读、社交、AI 和管理四个方向。</p>
+        <p>按业务方向组织，覆盖阅读、社交、AI 和管理四大领域。</p>
       </div>
       <div class="grid grid-3">
         <div class="card">
           <h3>阅读与书架</h3>
           <ul>
-            <li>图书详情、章节阅读、阅读进度记录</li>
+            <li>图书详情、目录解析、章节阅读</li>
+            <li>阅读进度自动保存与恢复</li>
             <li>个人书架管理、继续阅读</li>
-            <li>书单创建、查看、分享、导入</li>
+            <li>书单创建、分享码导入</li>
+            <li>自定义阅读主题（护眼/暗夜/适老）</li>
           </ul>
         </div>
         <div class="card">
           <h3>评论与社交</h3>
           <ul>
-            <li>图书评论、回复、点赞</li>
+            <li>书评、回复、点赞</li>
             <li>段落评论、段落分享</li>
-            <li>好友申请、私聊、图书分享</li>
+            <li>好友搜索、申请、列表</li>
+            <li>私聊、已读未读、消息通知</li>
+            <li>图书/段落/音频分享给好友</li>
           </ul>
         </div>
         <div class="card">
           <h3>AI 与听书</h3>
           <ul>
-            <li>AI 阅读助手</li>
-            <li>首页推荐</li>
-            <li>段落朗读、整章听书、音频分享</li>
+            <li>Dify AI 阅读助手 SSE 流式对话</li>
+            <li>AI 个性化首页推荐 + 熔断降级</li>
+            <li>知识库章节级自动同步</li>
+            <li>段落朗读 + 整章听书</li>
+            <li>元数据过滤知识库检索</li>
           </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="architecture">
+  <section class="section" id="engineering">
     <div class="section-inner">
       <div class="section-head">
-        <h2>系统结构</h2>
-        <p>整体是典型的前后端分离结构，语音服务单独部署，方便替换和扩展。</p>
+        <h2>工程实践</h2>
+        <p>项目在快速迭代中积累的工程化能力。</p>
       </div>
       <div class="grid grid-2">
         <div class="card">
-          <h3>前端层</h3>
+          <h3>基础设施与测试</h3>
           <ul>
-            <li><code>reading-ui</code>：桌面端页面</li>
-            <li><code>reading-mobile-ui</code>：移动端页面</li>
-            <li>通过 HTTP 接口与 WebSocket 与后端通信</li>
+            <li>Docker Compose 一键部署（MySQL + Redis + ES + 后端 + 双前端 + TTS）</li>
+            <li>多阶段 Docker 构建（Maven → JRE，Node → Nginx）</li>
+            <li>降级容错：无 Redis/ES 时自动退到本地内存缓存</li>
+            <li>JUnit 5 + Mockito 后端测试，Vitest 前端组件测试</li>
+            <li>GitHub Actions CI：后端编译测试 + 双前端构建</li>
           </ul>
         </div>
         <div class="card">
-          <h3>服务层</h3>
+          <h3>架构与代码质量</h3>
           <ul>
-            <li><code>src/main/java</code>：核心后端业务</li>
-            <li><code>lightweight-tts-service</code>：轻量听书服务</li>
-            <li>Dify、DashScope 等作为外部 AI 能力接入</li>
+            <li>Flyway 数据库迁移基线化</li>
+            <li>MyBatis-Plus 分页 + Elasticsearch 搜索（含 MySQL 降级）</li>
+            <li>推荐熔断器：Dify 异常时 5 分钟短路 + 随机回退</li>
+            <li>Read.vue 组件拆分：6 composable + 9 组件的模块化架构</li>
+            <li>CSS 设计系统：自定义属性 + 毛玻璃 + 暗色模式 + 无限滚动</li>
+            <li>XSS 防护：Markdown 渲染经 DOMPurify 净化</li>
           </ul>
         </div>
+      </div>
+
+      <div class="highlight-box">
+        <strong>技术亮点</strong> —
+        后端采用 <code>@ConditionalOnProperty</code> + <code>@Autowired(required=false)</code> + <code>ConcurrentHashMap</code> 三级降级策略，保证无 Redis/ES 环境仍可完整运行；
+        前端 Read.vue 从 1700 行拆分为 6 个 composable + 9 个子组件，桌面端/移动端共享结构；
+        <code>DegradeEnvironmentPostProcessor</code> 在 Spring Boot 启动阶段按开关排除自动配置，避免 Bean 缺失异常。
       </div>
     </div>
   </section>
@@ -391,48 +390,24 @@
     <div class="section-inner">
       <div class="section-head">
         <h2>主要模块</h2>
-        <p>下面列的是项目里比较核心的业务模块，便于快速理解代码分布。</p>
+        <p>后端核心业务模块，按领域分层组织。</p>
       </div>
       <table>
         <thead>
-          <tr>
-            <th>模块</th>
-            <th>说明</th>
-          </tr>
+          <tr><th>领域</th><th>模块</th><th>说明</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td><code>SysBookController</code></td>
-            <td>图书查询、上传、审核、推荐、排行榜</td>
-          </tr>
-          <tr>
-            <td><code>UserBookshelfController</code></td>
-            <td>书架增删、阅读进度同步、书架可见性切换</td>
-          </tr>
-          <tr>
-            <td><code>AuthController</code></td>
-            <td>验证码发送、注册、验证码登录、密码重置</td>
-          </tr>
-          <tr>
-            <td><code>DifyAiController</code></td>
-            <td>AI 对话与流式响应转发</td>
-          </tr>
-          <tr>
-            <td><code>AiController</code></td>
-            <td>听书与音频生成入口</td>
-          </tr>
-          <tr>
-            <td><code>FriendController</code> / <code>ChatController</code></td>
-            <td>好友关系、聊天记录、未读消息管理</td>
-          </tr>
-          <tr>
-            <td><code>BookShareController</code> / <code>ParagraphShareController</code></td>
-            <td>图书分享与段落分享</td>
-          </tr>
-          <tr>
-            <td><code>BooklistController</code></td>
-            <td>书单创建、分享、导入</td>
-          </tr>
+          <tr><td>图书</td><td><code>SysBookController</code></td><td>查询、上传、审核、目录解析、排行榜</td></tr>
+          <tr><td>阅读</td><td><code>UserBookshelfController</code></td><td>书架管理、阅读进度同步、可见性切换</td></tr>
+          <tr><td>搜索</td><td><code>SearchController</code> + <code>BookSearchService</code></td><td>Elasticsearch 搜索，不可用时降级 MySQL LIKE</td></tr>
+          <tr><td>认证</td><td><code>AuthController</code> + <code>AuthService</code></td><td>验证码登录、密码重置、Redis 降级本地缓存</td></tr>
+          <tr><td>AI</td><td><code>DifyAiController</code> + <code>DifyKnowledgeBaseService</code></td><td>AI 对话 SSE 流式输出、知识库章节级同步</td></tr>
+          <tr><td>听书</td><td><code>AiController</code> + <code>TtsProvider</code></td><td>段落/章节 TTS 生成，支持多 Provider 切换</td></tr>
+          <tr><td>推荐</td><td><code>BookRecommendationServiceImpl</code></td><td>AI 推荐 + 熔断器 + Redis/本地双层缓存</td></tr>
+          <tr><td>社交</td><td><code>FriendController</code> / <code>ChatController</code></td><td>好友关系、私聊 WebSocket、未读消息</td></tr>
+          <tr><td>分享</td><td><code>BookShareController</code> / <code>ParagraphShareController</code></td><td>图书分享、段落分享、音频分享</td></tr>
+          <tr><td>书单</td><td><code>BooklistController</code></td><td>书单创建、分享码导入导出</td></tr>
+          <tr><td>管理</td><td><code>Admin.vue</code></td><td>后台：图书审核、用户管理、封禁控制</td></tr>
         </tbody>
       </table>
     </div>
@@ -442,27 +417,23 @@
     <div class="section-inner">
       <div class="section-head">
         <h2>启动方式</h2>
-        <p>按依赖服务、TTS 服务、后端、前端的顺序启动会比较稳定。</p>
+        <p>推荐 Docker Compose 一键部署，30 秒内启动全部服务。</p>
       </div>
 
       <div class="step-list">
         <div class="step-item">
-          <strong>1. 准备基础依赖</strong>
-          启动 MySQL、Redis 和 Elasticsearch，并确认后端配置文件中的连接地址可用。
+          <strong>Docker Compose（推荐）</strong>
+          <code>cp .env.example .env</code> → 编辑填入 <code>MYSQL_PASSWORD</code> → <code>docker compose up -d</code><br />
+          启动后访问 桌面端 <code>:5173</code> / 移动端 <code>:5174</code> / 后端 <code>:8090</code>。
         </div>
         <div class="step-item">
-          <strong>2. 启动轻量 TTS 服务</strong>
-          Docker 方式：<code>docker compose -f docker-compose.tts.yml up -d --build</code><br />
-          本地方式：进入 <code>lightweight-tts-service</code> 后运行 <code>uvicorn app:app --host 0.0.0.0 --port 8091</code>
+          <strong>手动启动</strong>
+          确保 MySQL 8 + Redis + Elasticsearch 可用 → Flyway 自动建表 → <code>mvn spring-boot:run</code> 启动后端 →
+          进入 <code>reading-ui</code> 和 <code>reading-mobile-ui</code> 分别 <code>npm run dev</code>。
         </div>
         <div class="step-item">
-          <strong>3. 启动后端</strong>
-          在项目根目录运行 <code>mvn spring-boot:run</code>，或直接在 IDEA 中启动 <code>ReadingSystemApplication</code>。
-        </div>
-        <div class="step-item">
-          <strong>4. 启动前端</strong>
-          桌面端：进入 <code>reading-ui</code> 执行 <code>npm install</code>、<code>npm run dev</code><br />
-          移动端：进入 <code>reading-mobile-ui</code> 执行 <code>npm install</code>、<code>npm run dev</code>
+          <strong>可选 AI 能力</strong>
+          TTS 听书需要启动 <code>lightweight-tts-service</code>；AI 助手和推荐需要配置 Dify Key 和 DashScope Key。
         </div>
       </div>
     </div>
@@ -477,29 +448,29 @@
         <div class="stack-list">
           <div class="stack-item">
             <strong>后端</strong>
-            <code>src/main/java</code>、<code>src/main/resources</code>
+            <code>src/main/java</code>（业务逻辑）、<code>src/main/resources</code>（配置 + Flyway 迁移 + MyBatis Mapper）
           </div>
           <div class="stack-item">
             <strong>桌面端</strong>
-            <code>reading-ui</code>
+            <code>reading-ui</code> — Vue 3 + Element Plus，composable 架构
           </div>
           <div class="stack-item">
             <strong>移动端</strong>
-            <code>reading-mobile-ui</code>
+            <code>reading-mobile-ui</code> — Vue 3 + Vant
           </div>
         </div>
         <div class="stack-list">
           <div class="stack-item">
-            <strong>轻量 TTS 服务</strong>
-            <code>lightweight-tts-service</code>
+            <strong>TTS 服务</strong>
+            <code>lightweight-tts-service</code> — FastAPI + edge-tts
           </div>
           <div class="stack-item">
-            <strong>静态说明页</strong>
-            <code>docs/index.html</code>
+            <strong>测试</strong>
+            <code>src/test</code>（Java JUnit + Mockito）、<code>reading-ui/src/__tests__</code>（Vitest）
           </div>
           <div class="stack-item">
-            <strong>根目录说明</strong>
-            <code>README.md</code>
+            <strong>CI</strong>
+            <code>.github/workflows/test.yml</code> — 后端测试 + 双前端构建
           </div>
         </div>
       </div>
@@ -508,7 +479,12 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      智能阅读系统文档页。当前页面用于概览项目结构与基本使用方式，不作为完整接口文档替代。
+      <span>智能阅读系统 · MIT License</span>
+      <span>
+        <a href="https://github.com/yarizm/reading-system">GitHub</a>
+        <a href="architecture.md">架构文档</a>
+        <a href="API.md">API 参考</a>
+      </span>
     </div>
   </footer>
 </body>
