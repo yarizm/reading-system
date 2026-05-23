@@ -78,9 +78,10 @@
 <script setup>
 import { DArrowLeft, DArrowRight, Service, UserFilled, DocumentAdd, Position, Delete } from '@element-plus/icons-vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 marked.setOptions({ breaks: true, gfm: true })
-const renderMarkdown = (text) => marked.parse(text || '')
+const renderMarkdown = (text) => DOMPurify.sanitize(marked.parse(text || ''))
 
 const props = defineProps({
   show: Boolean,

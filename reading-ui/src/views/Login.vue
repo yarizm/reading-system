@@ -171,9 +171,9 @@ const sendCode = async (type) => {
   if (!target) return ElMessage.warning('请输入手机号或邮箱')
   
   // 简单格式校验
-  // const isPhone = /^1[3-9]\d{9}$/.test(target)
-  // const isEmail = /.+@.+\..+/.test(target)
-  // if (!isPhone && !isEmail) return ElMessage.warning('格式不正确')
+  const isPhone = /^1[3-9]\d{9}$/.test(target)
+  const isEmail = /.+@.+\..+/.test(target)
+  if (!isPhone && !isEmail) return ElMessage.warning('格式不正确')
 
   try {
     await request.post('/api/auth/sendCode', { target, type })

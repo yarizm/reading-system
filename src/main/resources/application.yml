@@ -54,6 +54,10 @@ mybatis-plus:
 file:
   upload-path: D:/WORK/reading-system-files/  # 请确保这个盘符存在，或者改成你喜欢的路径
 app:
+  elasticsearch:
+    enabled: false # 是否启用 Elasticsearch (设为 false 时自动阻断所有依赖并降级到 MySQL)
+  redis:
+    enabled: false # 是否启用 Redis (设为 false 时自动阻断所有依赖并降级到本地内存缓存)
   security:
     trust-proxy-headers: ${APP_SECURITY_TRUST_PROXY_HEADERS:false}
   auth:

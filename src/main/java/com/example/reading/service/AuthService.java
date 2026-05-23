@@ -10,6 +10,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -19,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AuthService {
 
-    @Autowired
+    @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
 
     @Autowired
@@ -27,6 +29,13 @@ public class AuthService {
 
     private static final String CODE_KEY_PREFIX = "validation:code:";
     private static final long CODE_EXPIRE_MINUTES = 5;
+
+    private final Map<String, LocalCode> localCodes = new ConcurrentHashMap<>();
+
+    private static class LocalCode {
+        String code;
+        long expireTime;
+    }
 
     /**
      * 生成并缓存 6 位验证码
@@ -37,7 +46,20 @@ public class AuthService {
     public String generateAndCacheCode(String target, Integer type) {
         String code = RandomUtil.randomNumbers(6);
         String key = CODE_KEY_PREFIX + type + ":" + target;
-        redisTemplate.opsForValue().set(key, code, CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        
+        if (redisTemplate != null) {
+            try {
+                redisTemplate.opsForValue().set(key, code, CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+                return code;
+            } catch (Exception e) {
+                // Fallback to local cache
+            }
+        }
+        
+        LocalCode lc = new LocalCode();
+        lc.code = code;
+        lc.expireTime = System.currentTimeMillis() + CODE_EXPIRE_MINUTES * 60 * 1000L;
+        localCodes.put(key, lc);
         return code;
     }
 
@@ -47,8 +69,23 @@ public class AuthService {
      */
     public void verifyCode(String target, String code, Integer type) {
         String key = CODE_KEY_PREFIX + type + ":" + target;
-        String savedCode = redisTemplate.opsForValue().get(key);
-        if (savedCode == null || !savedCode.equals(code)) {
+        if (redisTemplate != null) {
+            try {
+                String savedCode = redisTemplate.opsForValue().get(key);
+                if (savedCode == null || !savedCode.equals(code)) {
+                    throw new RuntimeException("验证码无效或已过期");
+                }
+                return;
+            } catch (Exception e) {
+                if (e instanceof RuntimeException && "验证码无效或已过期".equals(e.getMessage())) {
+                    throw e;
+                }
+                // Fallback to local cache
+            }
+        }
+        
+        LocalCode lc = localCodes.get(key);
+        if (lc == null || System.currentTimeMillis() > lc.expireTime || !lc.code.equals(code)) {
             throw new RuntimeException("验证码无效或已过期");
         }
     }

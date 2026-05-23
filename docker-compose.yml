@@ -64,6 +64,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://reading-mysql:3306/smartreader?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATA_REDIS_HOST: reading-redis
       SPRING_ELASTICSEARCH_URIS: http://reading-elasticsearch:9200
+      APP_ELASTICSEARCH_ENABLED: "true"
+      APP_REDIS_ENABLED: "true"
       TTS_LIGHTWEIGHT_BASE_URL: http://tts:8091
       FILE_UPLOAD_PATH: /app/uploads
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}

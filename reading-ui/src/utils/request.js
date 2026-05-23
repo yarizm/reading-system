@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
+import router from '../router'
 
 const request = axios.create()
 
@@ -18,7 +19,7 @@ request.interceptors.response.use(
     if (error.response?.status === 401) {
       const authStore = useAuthStore()
       authStore.logout()
-      window.location.href = '/login'
+      router.push('/login')
       ElMessage.error('登录已过期，请重新登录')
     } else if (error.response?.status === 403) {
       ElMessage.error('权限不足')

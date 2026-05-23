@@ -16,6 +16,7 @@ import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
  * 负责数据同步和搜索查询
  */
 @Service
+@ConditionalOnProperty(name = "app.elasticsearch.enabled", havingValue = "true")
 public class BookSearchService {
 
     @Autowired

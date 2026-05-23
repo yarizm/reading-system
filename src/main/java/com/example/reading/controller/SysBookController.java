@@ -47,7 +47,7 @@ public class SysBookController {
     @Autowired
     private ISysBookService sysBookService;
 
-    @Autowired
+    @Autowired(required = false)
     private com.example.reading.service.BookSearchService bookSearchService;
 
     @Autowired
@@ -102,11 +102,13 @@ public class SysBookController {
     }
 
     private void trySyncToEs(Long bookId) {
+        if (bookSearchService == null) return;
         try { bookSearchService.syncOneBookToEs(bookId); }
         catch (Exception e) { log.error("Failed to sync book to ES. bookId={}", bookId, e); }
     }
 
     private void tryDeleteFromEs(Long bookId) {
+        if (bookSearchService == null) return;
         try { bookSearchService.deleteFromEs(bookId); }
         catch (Exception e) { log.error("Failed to delete book from ES. bookId={}", bookId, e); }
     }

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
@@ -63,11 +64,18 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
     public BookRecommendationServiceImpl(UserBookshelfMapper userBookshelfMapper,
                                          SysBookMapper sysBookMapper,
                                          ObjectMapper objectMapper,
-                                         StringRedisTemplate redisTemplate) {
+                                         @Autowired(required = false) StringRedisTemplate redisTemplate) {
         this.userBookshelfMapper = userBookshelfMapper;
         this.sysBookMapper = sysBookMapper;
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
+    }
+
+    private final Map<String, LocalCacheItem> localCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static class LocalCacheItem {
+        String value;
+        long expireTime;
     }
 
     @Override
@@ -85,7 +93,22 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
             }
 
             // 检查熔断器：如果短时间内多次失败，直接走随机回退，不再等待 30 秒超时
-            if (Boolean.TRUE.equals(redisTemplate.hasKey(CIRCUIT_BREAKER_KEY))) {
+            boolean isBreakerOpen = false;
+            if (redisTemplate != null) {
+                try {
+                    if (Boolean.TRUE.equals(redisTemplate.hasKey(CIRCUIT_BREAKER_KEY))) {
+                        isBreakerOpen = true;
+                    }
+                } catch (Exception e) {}
+            }
+            if (!isBreakerOpen) {
+                LocalCacheItem cb = localCache.get(CIRCUIT_BREAKER_KEY);
+                if (cb != null && System.currentTimeMillis() < cb.expireTime) {
+                    isBreakerOpen = true;
+                }
+            }
+
+            if (isBreakerOpen) {
                 log.info("AI recommendation circuit breaker is open, using random fallback directly for userId={}", userId);
                 List<SysBook> fallbackBooks = randomFallback();
                 if (!refresh) {
@@ -121,11 +144,18 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
             log.warn("AI recommendation failed, fallback to random recommendation. userId={}, reason={}", userId, ex.getMessage());
             
             // 触发异常时开启熔断器，短时间内不再请求 Dify
-            try {
-                redisTemplate.opsForValue().set(CIRCUIT_BREAKER_KEY, "1", CIRCUIT_BREAKER_EXPIRE_MINUTES, TimeUnit.MINUTES);
-            } catch (Exception e) {
-                log.warn("Failed to set circuit breaker", e);
+            // 触发异常时开启熔断器，短时间内不再请求 Dify
+            if (redisTemplate != null) {
+                try {
+                    redisTemplate.opsForValue().set(CIRCUIT_BREAKER_KEY, "1", CIRCUIT_BREAKER_EXPIRE_MINUTES, TimeUnit.MINUTES);
+                } catch (Exception e) {
+                    log.warn("Failed to set circuit breaker", e);
+                }
             }
+            LocalCacheItem lc = new LocalCacheItem();
+            lc.value = "1";
+            lc.expireTime = System.currentTimeMillis() + CIRCUIT_BREAKER_EXPIRE_MINUTES * 60 * 1000L;
+            localCache.put(CIRCUIT_BREAKER_KEY, lc);
 
             List<SysBook> fallbackBooks = randomFallback();
             writeRecommendCache(userId, fallbackBooks); // 将随机回退的结果也存入缓存
@@ -135,7 +165,20 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
 
     private List<SysBook> readRecommendCache(Long userId) {
         try {
-            String cacheValue = redisTemplate.opsForValue().get(buildCacheKey(userId));
+            String cacheKey = buildCacheKey(userId);
+            String cacheValue = null;
+            if (redisTemplate != null) {
+                try {
+                    cacheValue = redisTemplate.opsForValue().get(cacheKey);
+                } catch (Exception e) {}
+            }
+            if (cacheValue == null) {
+                LocalCacheItem item = localCache.get(cacheKey);
+                if (item != null && System.currentTimeMillis() < item.expireTime) {
+                    cacheValue = item.value;
+                }
+            }
+
             if (!StringUtils.hasText(cacheValue)) {
                 return Collections.emptyList();
             }
@@ -161,12 +204,20 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
 
     private void writeRecommendCache(Long userId, List<SysBook> books) {
         try {
-            redisTemplate.opsForValue().set(
-                    buildCacheKey(userId),
-                    objectMapper.writeValueAsString(books),
-                    RECOMMEND_CACHE_EXPIRE_HOURS,
-                    TimeUnit.HOURS
-            );
+            String cacheKey = buildCacheKey(userId);
+            String json = objectMapper.writeValueAsString(books);
+            
+            if (redisTemplate != null) {
+                try {
+                    redisTemplate.opsForValue().set(cacheKey, json, RECOMMEND_CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
+                    return;
+                } catch (Exception e) {}
+            }
+            
+            LocalCacheItem item = new LocalCacheItem();
+            item.value = json;
+            item.expireTime = System.currentTimeMillis() + RECOMMEND_CACHE_EXPIRE_HOURS * 3600 * 1000L;
+            localCache.put(cacheKey, item);
         } catch (Exception ex) {
             log.warn("Failed to write recommendation cache. userId={}", userId, ex);
         }

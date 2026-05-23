@@ -12,26 +12,28 @@
       </div>
     </div>
 
-    <el-tabs v-model="activeTab" type="border-card">
+    <el-tabs v-model="activeTab" class="premium-tabs">
 
       <el-tab-pane label="图书管理" name="book">
         <div class="toolbar">
           <el-button type="primary" @click="openAddBook">上传新书</el-button>
         </div>
 
-        <el-table :data="bookList" border stripe>
-          <el-table-column prop="id" label="ID" width="60" />
-          <el-table-column prop="title" label="书名" />
-          <el-table-column prop="author" label="作者" />
-          <el-table-column prop="category" label="分类" width="80" />
+        <el-table :data="bookList" class="premium-table">
+          <el-table-column prop="id" label="ID" width="60" align="center" />
+          <el-table-column prop="title" label="书名" align="center" />
+          <el-table-column prop="author" label="作者" align="center" />
+          <el-table-column prop="category" label="分类" width="80" align="center" />
           <el-table-column label="来源" width="140" align="center">
             <template #default="scope">
               <div v-if="scope.row.uploaderId" style="display: flex; align-items: center; justify-content: center;">
-                <el-tag type="warning" size="small" style="display: flex; align-items: center;">
-                  <el-icon style="margin-right:4px"><User/></el-icon>{{ scope.row.uploaderNickname || '用户提供' }}
+                <el-tag type="warning" effect="plain" size="small">
+                  <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                    <el-icon><User/></el-icon><span>{{ scope.row.uploaderNickname || '用户提供' }}</span>
+                  </div>
                 </el-tag>
               </div>
-              <el-tag v-else type="success" size="small">官方发布</el-tag>
+              <el-tag v-else type="success" effect="plain" size="small">官方发布</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="封面" width="80" align="center">
@@ -39,10 +41,10 @@
               <img v-if="scope.row.coverUrl" :src="scope.row.coverUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px" alt=""/>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200" align="center">
+          <el-table-column label="操作" width="180" align="center">
             <template #default="scope">
-              <el-button type="primary" size="small" @click="openEditBook(scope.row)">编辑</el-button>
-              <el-button type="danger" size="small" @click="deleteBook(scope.row.id)">删除</el-button>
+              <el-button plain size="small" type="primary" @click="openEditBook(scope.row)">编辑</el-button>
+              <el-button plain size="small" type="danger" @click="deleteBook(scope.row.id)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -51,39 +53,41 @@
       </el-tab-pane>
 
       <el-tab-pane label="用户管理" name="user">
-        <el-table :data="userList" border stripe>
-          <el-table-column prop="id" label="ID" width="60" />
-          <el-table-column prop="username" label="用户名" />
-          <el-table-column prop="nickname" label="昵称" />
-          <el-table-column prop="role" label="角色" width="80" align="center">
+        <el-table :data="userList" class="premium-table">
+          <el-table-column prop="id" label="ID" width="60" align="center" />
+          <el-table-column prop="username" label="用户名" align="center" />
+          <el-table-column prop="nickname" label="昵称" align="center" />
+          <el-table-column prop="role" label="角色" width="100" align="center">
             <template #default="scope">
-              <el-tag :type="scope.row.role === 1 ? 'danger' : 'success'">
+              <el-tag :type="scope.row.role === 1 ? 'danger' : 'success'" effect="plain">
                 {{ scope.row.role === 1 ? '管理员' : '普通用户' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="isBanned" label="状态" width="90" align="center">
+          <el-table-column prop="isBanned" label="状态" width="100" align="center">
             <template #default="scope">
-              <el-tag :type="scope.row.isBanned === 1 ? 'danger' : 'success'">
-                <el-icon style="margin-right: 2px" v-if="scope.row.isBanned === 1"><CircleClose /></el-icon>
-                <el-icon style="margin-right: 2px" v-else><CircleCheck /></el-icon>
-                {{ scope.row.isBanned === 1 ? '已封禁' : '正常' }}
+              <el-tag :type="scope.row.isBanned === 1 ? 'danger' : 'success'" effect="plain">
+                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                  <el-icon v-if="scope.row.isBanned === 1"><CircleClose /></el-icon>
+                  <el-icon v-else><CircleCheck /></el-icon>
+                  <span>{{ scope.row.isBanned === 1 ? '已封禁' : '正常' }}</span>
+                </div>
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="300" fixed="right" align="center">
+          <el-table-column label="操作" width="280" fixed="right" align="center">
             <template #default="scope">
-              <el-button type="primary" size="small" @click="openEditUser(scope.row)">编辑</el-button>
-              <el-button type="info" size="small" @click="openUserRecords(scope.row.id)" :disabled="scope.row.id === 1">发言记录</el-button>
+              <el-button plain size="small" type="primary" @click="openEditUser(scope.row)">编辑</el-button>
+              <el-button plain size="small" type="info" @click="openUserRecords(scope.row.id)" :disabled="scope.row.id === 1">发言</el-button>
               <el-button
+                  plain size="small"
                   type="warning"
-                  size="small"
                   @click="toggleBan(scope.row)"
                   :disabled="scope.row.id === 1"
               >{{ scope.row.isBanned === 1 ? '解封' : '封禁' }}</el-button>
               <el-button
+                  plain size="small"
                   type="danger"
-                  size="small"
                   @click="deleteUser(scope.row.id)"
                   :disabled="scope.row.role === 1 || scope.row.id === 1"
               >删除</el-button>
@@ -96,33 +100,33 @@
 
       <el-tab-pane label="书籍审核" name="review">
         <el-empty v-if="reviewList.length === 0" description="暂无待审核的请求" />
-        <el-table v-else :data="reviewList" border stripe>
-          <el-table-column prop="id" label="请求ID" width="70" />
-          <el-table-column prop="bookTitle" label="书名" />
-          <el-table-column prop="uploaderNickname" label="申请人" width="100" />
+        <el-table v-else :data="reviewList" class="premium-table">
+          <el-table-column prop="id" label="请求ID" width="80" align="center" />
+          <el-table-column prop="bookTitle" label="书名" align="center" />
+          <el-table-column prop="uploaderNickname" label="申请人" width="120" align="center" />
           <el-table-column label="请求类型" width="100" align="center">
             <template #default="scope">
-              <el-tag :type="reqTypeTag(scope.row.requestType)" size="small">
+              <el-tag :type="reqTypeTag(scope.row.requestType)" effect="plain" size="small">
                 {{ reqTypeText(scope.row.requestType) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="封面" width="70">
+          <el-table-column label="封面" width="80" align="center">
             <template #default="scope">
               <img v-if="scope.row.bookCoverUrl" :src="scope.row.bookCoverUrl" style="width: 36px; height: 48px; object-fit: cover; border-radius: 3px" alt=""/>
               <span v-else style="color: #c4b9ab; font-size: 12px">无</span>
             </template>
           </el-table-column>
-          <el-table-column label="发起时间" width="160">
+          <el-table-column label="发起时间" width="180" align="center">
             <template #default="scope">
               <span style="font-size: 13px; color: #7a6e63">{{ new Date(scope.row.createTime).toLocaleString() }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="260" fixed="right">
+          <el-table-column label="操作" width="220" fixed="right" align="center">
             <template #default="scope">
-              <el-button type="info" size="small" @click="openReviewDetail(scope.row)">详情</el-button>
-              <el-button type="success" size="small" @click="reviewRequest(scope.row.id, 'approve')">通过</el-button>
-              <el-button type="danger" size="small" @click="openRejectDialog(scope.row)">驳回</el-button>
+              <el-button plain size="small" type="info" @click="openReviewDetail(scope.row)">详情</el-button>
+              <el-button plain size="small" type="success" @click="reviewRequest(scope.row.id, 'approve')">通过</el-button>
+              <el-button plain size="small" type="danger" @click="openRejectDialog(scope.row)">驳回</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -601,7 +605,12 @@ const openReviewDetail = (row) => {
   currentReview.value = row
   editDiffRows.value = []
   if (row.requestType === 'edit' && row.newBookData) {
-    const newData = JSON.parse(row.newBookData)
+    let newData = {}
+    try {
+      newData = JSON.parse(row.newBookData)
+    } catch (e) {
+      console.error('Failed to parse newBookData:', e)
+    }
     // 将 SQL JOIN 的下划线字段映射到驼峰
     const oldBook = {
       title: row.bookTitle,
@@ -704,34 +713,155 @@ onMounted(() => {
 }
 .back-btn:hover { color: #8b6f52; }
 
-/* === 玻璃拟态卡片覆写 === */
-:deep(.el-tabs--border-card) {
-  background: rgba(255, 255, 255, 0.45) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
-  border-radius: 12px !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
-  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
-  overflow: hidden;
+/* === Premium Tabs === */
+:deep(.premium-tabs) {
+  margin-top: 10px;
 }
-:deep(.el-tabs--border-card > .el-tabs__header) {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+:deep(.premium-tabs .el-tabs__header) {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  margin-bottom: 24px;
 }
-:deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active) {
-  background: rgba(255, 255, 255, 0.6) !important;
-  border-right-color: rgba(255, 255, 255, 0.5) !important;
-  border-left-color: rgba(255, 255, 255, 0.5) !important;
+:deep(.premium-tabs .el-tabs__nav-wrap::after) {
+  display: none;
 }
-:deep(.el-table) {
+:deep(.premium-tabs .el-tabs__item) {
+  font-size: 16px;
+  font-weight: 500;
+  color: #8c827a;
+  transition: all 0.3s ease;
+  padding: 0 24px;
+  height: 48px;
+  line-height: 48px;
+}
+:deep(.premium-tabs .el-tabs__item.is-active) {
+  color: #5c4b40;
+}
+:deep(.premium-tabs .el-tabs__item:hover) {
+  color: #7a6e63;
+}
+:deep(.premium-tabs .el-tabs__active-bar) {
+  background-color: #8b6f52;
+  height: 3px;
+  border-radius: 3px;
+}
+
+/* === Premium Table === */
+:deep(.premium-table) {
   background: transparent !important;
+  border-radius: 12px;
+  overflow: hidden;
+  --el-table-border-color: rgba(255, 255, 255, 0.2);
+  --el-table-row-hover-bg-color: rgba(255, 255, 255, 0.6);
 }
-:deep(.el-table tr) {
-  background: rgba(255, 255, 255, 0.3) !important;
+:deep(.premium-table .el-table__inner-wrapper::before) {
+  display: none; /* Remove bottom line */
 }
-:deep(.el-table th.el-table__cell) {
-  background: rgba(255, 255, 255, 0.5) !important;
+:deep(.premium-table th.el-table__cell) {
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(10px);
+  color: #5c4b40;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+  padding: 12px 0;
 }
+:deep(.premium-table tr) {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.3s ease;
+}
+:deep(.premium-table td.el-table__cell) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4) !important;
+  padding: 16px 0;
+  color: #3e322a;
+}
+:deep(.premium-table .el-table__row:hover > td.el-table__cell) {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* === Premium Tags Override === */
+:deep(.el-tag) {
+  border-width: 1px;
+  font-weight: 600;
+}
+:deep(.el-tag--success) {
+  color: #5c855c;
+  background-color: rgba(92, 133, 92, 0.1);
+  border-color: rgba(92, 133, 92, 0.3);
+}
+:deep(.el-tag--danger) {
+  color: #b35546;
+  background-color: rgba(179, 85, 70, 0.1);
+  border-color: rgba(179, 85, 70, 0.3);
+}
+:deep(.el-tag--warning) {
+  color: #b37f46;
+  background-color: rgba(179, 127, 70, 0.1);
+  border-color: rgba(179, 127, 70, 0.3);
+}
+:deep(.el-tag--info) {
+  color: #6a5a4f;
+  background-color: rgba(106, 90, 79, 0.1);
+  border-color: rgba(106, 90, 79, 0.3);
+}
+
+/* === Premium Buttons Override === */
+:deep(.el-button.is-plain) {
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+:deep(.el-button--primary.is-plain) {
+  color: #7b6248;
+  background: rgba(139, 111, 82, 0.05);
+  border-color: rgba(139, 111, 82, 0.3);
+}
+:deep(.el-button--primary.is-plain:hover) {
+  color: #5a4531;
+  background: rgba(139, 111, 82, 0.15);
+  border-color: rgba(139, 111, 82, 0.5);
+}
+:deep(.el-button--danger.is-plain) {
+  color: #b35546;
+  background: rgba(212, 107, 90, 0.05);
+  border-color: rgba(212, 107, 90, 0.3);
+}
+:deep(.el-button--danger.is-plain:hover) {
+  color: #8f4033;
+  background: rgba(212, 107, 90, 0.15);
+  border-color: rgba(212, 107, 90, 0.5);
+}
+:deep(.el-button--warning.is-plain) {
+  color: #b37f46;
+  background: rgba(212, 154, 90, 0.05);
+  border-color: rgba(212, 154, 90, 0.3);
+}
+:deep(.el-button--warning.is-plain:hover) {
+  color: #8c6133;
+  background: rgba(212, 154, 90, 0.15);
+  border-color: rgba(212, 154, 90, 0.5);
+}
+:deep(.el-button--success.is-plain) {
+  color: #5c855c;
+  background: rgba(123, 156, 123, 0.05);
+  border-color: rgba(123, 156, 123, 0.3);
+}
+:deep(.el-button--success.is-plain:hover) {
+  color: #436343;
+  background: rgba(123, 156, 123, 0.15);
+  border-color: rgba(123, 156, 123, 0.5);
+}
+:deep(.el-button--info.is-plain) {
+  color: #6a5a4f;
+  background: rgba(122, 110, 99, 0.05);
+  border-color: rgba(122, 110, 99, 0.3);
+}
+:deep(.el-button--info.is-plain:hover) {
+  color: #4a3e35;
+  background: rgba(122, 110, 99, 0.15);
+  border-color: rgba(122, 110, 99, 0.5);
+}
+
 :deep(.el-dialog) {
   background: rgba(255, 255, 255, 0.85) !important;
   backdrop-filter: blur(30px) !important;

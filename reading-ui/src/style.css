@@ -5,11 +5,11 @@
   /* 调色板 - 现代灵动模式 (Modern Vibrant) */
   --bg-color: #f8fafc;
   --surface-color: rgba(255, 255, 255, 0.75);
-  --primary-color: #4f46e5; /* Indigo 600 */
-  --primary-hover: #4338ca; /* Indigo 700 */
-  --text-primary: #0f172a; /* Slate 900 */
-  --text-secondary: #64748b; /* Slate 500 */
-  --border-color: rgba(226, 232, 240, 0.6);
+  --primary-color: #a36b46; /* Amber Wood */
+  --primary-hover: #8f5d3d; /* Darker Amber */
+  --text-primary: #2e2520; /* Deep Brown */
+  --text-secondary: #6b5e53; /* Warm Grey/Brown */
+  --border-color: rgba(139, 111, 82, 0.2);
   --glass-border: rgba(255, 255, 255, 0.6);
   
   /* 多层阴影体系 (Premium Shadows) */
@@ -31,7 +31,7 @@
 
   /* Element Plus 覆盖 */
   --el-color-primary: var(--primary-color);
-  --el-color-primary-light-3: #818cf8;
+  --el-color-primary-light-3: #c29b7a;
   --el-border-radius-base: var(--radius-sm);
   --el-text-color-primary: var(--text-primary);
   --el-text-color-regular: var(--text-secondary);
@@ -141,11 +141,10 @@ a {
   background: rgba(255, 255, 255, 0.4) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(139, 111, 82, 0.5) !important;
+  border: 1px solid rgba(139, 111, 82, 0.3) !important;
   color: var(--text-primary) !important;
   box-shadow: var(--shadow-sm) !important;
   transition: all var(--transition-fast) !important;
-  border-radius: var(--radius-sm) !important;
 }
 .glass-btn:hover {
   background: rgba(255, 255, 255, 0.8) !important;

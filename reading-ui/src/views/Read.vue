@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
     <header class="read-header">
       <div class="left">
         <el-button link @click="goBack">
-          <el-icon :size="20"><ArrowLeft /></el-icon> 返回书架
+          <el-icon :size="20"><ArrowLeft /></el-icon> 返回
         </el-button>
         <span class="book-title">{{ reading.bookInfo.value.title }}</span>
       </div>

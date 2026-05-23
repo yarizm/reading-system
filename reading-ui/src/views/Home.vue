@@ -126,7 +126,7 @@
       </el-button>
     </div>
     <div class="section-title" v-else><el-icon><Reading /></el-icon> 探索书库</div>
-    <div class="book-grid">
+    <div class="book-grid" v-infinite-scroll="loadMore" :infinite-scroll-disabled="loadingMore || noMore" :infinite-scroll-distance="100">
       <el-card v-for="book in tableData" :key="book.id" class="book-card hover-float" shadow="hover" :body-style="{ padding: '0px' }" @click="goToDetail(book.id)">
         <img :src="book.coverUrl || defaultCover" class="book-cover" @error="(e) => e.target.src = defaultCover"  alt=""/>
         <div class="book-info">
@@ -139,8 +139,14 @@
         </div>
       </el-card>
     </div>
-    <div class="pagination-box" v-if="total > 0">
-      <el-pagination background layout="total, prev, pager, next, jumper" :total="total" :page-size="pageSize" v-model:current-page="pageNum" @current-change="handleCurrentChange" />
+    
+    <div class="loading-status" style="text-align: center; margin: 30px 0; color: #8c827a; font-size: 14px;">
+      <div v-if="loadingMore" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <el-icon class="is-loading"><Loading /></el-icon> 正在加载更多书籍...
+      </div>
+      <div v-if="noMore && tableData.length > 0" style="color: #b5a99c;">
+        - 已经到底啦 -
+      </div>
     </div>
 
     <!-- 通知面板 -->
@@ -171,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -183,7 +189,8 @@ import {
   Refresh,
   User,
   Bell,
-  ArrowLeft
+  ArrowLeft,
+  Loading
 } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
@@ -207,6 +214,9 @@ const tableData = ref([])
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(20)
+const loadingMore = ref(false)
+const noMore = computed(() => tableData.value.length >= total.value && total.value > 0)
+let currentFetchId = 0
 const userInfo = ref({})
 const unreadCount = ref(0)
 
@@ -363,22 +373,50 @@ const loadRecommendBooks = async (refresh = false) => {
   }
 }
 
-const loadBooks = async () => {
+const loadBooks = async (append = false) => {
+  if (append && loadingMore.value) return;
+  loadingMore.value = true;
+  const fetchId = ++currentFetchId;
+  
   const isSearch = searchKeyword.value.trim().length > 0
   isSearchMode.value = isSearch
   
   const url = isSearch ? '/api/search' : '/api/sysBook/list'
   
-  const res = await request.get(url, {
-    params: {
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-      keyword: searchKeyword.value,
-      category: currentCategory.value
+  try {
+    const res = await request.get(url, {
+      params: {
+        pageNum: pageNum.value,
+        pageSize: pageSize.value,
+        keyword: searchKeyword.value,
+        category: currentCategory.value
+      }
+    })
+    
+    if (fetchId !== currentFetchId) return;
+    
+    const records = res.data.data.records || []
+    if (append) {
+      const newRecords = records.filter(item => !tableData.value.some(b => b.id === item.id))
+      tableData.value.push(...newRecords)
+    } else {
+      tableData.value = records
     }
-  })
-  tableData.value = res.data.data.records
-  total.value = res.data.data.total
+    total.value = res.data.data.total || 0
+  } catch (e) {
+    if (fetchId !== currentFetchId) return;
+    console.error('Failed to load books', e)
+  } finally {
+    if (fetchId === currentFetchId) {
+      loadingMore.value = false;
+    }
+  }
+}
+
+const loadMore = () => {
+  if (loadingMore.value || noMore.value) return
+  pageNum.value++
+  loadBooks(true)
 }
 
 const handleUserCommand = (cmd) => {
@@ -436,9 +474,8 @@ const clearSearch = () => {
   loadBooks();
 };
 
-const handleSearch = () => { pageNum.value = 1; loadBooks() }
-const changeCategory = (cat) => { currentCategory.value = cat; pageNum.value = 1; loadBooks() }
-const handleCurrentChange = (val) => { pageNum.value = val; loadBooks() }
+const handleSearch = () => { tableData.value = []; pageNum.value = 1; loadBooks(false) }
+const changeCategory = (cat) => { currentCategory.value = cat; tableData.value = []; pageNum.value = 1; loadBooks(false) }
 const goToDetail = (id) => { router.push(`/book/${id}`) }
 </script>
 

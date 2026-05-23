@@ -6,7 +6,12 @@ import com.example.reading.service.BookSearchService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.example.reading.entity.SysBook;
+import com.example.reading.mapper.SysBookMapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -17,8 +22,11 @@ import java.util.Map;
 @RequestMapping("/search")
 public class SearchController {
 
-    @Autowired
+    @Autowired(required = false)
     private BookSearchService bookSearchService;
+
+    @Autowired
+    private SysBookMapper sysBookMapper;
 
     @Autowired
     private AuthContextService authContextService;
@@ -42,7 +50,30 @@ public class SearchController {
             return Result.error("400", "搜索关键词不能为空");
         }
 
-        Map<String, Object> result = bookSearchService.search(keyword, category, pageNum, pageSize);
+        if (bookSearchService != null) {
+            try {
+                Map<String, Object> result = bookSearchService.search(keyword, category, pageNum, pageSize);
+                return Result.success(result);
+            } catch (Exception e) {
+                // Ignore and fallback to MySQL
+            }
+        }
+
+        // MySQL fallback search when ES is not available
+        QueryWrapper<SysBook> query = new QueryWrapper<>();
+        query.eq("status", 2);
+        query.and(w -> w.like("title", keyword).or().like("author", keyword).or().like("description", keyword));
+        if (category != null && !category.isEmpty() && !"全部".equals(category)) {
+            query.eq("category", category);
+        }
+        
+        Page<SysBook> page = new Page<>(pageNum, pageSize);
+        sysBookMapper.selectPage(page, query);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", page.getTotal());
+        result.put("records", page.getRecords());
+        
         return Result.success(result);
     }
 
@@ -51,6 +82,9 @@ public class SearchController {
     public Result<?> syncAll(HttpServletRequest request) {
         if (!isAdmin(request)) {
             return Result.error("403", "Forbidden");
+        }
+        if (bookSearchService == null) {
+            return Result.error("503", "Elasticsearch 未启用，不支持同步操作");
         }
         int count = bookSearchService.syncAllBooksToEs();
         return Result.success("成功同步 " + count + " 本书到 Elasticsearch 索引");
