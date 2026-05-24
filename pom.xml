@@ -20,6 +20,7 @@
     <properties>
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
+        <dify-starter.version>2.2.0</dify-starter.version>
     </properties>
 
     <dependencies>
@@ -69,7 +70,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- 用于发起异步/流式 HTTP 请求的 WebClient -->
+        <!-- Dify Spring Boot Starter: 类型化 API 客户端，替代手动 WebClient 调用 -->
+    <dependency>
+        <groupId>io.github.guoshiqiufeng.dify</groupId>
+        <artifactId>dify-spring-boot-starter</artifactId>
+        <version>${dify-starter.version}</version>
+    </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>

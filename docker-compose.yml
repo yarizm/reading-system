@@ -70,14 +70,18 @@ services:
       FILE_UPLOAD_PATH: /app/uploads
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       QWEN_API_KEY: ${QWEN_API_KEY}
-      DIFY_CHAT_URL: ${DIFY_CHAT_URL:-https://api.dify.ai/v1/chat-messages}
-      DIFY_KB_URL: ${DIFY_KB_URL:-https://api.dify.ai/v1}
+      DIFY_BASE_URL: ${DIFY_DOCKER_BASE_URL:-http://docker-api-1:5001/v1}
+      DIFY_CHAT_URL: ${DIFY_DOCKER_CHAT_URL:-http://docker-api-1:5001/v1/chat-messages}
+      DIFY_KB_URL: ${DIFY_DOCKER_KB_URL:-http://docker-api-1:5001/v1}
       DIFY_READING_KEY: ${DIFY_READING_KEY}
       DIFY_RECOMMEND_KEY: ${DIFY_RECOMMEND_KEY}
       DIFY_KB_KEY: ${DIFY_KB_KEY}
       DIFY_KB_DATASET_ID: ${DIFY_KB_DATASET_ID}
       APP_AUTH_TOKEN_SECRET: ${APP_AUTH_TOKEN_SECRET:-change_this_to_a_long_random_secret}
       SPRING_FLYWAY_BASELINE_VERSION: 0
+    networks:
+      - default
+      - dify
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -110,6 +114,9 @@ services:
 networks:
   default:
     name: reading-system_default
+  dify:
+    external: true
+    name: docker_default
 
 volumes:
   mysql_data:

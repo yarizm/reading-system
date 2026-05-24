@@ -5,19 +5,25 @@ import com.example.reading.entity.SysBook;
 import com.example.reading.entity.SysChapter;
 import com.example.reading.mapper.SysBookMapper;
 import com.example.reading.mapper.SysChapterMapper;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import io.github.guoshiqiufeng.dify.dataset.DifyDataset;
+import io.github.guoshiqiufeng.dify.dataset.enums.IndexingTechniqueEnum;
+import io.github.guoshiqiufeng.dify.dataset.enums.document.ModeEnum;
+import io.github.guoshiqiufeng.dify.dataset.dto.request.DocumentCreateByTextRequest;
+import io.github.guoshiqiufeng.dify.dataset.dto.request.DocumentUpdateByTextRequest;
+import io.github.guoshiqiufeng.dify.dataset.dto.request.MetaData;
+import io.github.guoshiqiufeng.dify.dataset.dto.request.document.ProcessRule;
+import io.github.guoshiqiufeng.dify.dataset.dto.response.DocumentCreateResponse;
+import io.github.guoshiqiufeng.dify.dataset.dto.response.DocumentInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Dify Knowledge Base 同步服务
@@ -35,8 +41,8 @@ public class DifyKnowledgeBaseService {
     @Autowired
     private SysChapterMapper chapterMapper;
 
-    @Value("${dify.kb.api-url}")
-    private String kbApiUrl;
+    @Autowired
+    private DifyDataset difyDataset;
 
     @Value("${dify.kb.api-key}")
     private String kbApiKey;
@@ -46,8 +52,6 @@ public class DifyKnowledgeBaseService {
 
     @Value("${dify.kb.chapter-delay-ms:200}")
     private long chapterDelayMs;
-
-    private final Gson gson = new Gson();
 
     /** 异步同步单本书到 KB（章节级别），遍历所有章节逐章创建/更新 Dify 文档 */
     @Async("kbSyncExecutor")
@@ -166,53 +170,32 @@ public class DifyKnowledgeBaseService {
         String docName = buildChapterDocumentName(book, chapter);
         String content = buildChapterContent(book, chapter);
 
-        JsonObject body = new JsonObject();
-        body.addProperty("name", docName);
-        body.addProperty("text", content);
-        body.addProperty("indexing_technique", "high_quality");
-        JsonObject processRule = new JsonObject();
-        processRule.addProperty("mode", "automatic");
-        body.add("process_rule", processRule);
+        DocumentCreateByTextRequest request = new DocumentCreateByTextRequest();
+        request.setApiKey(kbApiKey);
+        request.setDatasetId(datasetId);
+        request.setName(docName);
+        request.setText(content);
+        request.setIndexingTechnique(IndexingTechniqueEnum.HIGH_QUALITY);
 
-        // 元数据：book_id 用于按书过滤检索，book_name 用于展示
-        JsonObject metadata = new JsonObject();
-        metadata.addProperty("book_id", String.valueOf(book.getId()));
-        metadata.addProperty("book_name", book.getTitle());
-        body.add("metadata", metadata);
+        ProcessRule processRule = new ProcessRule();
+        processRule.setMode(ModeEnum.automatic);
+        request.setProcessRule(processRule);
 
-        try {
-            String resp = WebClient.create().post()
-                    .uri(kbApiUrl + "/datasets/" + datasetId + "/document/create_by_text")
-                    .header("Authorization", "Bearer " + kbApiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body.toString())
-                    .retrieve()
-                    .onStatus(status -> status.isError(),
-                            response -> response.bodyToMono(String.class)
-                                    .flatMap(errBody -> {
-                                        log.error("Dify create_by_text error. status={}, body={}",
-                                                response.statusCode(), errBody);
-                                        return Mono.error(new RuntimeException("Dify error: " + errBody));
-                                    }))
-                    .bodyToMono(String.class)
-                    .block();
+        List<MetaData> metadata = java.util.List.of(
+                new MetaData(null, null, "book_id", String.valueOf(book.getId())),
+                new MetaData(null, null, "book_name", book.getTitle())
+        );
+        request.setDocMetadata(metadata);
 
-            if (resp != null) {
-                JsonObject json = gson.fromJson(resp, JsonObject.class);
-                if (json.has("document") && json.getAsJsonObject("document").has("id")) {
-                    String docId = json.getAsJsonObject("document").get("id").getAsString();
-                    chapter.setKbDocumentId(docId);
-                    chapterMapper.updateById(chapter);
-                    log.info("KB chapter document created. chapterId={}, title=\"{}\", docId={}",
-                            chapter.getId(), chapter.getTitle(), docId);
-                } else {
-                    log.warn("KB create response missing document.id. resp={}", resp);
-                }
-            }
-        } catch (Exception e) {
-            log.error("KB chapter document create failed. chapterId={}, title=\"{}\", contentLength={}",
-                    chapter.getId(), chapter.getTitle(), content.length(), e);
-            throw new RuntimeException(e);
+        DocumentCreateResponse response = difyDataset.createDocumentByText(request);
+        DocumentInfo doc = response.getDocument();
+        if (doc != null && doc.getId() != null) {
+            chapter.setKbDocumentId(doc.getId());
+            chapterMapper.updateById(chapter);
+            log.info("KB chapter document created. chapterId={}, title=\"{}\", docId={}",
+                    chapter.getId(), chapter.getTitle(), doc.getId());
+        } else {
+            log.warn("KB create response missing document.id. response={}", response);
         }
     }
 
@@ -221,70 +204,41 @@ public class DifyKnowledgeBaseService {
         String docName = buildChapterDocumentName(book, chapter);
         String content = buildChapterContent(book, chapter);
 
-        JsonObject body = new JsonObject();
-        body.addProperty("name", docName);
-        body.addProperty("text", content);
-        body.addProperty("indexing_technique", "high_quality");
-        JsonObject processRule = new JsonObject();
-        processRule.addProperty("mode", "automatic");
-        body.add("process_rule", processRule);
+        DocumentUpdateByTextRequest request = new DocumentUpdateByTextRequest();
+        request.setApiKey(kbApiKey);
+        request.setDatasetId(datasetId);
+        request.setDocumentId(chapter.getKbDocumentId());
+        request.setName(docName);
+        request.setText(content);
+        request.setIndexingTechnique(IndexingTechniqueEnum.HIGH_QUALITY);
 
-        JsonObject metadata = new JsonObject();
-        metadata.addProperty("book_id", String.valueOf(book.getId()));
-        metadata.addProperty("book_name", book.getTitle());
-        body.add("metadata", metadata);
+        ProcessRule processRule = new ProcessRule();
+        processRule.setMode(ModeEnum.automatic);
+        request.setProcessRule(processRule);
 
-        try {
-            WebClient.create().post()
-                    .uri(kbApiUrl + "/datasets/" + datasetId + "/documents/"
-                            + chapter.getKbDocumentId() + "/update_by_text")
-                    .header("Authorization", "Bearer " + kbApiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body.toString())
-                    .retrieve()
-                    .onStatus(status -> status.isError(),
-                            response -> response.bodyToMono(String.class)
-                                    .flatMap(errBody -> {
-                                        log.error("Dify update_by_text error. status={}, body={}",
-                                                response.statusCode(), errBody);
-                                        return Mono.error(new RuntimeException("Dify error: " + errBody));
-                                    }))
-                    .bodyToMono(String.class)
-                    .block();
-            log.info("KB chapter document updated. chapterId={}, title=\"{}\", docId={}",
-                    chapter.getId(), chapter.getTitle(), chapter.getKbDocumentId());
-        } catch (Exception e) {
-            log.error("KB chapter document update failed. chapterId={}, title=\"{}\", docId={}, contentLength={}",
-                    chapter.getId(), chapter.getTitle(), chapter.getKbDocumentId(), content.length(), e);
-            throw new RuntimeException(e);
-        }
+        List<MetaData> metadata = java.util.List.of(
+                new MetaData(null, null, "book_id", String.valueOf(book.getId())),
+                new MetaData(null, null, "book_name", book.getTitle())
+        );
+        request.setDocMetadata(metadata);
+
+        difyDataset.updateDocumentByText(request);
+        log.info("KB chapter document updated. chapterId={}, title=\"{}\", docId={}",
+                chapter.getId(), chapter.getTitle(), chapter.getKbDocumentId());
     }
 
     /** DELETE /v1/datasets/{id}/documents/{docId} */
     private void deleteDocument(String documentId) {
         try {
-            WebClient.create().delete()
-                    .uri(kbApiUrl + "/datasets/" + datasetId + "/documents/" + documentId)
-                    .header("Authorization", "Bearer " + kbApiKey)
-                    .retrieve()
-                    .onStatus(status -> status.value() == 404,
-                            response -> {
-                                log.warn("Dify document not found (404), treating as already deleted. docId={}", documentId);
-                                return Mono.empty();
-                            })
-                    .onStatus(status -> status.isError() && status.value() != 404,
-                            response -> response.bodyToMono(String.class)
-                                    .flatMap(errBody -> {
-                                        log.error("Dify delete error. status={}, body={}",
-                                                response.statusCode(), errBody);
-                                        return Mono.error(new RuntimeException("Dify error: " + errBody));
-                                    }))
-                    .toBodilessEntity()
-                    .block();
+            difyDataset.deleteDocument(datasetId, documentId, kbApiKey);
             log.info("KB document deleted. docId={}", documentId);
         } catch (Exception e) {
-            log.error("KB document delete failed. docId={}", documentId, e);
-            throw new RuntimeException(e);
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("404") || msg.contains("not found") || msg.contains("not_found"))) {
+                log.warn("Dify document not found (404), treating as already deleted. docId={}", documentId);
+            } else {
+                throw e;
+            }
         }
     }
 

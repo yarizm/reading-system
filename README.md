@@ -39,7 +39,7 @@
 
 | 模块 | 技术 |
 | --- | --- |
-| 后端 | Java 17, Spring Boot 3.2.2, Spring MVC, WebFlux, Spring Security, MyBatis-Plus, WebSocket, Flyway |
+| 后端 | Java 17, Spring Boot 3.2.2, Spring MVC, WebFlux, Spring Security, MyBatis-Plus, WebSocket, Flyway, dify-spring-boot-starter |
 | 存储与中间件 | MySQL 8, Redis 7, Elasticsearch 8 |
 | 桌面端 | Vue 3, Vite, Pinia, Vue Router, Element Plus, Vitest |
 | 移动端 | Vue 3, Vite, Pinia, Vue Router, Vant |
@@ -77,6 +77,7 @@ APP_AUTH_TOKEN_TTL_MILLIS=86400000
 
 QWEN_API_KEY=your_dashscope_api_key
 
+DIFY_BASE_URL=https://api.dify.ai/v1
 DIFY_CHAT_URL=https://api.dify.ai/v1/chat-messages
 DIFY_READING_KEY=your_dify_reading_key
 DIFY_RECOMMEND_KEY=your_dify_recommend_key

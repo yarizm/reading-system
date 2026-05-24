@@ -44,7 +44,7 @@ public class SecurityConfig {
                                 "/paragraphComment/list/*",
                                 "/booklist/share/*"
                         ).permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {

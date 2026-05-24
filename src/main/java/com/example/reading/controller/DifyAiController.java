@@ -27,11 +27,17 @@ public class DifyAiController {
     @Autowired
     private AuthContextService authContextService;
 
-    @Value("${dify.reading.api-url}")
-    private String difyApiUrl;
+    @Value("${dify.url}")
+    private String difyBaseUrl;
 
     @Value("${dify.reading.api-key}")
     private String difyApiKey;
+
+    private final WebClient webClient;
+
+    public DifyAiController(WebClient.Builder builder) {
+        this.webClient = builder.build();
+    }
 
     /** Dify 分析请求体 */
     public static class AskRequest {
@@ -50,7 +56,7 @@ public class DifyAiController {
         if (currentUserId == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        SseEmitter emitter = new SseEmitter(300000L); // 5分钟，足够 RAG 检索 + LLM 生成
+        SseEmitter emitter = new SseEmitter(300000L); // 5分钟
 
         Map<String, Object> payload = new HashMap<>();
 
@@ -65,7 +71,6 @@ public class DifyAiController {
         payload.put("response_mode", "streaming");
         payload.put("user", "user-" + currentUserId);
 
-        // 组装 query：绑定书名以提高 RAG 检索命中率
         String queryText = request.mode;
         if (request.bookName != null) {
             queryText = "关于《" + request.bookName + "》：" + queryText;
@@ -76,16 +81,10 @@ public class DifyAiController {
             payload.put("conversation_id", request.conversationId);
         }
 
-        // 自动适配 Dify 聊天助手接口路径
-        String realDifyUrl = difyApiUrl;
-        if (realDifyUrl.endsWith("/workflows/run")) {
-            realDifyUrl = realDifyUrl.replace("/workflows/run", "/chat-messages");
-        }
-
         final boolean[] hasContent = {false};
 
-        WebClient.create().post()
-                .uri(realDifyUrl)
+        webClient.post()
+                .uri(difyBaseUrl + "/chat-messages")
                 .header("Authorization", "Bearer " + difyApiKey)
                 .bodyValue(payload)
                 .retrieve()
@@ -100,7 +99,6 @@ public class DifyAiController {
                             }
                         },
                         error -> {
-                            // 已收到内容后上游断开 → 正常结束，否则转发错误
                             if (hasContent[0]) {
                                 emitter.complete();
                             } else {

@@ -75,6 +75,12 @@ tts:
   dashscope:
     enabled: true
 dify:
+  url: ${DIFY_BASE_URL:${DIFY_KB_URL}}   # 共享基础 URL，所有 Dify 应用共用
+  client-config:
+    connect-timeout: 30
+    read-timeout: 60
+    logging: true
+    logging-mask-enabled: true
   reading:
     api-url: ${DIFY_CHAT_URL}
     api-key: ${DIFY_READING_KEY}

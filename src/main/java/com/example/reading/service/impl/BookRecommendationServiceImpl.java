@@ -8,17 +8,17 @@ import com.example.reading.mapper.UserBookshelfMapper;
 import com.example.reading.service.IBookRecommendationService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.guoshiqiufeng.dify.chat.DifyChat;
+import io.github.guoshiqiufeng.dify.chat.dto.request.ChatMessageSendRequest;
+import io.github.guoshiqiufeng.dify.chat.dto.response.ChatMessageSendResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -51,12 +51,10 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
     private final SysBookMapper sysBookMapper;
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
+    private final DifyChat difyChat;
 
     @Value("${ai.enable-recommendation:true}")
     private boolean recommendationEnabled;
-
-    @Value("${dify.recommend.api-url:}")
-    private String recommendDifyApiUrl;
 
     @Value("${dify.recommend.api-key:}")
     private String recommendDifyApiKey;
@@ -64,11 +62,13 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
     public BookRecommendationServiceImpl(UserBookshelfMapper userBookshelfMapper,
                                          SysBookMapper sysBookMapper,
                                          ObjectMapper objectMapper,
-                                         @Autowired(required = false) StringRedisTemplate redisTemplate) {
+                                         @Autowired(required = false) StringRedisTemplate redisTemplate,
+                                         DifyChat difyChat) {
         this.userBookshelfMapper = userBookshelfMapper;
         this.sysBookMapper = sysBookMapper;
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
+        this.difyChat = difyChat;
     }
 
     private final Map<String, LocalCacheItem> localCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -92,7 +92,6 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
                 }
             }
 
-            // 检查熔断器：如果短时间内多次失败，直接走随机回退，不再等待 30 秒超时
             boolean isBreakerOpen = false;
             if (redisTemplate != null) {
                 try {
@@ -142,9 +141,7 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
             return books;
         } catch (Exception ex) {
             log.warn("AI recommendation failed, fallback to random recommendation. userId={}, reason={}", userId, ex.getMessage());
-            
-            // 触发异常时开启熔断器，短时间内不再请求 Dify
-            // 触发异常时开启熔断器，短时间内不再请求 Dify
+
             if (redisTemplate != null) {
                 try {
                     redisTemplate.opsForValue().set(CIRCUIT_BREAKER_KEY, "1", CIRCUIT_BREAKER_EXPIRE_MINUTES, TimeUnit.MINUTES);
@@ -158,7 +155,7 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
             localCache.put(CIRCUIT_BREAKER_KEY, lc);
 
             List<SysBook> fallbackBooks = randomFallback();
-            writeRecommendCache(userId, fallbackBooks); // 将随机回退的结果也存入缓存
+            writeRecommendCache(userId, fallbackBooks);
             return fallbackBooks;
         }
     }
@@ -206,14 +203,14 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
         try {
             String cacheKey = buildCacheKey(userId);
             String json = objectMapper.writeValueAsString(books);
-            
+
             if (redisTemplate != null) {
                 try {
                     redisTemplate.opsForValue().set(cacheKey, json, RECOMMEND_CACHE_EXPIRE_HOURS, TimeUnit.HOURS);
                     return;
                 } catch (Exception e) {}
             }
-            
+
             LocalCacheItem item = new LocalCacheItem();
             item.value = json;
             item.expireTime = System.currentTimeMillis() + RECOMMEND_CACHE_EXPIRE_HOURS * 3600 * 1000L;
@@ -321,8 +318,8 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
                                     List<CandidateScore> collaborativeCandidates,
                                     Map<Long, SysBook> publicBookMap,
                                     int limit) throws Exception {
-        if (!StringUtils.hasText(recommendDifyApiUrl) || !StringUtils.hasText(recommendDifyApiKey)) {
-            throw new IllegalStateException("Dify recommendation configuration is missing");
+        if (!StringUtils.hasText(recommendDifyApiKey)) {
+            throw new IllegalStateException("Dify recommendation API key is missing");
         }
 
         List<Map<String, Object>> targetBooks = targetBookMap.values().stream()
@@ -354,21 +351,20 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
         inputs.put("all_books", objectMapper.writeValueAsString(allBooks));
         inputs.put("recommend_count", limit);
 
-        Map<String, Object> payload = buildRecommendPayload(userId, inputs, recommendDifyApiUrl);
-        Map<?, ?> response = WebClient.create().post()
-                .uri(recommendDifyApiUrl)
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", "Bearer " + recommendDifyApiKey)
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block(Duration.ofSeconds(30));
+        ChatMessageSendRequest chatRequest = new ChatMessageSendRequest();
+        chatRequest.setApiKey(recommendDifyApiKey);
+        chatRequest.setUserId("recommend-user-" + userId);
+        chatRequest.setContent("Generate homepage book recommendations from the provided inputs and return JSON only.");
+        chatRequest.setInputs(inputs);
+
+        ChatMessageSendResponse response = difyChat.send(chatRequest);
 
         if (response == null) {
             throw new IllegalStateException("Dify returned empty response");
         }
 
-        Object result = extractRecommendResult(response);
+        Object result = response.getAnswer();
+
         if (result == null) {
             throw new IllegalStateException("Dify did not return a recommendation result");
         }
@@ -378,72 +374,6 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
             throw new IllegalStateException("Cannot parse recommendation result from Dify");
         }
         return parsedIds;
-    }
-
-    private Map<String, Object> buildRecommendPayload(Long userId, Map<String, Object> inputs, String difyUrl) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("inputs", inputs);
-        payload.put("response_mode", "blocking");
-        payload.put("user", "recommend-user-" + userId);
-        if (!isWorkflowUrl(difyUrl)) {
-            payload.put("query", buildRecommendQuery());
-        }
-        return payload;
-    }
-
-    private boolean isWorkflowUrl(String url) {
-        return StringUtils.hasText(url) && url.endsWith("/workflows/run");
-    }
-
-    private String buildRecommendQuery() {
-        return "Generate homepage book recommendations from the provided inputs and return JSON only.";
-    }
-
-    private Object extractRecommendResult(Map<?, ?> response) {
-        Object directAnswer = response.get("answer");
-        if (directAnswer instanceof String answer && StringUtils.hasText(answer)) {
-            return answer;
-        }
-
-        Object data = response.get("data");
-        if (data instanceof Map<?, ?> dataMap) {
-            Object nestedAnswer = dataMap.get("answer");
-            if (nestedAnswer instanceof String answer && StringUtils.hasText(answer)) {
-                return answer;
-            }
-            Object outputs = dataMap.get("outputs");
-            if (outputs instanceof Map<?, ?> outputMap) {
-                Object bookIds = outputMap.get("bookIds");
-                if (bookIds != null) {
-                    return bookIds;
-                }
-                Object result = outputMap.get("result");
-                if (result != null) {
-                    return result;
-                }
-                Object text = outputMap.get("text");
-                if (text instanceof String answer && StringUtils.hasText(answer)) {
-                    return answer;
-                }
-            }
-        }
-
-        Object outputs = response.get("outputs");
-        if (outputs instanceof Map<?, ?> outputMap) {
-            Object bookIds = outputMap.get("bookIds");
-            if (bookIds != null) {
-                return bookIds;
-            }
-            Object result = outputMap.get("result");
-            if (result != null) {
-                return result;
-            }
-            Object text = outputMap.get("text");
-            if (text instanceof String answer && StringUtils.hasText(answer)) {
-                return answer;
-            }
-        }
-        return null;
     }
 
     private List<Long> parseRecommendedIds(Object rawResult, Collection<Long> validBookIds) throws Exception {
