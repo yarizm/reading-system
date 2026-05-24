@@ -4,18 +4,21 @@ import { useRouter, useRoute } from 'vue-router'
 import { showNotify } from 'vant'
 import axios from 'axios'
 
+import { useAuthStore } from './stores/auth'
+
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const activeTab = ref(0)
 const hideTabBar = computed(() => route.meta.hideTabBar)
 
 // Notification badge
 const unreadCount = ref(0)
-const userInfo = ref({})
+const userInfo = computed(() => authStore.user || {})
 let ws = null
 
-const tabMap = ['/', '/shelf', '/friends', '/profile']
+const tabMap = ['/', '/shelf', '/my-books', '/friends', '/profile']
 
 watch(route, (r) => {
   const idx = tabMap.indexOf(r.path)
@@ -56,21 +59,32 @@ const connectWs = () => {
   }
 
   ws.onclose = () => {
-    if (userInfo.value.id) setTimeout(connectWs, 5000)
+    if (userInfo.value.id && ws) {
+      setTimeout(() => {
+        if (userInfo.value.id) connectWs()
+      }, 5000)
+    }
   }
 }
 
-onMounted(() => {
-  const u = localStorage.getItem('user')
-  if (u) {
-    userInfo.value = JSON.parse(u)
+watch(() => authStore.user, (newUser) => {
+  if (ws) {
+    const oldWs = ws
+    ws = null
+    oldWs.close()
+  }
+  if (newUser && newUser.id) {
     loadUnread()
     connectWs()
+  } else {
+    unreadCount.value = 0
   }
-})
+}, { deep: true, immediate: true })
 
 onUnmounted(() => {
-  if (ws) ws.close()
+  if (ws) {
+    ws.close()
+  }
 })
 </script>
 
@@ -86,8 +100,8 @@ onUnmounted(() => {
       v-if="!hideTabBar"
       v-model="activeTab"
       @change="onTabChange"
-      active-color="#8b6f52"
-      inactive-color="#9b8e82"
+      active-color="#a36b46"
+      inactive-color="#8b6f52"
       :border="false"
       :safe-area-inset-bottom="true"
       :placeholder="true"
@@ -95,6 +109,7 @@ onUnmounted(() => {
     >
       <van-tabbar-item icon="wap-home-o">首页</van-tabbar-item>
       <van-tabbar-item icon="bookmark-o">书架</van-tabbar-item>
+      <van-tabbar-item icon="records-o">我的书籍</van-tabbar-item>
       <van-tabbar-item icon="friends-o" :badge="unreadCount > 0 ? unreadCount : ''">好友</van-tabbar-item>
       <van-tabbar-item icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
@@ -108,9 +123,20 @@ onUnmounted(() => {
 }
 
 .app-tabbar {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 -1px 12px rgba(60, 40, 20, 0.06);
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 -1px 12px rgba(139, 111, 82, 0.1);
+  border-top: 1px solid rgba(139, 111, 82, 0.1);
+}
+
+.app-tabbar .van-tabbar-item {
+  background: transparent !important;
 }
 
 .app-tabbar .van-tabbar-item__icon {

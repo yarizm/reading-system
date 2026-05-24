@@ -4,10 +4,20 @@ import { useRoute, useRouter } from 'vue-router'
 import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
 
+import { useAuthStore } from '../stores/auth'
+import CachedImage from '../components/CachedImage.vue'
+
+import { LruCache } from '../utils/lruCache'
+
+const bookCache = new LruCache(50)
+const commentsCache = new LruCache(50)
+const shelfCache = new LruCache(50)
+
 const showCommentPopup = ref(false)
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const bookId = route.params.id
 const defaultCover = 'https://via.placeholder.com/150'
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
@@ -15,7 +25,7 @@ const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e5
 const bookInfo = ref({})
 const bookLoadError = ref(false)
 const commentList = ref([])
-const userInfo = ref({})
+const userInfo = computed(() => authStore.user || {})
 const inShelf = ref(false)
 const myComment = ref('')
 const myRating = ref(5)
@@ -32,18 +42,22 @@ const totalComments = computed(() => {
 })
 
 onMounted(() => {
-  const user = localStorage.getItem('user')
-  if (user) userInfo.value = JSON.parse(user)
   loadBookDetail()
   loadComments()
   checkShelf()
 })
 
 const loadBookDetail = async () => {
+  if (bookCache.has(bookId)) {
+    bookInfo.value = bookCache.get(bookId)
+    bookLoadError.value = false
+    return
+  }
   try {
     const res = await axios.get(`/api/sysBook/${bookId}`)
     if (res.data.code === '200') {
       bookInfo.value = res.data.data
+      bookCache.set(bookId, res.data.data)
       bookLoadError.value = false
     } else {
       bookLoadError.value = true
@@ -55,19 +69,31 @@ const loadBookDetail = async () => {
 }
 
 const loadComments = async () => {
+  if (commentsCache.has(bookId)) {
+    commentList.value = commentsCache.get(bookId)
+    return
+  }
   const res = await axios.get(`/api/comment/list/${bookId}`, {
     params: { userId: userInfo.value.id }
   })
   if (res.data.code === '200') {
     commentList.value = res.data.data || []
+    commentsCache.set(bookId, commentList.value)
   }
 }
 
 const checkShelf = async () => {
   if (!userInfo.value.id) return
+  if (shelfCache.has(bookId)) {
+    inShelf.value = shelfCache.get(bookId)
+    return
+  }
   const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
   if (res.data.code === '200') {
-    inShelf.value = (res.data.data || []).some((book) => String(book.bookId) === String(bookId))
+    const shelfBooks = res.data.data || []
+    const isInShelf = shelfBooks.some((book) => String(book.bookId) === String(bookId))
+    inShelf.value = isInShelf
+    shelfCache.set(bookId, isInShelf)
   }
 }
 
@@ -82,6 +108,7 @@ const toggleShelf = async () => {
       params: { userId: userInfo.value.id, bookId }
     })
     inShelf.value = false
+    shelfCache.set(bookId, false)
     showSuccessToast('已移出书架')
   } else {
     await axios.post('/api/bookshelf/add', {
@@ -89,6 +116,7 @@ const toggleShelf = async () => {
       bookId
     })
     inShelf.value = true
+    shelfCache.set(bookId, true)
     showSuccessToast('已加入书架')
   }
 }
@@ -187,6 +215,14 @@ const shareBook = async () => {
     showFailToast('复制失败，请手动分享链接')
   }
 }
+
+const handleUserClick = (targetUserId) => {
+  if (userInfo.value.id && String(targetUserId) === String(userInfo.value.id)) {
+    router.push('/profile')
+  } else {
+    router.push(`/user/${targetUserId}`)
+  }
+}
 </script>
 
 <template>
@@ -199,7 +235,7 @@ const shareBook = async () => {
     <van-nav-bar title="图书详情" left-arrow @click-left="$router.back()" />
 
     <section class="hero-card">
-      <img :src="bookInfo.coverUrl || defaultCover" class="book-cover" alt="" />
+      <CachedImage :src="bookInfo.coverUrl" :default-src="defaultCover" custom-class="book-cover" alt="" />
       <div class="hero-main">
         <div class="book-label">书籍档案</div>
         <h1 class="book-title">{{ bookInfo.title || bookInfo.name }}</h1>
@@ -242,17 +278,18 @@ const shareBook = async () => {
 
       <div v-else class="comment-list">
         <article v-for="item in commentList" :key="item.id" class="comment-item">
-          <van-image
+          <CachedImage
             round
             width="38"
             height="38"
-            :src="item.avatar || defaultAvatar"
-            class="comment-avatar"
-            @click="$router.push(`/user/${item.userId}`)"
+            :src="item.avatar"
+            :default-src="defaultAvatar"
+            custom-class="comment-avatar"
+            @click="handleUserClick(item.userId)"
           />
           <div class="comment-body">
             <div class="comment-top">
-              <span class="comment-name" @click="$router.push(`/user/${item.userId}`)">
+              <span class="comment-name" @click="handleUserClick(item.userId)">
                 {{ item.nickname || '匿名书友' }}
               </span>
               <van-rate v-if="item.rating" v-model="item.rating" readonly size="12" color="#f2a74b" />
@@ -277,11 +314,11 @@ const shareBook = async () => {
 
             <div v-if="item.children && item.children.length > 0" class="reply-list">
               <div v-for="sub in item.children" :key="sub.id" class="reply-item">
-                <van-image round width="24" height="24" :src="sub.avatar || defaultAvatar" />
+                <CachedImage round width="24" height="24" :src="sub.avatar" :default-src="defaultAvatar" @click="handleUserClick(sub.userId)" />
                 <div class="reply-body">
                   <div class="reply-head">
-                    <span class="reply-name">{{ sub.nickname }}</span>
-                    <span v-if="sub.replyUserId && sub.replyUserId !== item.userId" class="reply-tag">
+                    <span class="reply-name" @click="handleUserClick(sub.userId)">{{ sub.nickname }}</span>
+                    <span v-if="sub.replyUserId && sub.replyUserId !== item.userId" class="reply-tag" @click="handleUserClick(sub.replyUserId)">
                       回复 @{{ sub.replyNickname }}
                     </span>
                   </div>
@@ -362,8 +399,11 @@ const shareBook = async () => {
   margin: 16px;
   padding: 18px;
   border-radius: 22px;
-  background: rgba(255, 252, 247, 0.96);
-  box-shadow: 0 18px 38px rgba(93, 67, 43, 0.08);
+  background: var(--color-bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 32px rgba(139, 111, 82, 0.08);
 }
 
 .hero-card {
@@ -530,7 +570,8 @@ const shareBook = async () => {
   margin-top: 12px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(247, 238, 228, 0.88);
+  background: rgba(139, 111, 82, 0.06);
+  border: 1px solid rgba(139, 111, 82, 0.08);
 }
 
 .reply-item {
@@ -605,5 +646,13 @@ const shareBook = async () => {
   margin-bottom: 14px;
   border-radius: 18px;
   background: rgba(247, 242, 235, 0.9);
+}
+
+:deep(.van-action-bar) {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
 }
 </style>

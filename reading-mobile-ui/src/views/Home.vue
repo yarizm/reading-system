@@ -3,7 +3,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
+import { useAuthStore } from '../stores/auth'
+
 const router = useRouter()
+const authStore = useAuthStore()
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
 const searchKeyword = ref('')
@@ -19,7 +22,8 @@ const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(20)
 const isSearchMode = ref(false)
-const userInfo = ref({})
+const showTopWidgets = computed(() => !isSearchMode.value && currentCategory.value === '全部')
+const userInfo = computed(() => authStore.user || {})
 const loading = ref(false)
 const refreshing = ref(false)
 const finished = ref(false)
@@ -30,8 +34,6 @@ const welcomeTitle = computed(() => {
 })
 
 onMounted(() => {
-  const u = localStorage.getItem('user')
-  if (u) userInfo.value = JSON.parse(u)
   loadHotBooks()
   loadRankBooks()
   loadRecommendBooks()
@@ -103,24 +105,29 @@ const loadBooks = async () => {
 }
 
 const onSearch = () => {
+  tableData.value = []
   pageNum.value = 1
   finished.value = false
+  loading.value = true
   loadBooks()
 }
 
 const clearSearch = () => {
   searchKeyword.value = ''
   isSearchMode.value = false
+  tableData.value = []
   pageNum.value = 1
   finished.value = false
+  loading.value = true
   loadBooks()
 }
 
 const onCategoryChange = (cat) => {
   currentCategory.value = cat
+  tableData.value = []
   pageNum.value = 1
   finished.value = false
-  tableData.value = []
+  loading.value = true
   loadBooks()
 }
 
@@ -199,71 +206,77 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
     </div>
 
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh" success-text="刷新成功">
-      <div v-if="!isSearchMode && hotBooks.length > 0" class="section-block">
-        <div class="m-section-title">
-          <span>热门推荐</span>
-          <span class="section-tip">正在被更多读者阅读</span>
-        </div>
-        <div class="carousel-section">
-          <van-swipe :autoplay="4000" :loop="true" indicator-color="#8b6f52" class="hot-swipe">
-            <van-swipe-item v-for="book in hotBooks" :key="book.id" @click="goToDetail(book.id)">
-              <div class="swipe-card">
-                <img :src="book.coverUrl || defaultCover" class="swipe-cover" alt="" />
-                <div class="swipe-overlay">
-                  <div class="swipe-title">{{ book.title }}</div>
-                  <div class="swipe-meta">
-                    <span>{{ book.author }}</span>
-                    <span class="hot-badge">热度 {{ book.heat || 0 }}</span>
+      <transition name="fade">
+        <div v-if="showTopWidgets && hotBooks.length > 0" class="section-block">
+          <div class="m-section-title">
+            <span>热门推荐</span>
+            <span class="section-tip">正在被更多读者阅读</span>
+          </div>
+          <div class="carousel-section">
+            <van-swipe :autoplay="4000" :loop="true" indicator-color="#8b6f52" class="hot-swipe">
+              <van-swipe-item v-for="book in hotBooks" :key="book.id" @click="goToDetail(book.id)">
+                <div class="swipe-card">
+                  <img :src="book.coverUrl || defaultCover" class="swipe-cover" alt="" />
+                  <div class="swipe-overlay">
+                    <div class="swipe-title">{{ book.title }}</div>
+                    <div class="swipe-meta">
+                      <span>{{ book.author }}</span>
+                      <span class="hot-badge">热度 {{ book.heat || 0 }}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </van-swipe-item>
-          </van-swipe>
-        </div>
-      </div>
-
-      <div v-if="!isSearchMode && rankBooks.length > 0" class="section-block">
-        <div class="rank-section m-card">
-          <div class="rank-header">
-            <span>热门阅读榜</span>
-            <span class="section-tip">看看大家最近都在读什么</span>
+              </van-swipe-item>
+            </van-swipe>
           </div>
-          <div class="rank-list">
-            <div
-              v-for="(book, idx) in rankBooks"
-              :key="book.id"
-              class="rank-item"
-              @click="goToDetail(book.id)"
-            >
-              <span :class="['rank-num', idx < 3 ? 'top' : '']">{{ idx + 1 }}</span>
-              <span class="rank-name">{{ book.title }}</span>
-              <span class="rank-fire">热</span>
+        </div>
+      </transition>
+
+      <transition name="fade">
+        <div v-if="showTopWidgets && rankBooks.length > 0" class="section-block">
+          <div class="rank-section m-card">
+            <div class="rank-header">
+              <span>热门阅读榜</span>
+              <span class="section-tip">看看大家最近都在读什么</span>
+            </div>
+            <div class="rank-list">
+              <div
+                v-for="(book, idx) in rankBooks"
+                :key="book.id"
+                class="rank-item"
+                @click="goToDetail(book.id)"
+              >
+                <span :class="['rank-num', idx < 3 ? 'top' : '']">{{ idx + 1 }}</span>
+                <span class="rank-name">{{ book.title }}</span>
+                <span class="rank-fire">热</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </transition>
 
-      <div v-if="!isSearchMode" class="section-block">
-        <div class="m-section-title">
-          <span>猜你喜欢</span>
-          <van-button size="mini" plain round @click="loadRecommendBooks(true)" :loading="recommendLoading" style="margin-left: auto;">
-            换一批
-          </van-button>
-        </div>
-        <div class="recommend-scroll" v-if="recommendBooks.length > 0">
-          <div
-            v-for="book in recommendBooks"
-            :key="book.id"
-            class="recommend-card"
-            @click="goToDetail(book.id)"
-          >
-            <img :src="book.coverUrl || defaultCover" class="recommend-cover cover-aspect" alt="" />
-            <div class="recommend-title">{{ book.title }}</div>
-            <div class="recommend-author">{{ book.author }}</div>
+      <transition name="fade">
+        <div v-if="showTopWidgets" class="section-block">
+          <div class="m-section-title">
+            <span>猜你喜欢</span>
+            <van-button size="mini" plain round @click="loadRecommendBooks(true)" :loading="recommendLoading" style="margin-left: auto;">
+              换一批
+            </van-button>
           </div>
+          <div class="recommend-scroll" v-if="recommendBooks.length > 0">
+            <div
+              v-for="book in recommendBooks"
+              :key="book.id"
+              class="recommend-card"
+              @click="goToDetail(book.id)"
+            >
+              <img :src="book.coverUrl || defaultCover" class="recommend-cover cover-aspect" alt="" />
+              <div class="recommend-title">{{ book.title }}</div>
+              <div class="recommend-author">{{ book.author }}</div>
+            </div>
+          </div>
+          <van-empty v-else-if="!recommendLoading" description="暂无推荐" image="search" />
         </div>
-        <van-empty v-else-if="!recommendLoading" description="暂无推荐" image="search" />
-      </div>
+      </transition>
 
       <div v-if="isSearchMode" class="search-result-header">
         <span>“{{ searchKeyword }}” 共 {{ total }} 条结果</span>
@@ -316,9 +329,6 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   align-items: flex-start;
   justify-content: space-between;
   padding: 18px 16px 8px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 
 .header-copy {
@@ -406,17 +416,20 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-secondary);
-  background: rgba(255, 253, 249, 0.92);
-  border: 1px solid rgba(139, 111, 82, 0.08);
+  color: var(--text-secondary);
+  background: var(--color-bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
   flex-shrink: 0;
   transition: all 0.25s;
 }
 
 .cat-chip.active {
-  background: linear-gradient(135deg, #8b6f52, #a68968);
+  background: linear-gradient(135deg, #a36b46, #8f5d3d);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(139, 111, 82, 0.22);
+  box-shadow: 0 6px 16px rgba(163, 107, 70, 0.22);
+  border-color: transparent;
 }
 
 .section-block {
@@ -442,7 +455,7 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 
 .swipe-card {
   position: relative;
-  height: 210px;
+  height: 160px;
 }
 
 .swipe-cover {
@@ -457,13 +470,13 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 18px 16px;
+  padding: 12px 14px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.16) 58%, transparent 100%);
   color: #fff;
 }
 
 .swipe-title {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.3;
   font-family: var(--font-serif), serif;
@@ -473,8 +486,8 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 8px;
-  font-size: 12px;
+  margin-top: 6px;
+  font-size: 11px;
 }
 
 .hot-badge {
@@ -557,12 +570,12 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 
 .recommend-card {
   flex-shrink: 0;
-  width: 118px;
+  width: 98px;
 }
 
 .recommend-cover {
-  width: 118px;
-  height: 160px;
+  width: 98px;
+  height: 132px;
   border-radius: 12px;
   box-shadow: 0 8px 18px rgba(60, 40, 20, 0.12);
 }
@@ -602,19 +615,26 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
 .book-grid-item {
   padding: 8px;
   border-radius: 14px;
-  background: rgba(255, 253, 249, 0.92);
-  box-shadow: 0 6px 18px rgba(60, 40, 20, 0.06);
+  background: var(--color-bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(60, 40, 20, 0.04);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .grid-cover {
   width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(60, 40, 20, 0.08);
 }
@@ -639,5 +659,25 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Premium transition effect for category fold/unfold */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  max-height: 360px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transform: translateY(-10px);
 }
 </style>

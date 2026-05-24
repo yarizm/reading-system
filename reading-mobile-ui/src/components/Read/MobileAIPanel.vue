@@ -56,7 +56,7 @@
               <van-icon name="delete-o" color="#ee0a24" size="18" @click="$emit('delete-note', note.id)" />
             </div>
             <div class="note-quote">“{{ note.selectedText.substring(0, 30) }}...”</div>
-            <div class="note-content">{{ note.content }}</div>
+            <div class="note-content markdown-body" v-html="renderMarkdown(note.content)"></div>
           </div>
         </div>
       </van-tab>
@@ -67,9 +67,10 @@
 <script setup>
 import { ref } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 marked.setOptions({ breaks: true, gfm: true })
-const renderMarkdown = (text) => marked.parse(text || '')
+const renderMarkdown = (text) => DOMPurify.sanitize(marked.parse(text || ''))
 
 const props = defineProps({
   show: Boolean,
@@ -119,6 +120,57 @@ const emit = defineEmits([
 .note-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
 .note-time { font-size: 12px; color: #999; }
 .note-quote { font-style: italic; color: #666; font-size: 13px; border-left: 3px solid #ccc; padding-left: 8px; margin-bottom: 8px; }
-.note-content { font-size: 14px; line-height: 1.5; }
-.theme-dark .note-content { color: #ccc; }
+.note-content { font-size: 13px; color: #333; }
+
+:deep(.markdown-body) {
+  font-size: 14px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+:deep(.markdown-body p) {
+  margin-bottom: 8px;
+}
+:deep(.markdown-body h1), :deep(.markdown-body h2), :deep(.markdown-body h3), :deep(.markdown-body h4) {
+  font-weight: 600;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+:deep(.markdown-body h1) { font-size: 18px; }
+:deep(.markdown-body h2) { font-size: 16px; }
+:deep(.markdown-body h3) { font-size: 15px; }
+:deep(.markdown-body ul), :deep(.markdown-body ol) {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+:deep(.markdown-body ul) { list-style-type: disc; }
+:deep(.markdown-body ol) { list-style-type: decimal; }
+:deep(.markdown-body li) {
+  margin-bottom: 4px;
+}
+:deep(.markdown-body pre) {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: monospace;
+}
+:deep(.markdown-body code) {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+:deep(.markdown-body pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+:deep(.markdown-body blockquote) {
+  border-left: 3px solid #ccc;
+  padding-left: 8px;
+  color: #666;
+  margin: 0 0 8px 0;
+}
+:deep(.markdown-body strong) {
+  font-weight: bold;
+}
 </style>

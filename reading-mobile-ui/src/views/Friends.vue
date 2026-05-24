@@ -1,14 +1,16 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 
-const userInfo = ref({})
+const userInfo = computed(() => authStore.user || {})
 const searchKeyword = ref('')
 const searchResults = ref([])
 const searched = ref(false)
@@ -26,13 +28,11 @@ const shareMessage = ref('')
 let ws = null
 
 onMounted(() => {
-  const user = localStorage.getItem('user')
-  if (!user) {
+  if (!authStore.isLoggedIn) {
     showToast('请先登录')
     router.push('/login')
     return
   }
-  userInfo.value = JSON.parse(user)
   loadFriends()
   loadPendingRequests()
   loadReceivedShares()

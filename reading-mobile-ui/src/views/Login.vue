@@ -3,8 +3,10 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const mode = ref('login')
 const loginMethod = ref('password')
 const loading = ref(false)
@@ -77,7 +79,7 @@ const handleLogin = async () => {
       })
     }
     if (res.data.code === '200') {
-      localStorage.setItem('user', JSON.stringify(res.data.data))
+      authStore.login(res.data.data)
       showSuccessToast('登录成功')
       router.push('/')
     } else {

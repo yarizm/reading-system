@@ -4,9 +4,12 @@ import { useRouter } from 'vue-router'
 import { showConfirmDialog, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
 
-const router = useRouter()
+import { useAuthStore } from '../stores/auth'
 
-const userInfo = ref({})
+const router = useRouter()
+const authStore = useAuthStore()
+
+const userInfo = computed(() => authStore.user || {})
 const shelfList = ref([])
 const shelfVisible = ref(1)
 const booklists = ref([])
@@ -20,13 +23,11 @@ const newBooklist = ref({ name: '', description: '' })
 const finishedCount = computed(() => shelfList.value.filter((item) => calcPercent(item) >= 100).length)
 
 onMounted(() => {
-  const user = localStorage.getItem('user')
-  if (!user) {
+  if (!authStore.isLoggedIn) {
     showToast('请先登录')
     router.push('/login')
     return
   }
-  userInfo.value = JSON.parse(user)
   shelfVisible.value = userInfo.value.shelfVisible ?? 1
   loadShelf()
   loadBooklists()
@@ -207,8 +208,8 @@ const copyShareLink = (booklist) => {
           <van-progress
             :percentage="calcPercent(item)"
             :stroke-width="5"
-            color="linear-gradient(90deg, #8f7557, #b7956d)"
-            track-color="rgba(143, 117, 87, 0.12)"
+            color="linear-gradient(90deg, #a36b46, #c29b7a)"
+            track-color="rgba(163, 107, 70, 0.12)"
             :show-pivot="false"
           />
           <div class="card-meta">
@@ -395,9 +396,11 @@ const copyShareLink = (booklist) => {
 
 .tool-btn {
   flex: 1;
-  border-color: rgba(143, 117, 87, 0.24);
-  background: rgba(255, 252, 247, 0.76);
-  color: #6f5845;
+  border-color: var(--color-border);
+  background: var(--color-bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--color-primary);
 }
 
 .shelf-grid {
@@ -510,8 +513,11 @@ const copyShareLink = (booklist) => {
 .booklist-card {
   padding: 14px;
   border-radius: 16px;
-  background: rgba(255, 251, 245, 0.95);
-  box-shadow: 0 10px 24px rgba(93, 67, 43, 0.06);
+  background: var(--color-bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 24px rgba(93, 67, 43, 0.04);
 }
 
 .booklist-main {

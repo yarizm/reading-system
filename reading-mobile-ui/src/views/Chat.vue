@@ -1,11 +1,13 @@
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const friendId = Number(route.params.friendId)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
@@ -14,7 +16,7 @@ const PARAGRAPH_SHARE_PREFIX = '__PARAGRAPH_SHARE__'
 const AUDIO_SHARE_PREFIX = '__AUDIO_SHARE__'
 const BOOK_SHARE_PREFIX = '__BOOK_SHARE__'
 
-const userInfo = ref({})
+const userInfo = computed(() => authStore.user || {})
 const friendInfo = ref({})
 const messages = ref([])
 const inputMessage = ref('')
@@ -25,15 +27,14 @@ const selectedBookId = ref(null)
 const shareMsg = ref('')
 
 let pollTimer = null
+let resizeObserver = null
 
 onMounted(async () => {
-  const user = localStorage.getItem('user')
-  if (!user) {
+  if (!authStore.isLoggedIn) {
     showToast('请先登录')
     router.push('/login')
     return
   }
-  userInfo.value = JSON.parse(user)
 
   try {
     const res = await axios.get(`/api/sysUser/profile/${friendId}`)
@@ -46,11 +47,25 @@ onMounted(async () => {
 
   await loadMessages()
   await markAsRead()
+
+  if (messagesArea.value) {
+    resizeObserver = new ResizeObserver(() => {
+      if (messagesArea.value) {
+        const { scrollHeight, scrollTop, clientHeight } = messagesArea.value
+        if (scrollHeight - scrollTop - clientHeight < 50) {
+          messagesArea.value.scrollTop = scrollHeight
+        }
+      }
+    })
+    resizeObserver.observe(messagesArea.value)
+  }
+
   pollTimer = setInterval(loadMessages, 3000)
 })
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  if (resizeObserver) resizeObserver.disconnect()
 })
 
 const loadMessages = async () => {
@@ -367,7 +382,7 @@ const formatTime = (timeStr) => {
 .messages-area {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 16px 80px; /* 底部预留 80px 空间给 fixed 的输入框 */
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -500,6 +515,11 @@ const formatTime = (timeStr) => {
 }
 
 .chat-input-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: 8px;

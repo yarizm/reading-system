@@ -35,6 +35,21 @@ axios.interceptors.request.use((config) => {
   return config
 })
 
+// 全局响应拦截器，捕获 401 登录过期并跳转
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('user')
+      // 避免重复跳转
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 const app = createApp(App)
 const pinia = createPinia()
 

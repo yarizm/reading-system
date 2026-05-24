@@ -58,12 +58,12 @@ export function useMobileReading(bookId, userInfo, route) {
     try {
       const res = await request.get(`/api/sysBook/catalog/${bookId}`)
       if (res.data.code === '200') {
-        catalog.value = res.data.data
+        catalog.value = Object.freeze(res.data.data)
         if (catalog.value.length === 0) {
           showToast('该书暂无章节信息，正在尝试自动解析...')
           await request.post(`/api/sysBook/analyze/${bookId}`)
           const retryRes = await request.get(`/api/sysBook/catalog/${bookId}`)
-          catalog.value = retryRes.data.data
+          catalog.value = Object.freeze(retryRes.data.data)
         }
       }
     } catch (e) {
@@ -118,18 +118,22 @@ export function useMobileReading(bookId, userInfo, route) {
     paragraphs.forEach(p => observer.observe(p))
   }
 
-  const loadCurrentChapter = async (selectedParagraphIndexRef, stopAudioPlaybackCallback) => {
+  const loadCurrentChapter = async (stopAudioPlaybackCallback) => {
     if (catalog.value.length === 0) return
 
     isLoading.value = true
-    if (selectedParagraphIndexRef) selectedParagraphIndexRef.value = -1
 
     if (stopAudioPlaybackCallback) stopAudioPlaybackCallback()
 
-    const chapterId = catalog.value[chapterIndex.value].id
-    currentChapterTitle.value = catalog.value[chapterIndex.value].title
+    if (!catalog.value || !catalog.value[chapterIndex.value]) {
+      isLoading.value = false
+      return
+    }
 
     try {
+      const chapterId = catalog.value[chapterIndex.value].id
+      currentChapterTitle.value = catalog.value[chapterIndex.value].title
+
       const res = await request.get(`/api/sysBook/chapter/${chapterId}`)
       if (res.data.code === '200') {
         const text = res.data.data.content || ''
@@ -145,9 +149,8 @@ export function useMobileReading(bookId, userInfo, route) {
           }
 
           const target = getRouteReadTarget()
-          if (target.paragraphIndex !== null && selectedParagraphIndexRef) {
+          if (target.paragraphIndex !== null) {
             const safeParagraph = Math.max(target.paragraphIndex, 0)
-            selectedParagraphIndexRef.value = safeParagraph
             scrollToLine(safeParagraph)
           }
           initObserver()
@@ -160,21 +163,21 @@ export function useMobileReading(bookId, userInfo, route) {
     }
   }
 
-  const changeChapter = (offset, selectedParagraphIndexRef, stopAudioPlaybackCallback) => {
+  const changeChapter = (offset, stopAudioPlaybackCallback) => {
     const newIndex = chapterIndex.value + offset
     if (newIndex >= 0 && newIndex < catalog.value.length) {
       saveProgress()
       chapterIndex.value = newIndex
       currentLine.value = 0
-      loadCurrentChapter(selectedParagraphIndexRef, stopAudioPlaybackCallback)
+      loadCurrentChapter(stopAudioPlaybackCallback)
     }
   }
 
-  const jumpToChapter = (index, selectedParagraphIndexRef, stopAudioPlaybackCallback) => {
+  const jumpToChapter = (index, stopAudioPlaybackCallback) => {
     saveProgress()
     chapterIndex.value = index
     currentLine.value = 0
-    loadCurrentChapter(selectedParagraphIndexRef, stopAudioPlaybackCallback)
+    loadCurrentChapter(stopAudioPlaybackCallback)
     showCatalog.value = false
   }
 

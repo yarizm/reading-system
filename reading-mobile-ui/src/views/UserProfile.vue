@@ -1,20 +1,27 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
+import { getCachedImage } from '../utils/imageCache'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const userId = route.params.id
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const profile = ref({})
 const shelfBooks = ref([])
-const currentUser = ref({})
+const currentUser = computed(() => authStore.user || {})
+
+const displayAvatar = ref(defaultAvatar)
+
+watch(() => profile.value.avatar, async (newVal) => {
+  displayAvatar.value = newVal ? await getCachedImage(newVal) : defaultAvatar
+}, { immediate: true })
 
 onMounted(async () => {
-  const user = localStorage.getItem('user')
-  if (user) currentUser.value = JSON.parse(user)
 
   try {
     const res = await axios.get(`/api/sysUser/profile/${userId}`)
@@ -53,7 +60,7 @@ const addFriend = async () => {
     <van-nav-bar title="用户资料" left-arrow @click-left="$router.back()" :border="false" class="glass-header" />
 
     <section class="profile-card glass-panel fade-in-up" style="animation-delay: 0.1s">
-      <van-image round width="80" height="80" :src="profile.avatar || defaultAvatar" />
+      <img :src="displayAvatar" style="border-radius: 50%; width: 80px; height: 80px; object-fit: cover;" />
       <h1 class="profile-name">{{ profile.nickname || profile.username }}</h1>
       <p v-if="profile.infoVisible === 1 && profile.age" class="profile-meta">{{ profile.age }} 岁</p>
       <van-button

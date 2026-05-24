@@ -60,6 +60,12 @@ const routes = [
     name: 'ImportBooklist',
     component: () => import('../views/ImportBooklist.vue'),
     meta: { hideTabBar: true }
+  },
+  {
+    path: '/my-books',
+    name: 'MyBooks',
+    component: () => import('../views/MyBooks.vue'),
+    meta: { requireAuth: true }
   }
 ]
 
@@ -72,16 +78,13 @@ const router = createRouter({
   }
 })
 
-// Auth guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   if (to.meta.requireAuth) {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) {
-      next('/login')
-      return
+      return '/login'
     }
   }
-  next()
 })
 
 export default router

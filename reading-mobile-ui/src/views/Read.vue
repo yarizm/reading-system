@@ -17,6 +17,7 @@ import MobileCatalogPopup from '../components/Read/MobileCatalogPopup.vue'
 import MobileAIPanel from '../components/Read/MobileAIPanel.vue'
 import MobileCommentsPopup from '../components/Read/MobileCommentsPopup.vue'
 import MobileShareActionSheet from '../components/Read/MobileShareActionSheet.vue'
+import MobileAudioPlayer from '../components/Read/MobileAudioPlayer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -37,8 +38,32 @@ const voiceOptions = [
 ]
 
 const selectedParagraphIndex = ref(-1)
+const selectedParagraphs = ref([])
 const selectedText = ref('')
 const showAiActions = ref(false)
+const showMenu = ref(false)
+
+const selectedParagraphsText = computed(() => {
+  return selectedParagraphs.value
+    .map(idx => reading.lines.value[idx])
+    .join('\n')
+})
+
+let isLongPressFired = false
+
+const handleContainerClick = () => {
+  if (isLongPressFired) {
+    isLongPressFired = false
+    return
+  }
+  if (selectedParagraphs.value.length > 0) {
+    selectedParagraphs.value = []
+    selectedParagraphIndex.value = -1
+  } else {
+    showMenu.value = !showMenu.value
+  }
+  showAiActions.value = false
+}
 
 const reading = useMobileReading(bookId, userInfo, route)
 const tts = useMobileTTS()
@@ -46,6 +71,9 @@ const ai = useMobileAI(bookId, userInfo, reading.bookInfo, selectedText)
 const shelf = useMobileShelf(bookId, userInfo)
 const share = useMobileShare(bookId, userInfo)
 const comments = useMobileComments(bookId, userInfo)
+
+const showAiDrawer = ai.showAiDrawer
+const activeAiTab = ai.activeAiTab
 
 const loadReadingSettings = () => {
   const saved = localStorage.getItem('mobileReadingConfig')
@@ -61,12 +89,48 @@ const handleBeforeUnload = () => { reading.saveProgress() }
 const goBack = async () => {
   tts.stopAudioPlayback()
   await reading.saveProgress()
-  router.push('/shelf')
+  router.back()
 }
 
 const handleParagraphClick = (index) => {
   if (window.getSelection().toString().trim().length > 0) return
-  selectedParagraphIndex.value = index
+  
+  const pos = selectedParagraphs.value.indexOf(index)
+  if (pos >= 0) {
+    selectedParagraphs.value.splice(pos, 1)
+  } else {
+    selectedParagraphs.value.push(index)
+  }
+  selectedParagraphs.value.sort((a, b) => a - b)
+  selectedParagraphIndex.value = selectedParagraphs.value.length > 0 ? selectedParagraphs.value[0] : -1
+}
+
+let touchTimer = null
+let touchStartPos = { x: 0, y: 0 }
+
+const onTouchStart = (e, index) => {
+  touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  touchTimer = setTimeout(() => {
+    isLongPressFired = true
+    handleParagraphClick(index)
+  }, 450)
+}
+
+const onTouchMove = (e) => {
+  if (!touchTimer) return
+  const dx = e.touches[0].clientX - touchStartPos.x
+  const dy = e.touches[0].clientY - touchStartPos.y
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    clearTimeout(touchTimer)
+    touchTimer = null
+  }
+}
+
+const onTouchEnd = () => {
+  if (touchTimer) {
+    clearTimeout(touchTimer)
+    touchTimer = null
+  }
 }
 
 const handleSelectionEnd = () => {
@@ -81,36 +145,39 @@ const handleSelectionEnd = () => {
 }
 
 const handleAiAction = (type) => {
+  const textToUse = selectedText.value || selectedParagraphsText.value
+  if (!textToUse) return
+
   showAiActions.value = false
-  ai.showAiDrawer.value = true
+  showAiDrawer.value = true
 
   let modeInstruction = ''
   let displayMessage = ''
 
   if (type === 'EXPLAIN') {
     modeInstruction = '请用大白话详细解释这段话，越通俗越好'
-    displayMessage = `【释疑】${selectedText.value}`
+    displayMessage = `【释疑】${textToUse}`
   } else if (type === 'SUMMARY') {
     modeInstruction = '请提炼这段话的核心摘要和关键点'
-    displayMessage = `【提炼摘要】${selectedText.value}`
+    displayMessage = `【提炼摘要】${textToUse}`
   } else if (type === 'CONTINUE') {
     modeInstruction = '请根据这段话的语境和风格，发挥想象继续往下续写'
-    displayMessage = `【续写】${selectedText.value}`
+    displayMessage = `【续写】${textToUse}`
   } else if (type === 'TTS') {
-    ai.showAiDrawer.value = false
+    showAiDrawer.value = false
     tts.openAudioPlayer({
-      text: selectedText.value,
+      text: textToUse,
       voice: readingConfig.voice,
       bookId: Number(bookId),
       chapterId: reading.catalog.value[reading.chapterIndex.value]?.id,
       chapterIndex: reading.chapterIndex.value,
-      paragraphIndex: selectedParagraphIndex.value >= 0 ? selectedParagraphIndex.value : null,
+      paragraphIndex: selectedParagraphs.value.length > 0 ? selectedParagraphs.value[0] : null,
       title: `《${reading.bookInfo.value.title}》片段朗读`,
       sourceType: 'paragraph'
     })
     return
   }
-  ai.sendChat(selectedText.value, modeInstruction, displayMessage)
+  ai.sendChat(textToUse, modeInstruction, displayMessage)
 }
 
 const openParagraphComments = (index) => {
@@ -144,13 +211,27 @@ const toggleChapterTts = async () => {
   })
 }
 
+const handleChangeChapter = (offset) => {
+  selectedParagraphs.value = []
+  selectedParagraphIndex.value = -1
+  showAiActions.value = false
+  reading.changeChapter(offset, tts.stopAudioPlayback)
+}
+
+const handleJumpChapter = (idx) => {
+  selectedParagraphs.value = []
+  selectedParagraphIndex.value = -1
+  showAiActions.value = false
+  reading.jumpToChapter(idx, tts.stopAudioPlayback)
+}
+
 onMounted(async () => {
   loadReadingSettings()
   await reading.loadBookInfo()
   await reading.loadCatalog()
   await reading.loadProgress()
   reading.applyRouteReadTarget(selectedParagraphIndex)
-  await reading.loadCurrentChapter(selectedParagraphIndex, tts.stopAudioPlayback)
+  await reading.loadCurrentChapter(tts.stopAudioPlayback)
   shelf.checkShelfStatus()
   ai.fetchNotes()
   
@@ -168,16 +249,18 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="read-container" :class="`theme-${readingConfig.theme}`" @click="showAiActions = false">
+  <div class="read-container" :class="`theme-${readingConfig.theme}`" @click="handleContainerClick">
     <!-- Header -->
-    <van-nav-bar fixed placeholder @click-left="goBack" class="custom-nav">
-      <template #left><van-icon name="arrow-left" size="18" /></template>
-      <template #title><span class="book-title">{{ reading.bookInfo.value.title }}</span></template>
-      <template #right>
-        <van-icon name="setting-o" size="18" @click="reading.showSettings.value = true" style="margin-right: 15px;" />
-        <van-icon name="wap-nav" size="18" @click="reading.showCatalog.value = true" />
-      </template>
-    </van-nav-bar>
+    <transition name="slide-down">
+      <van-nav-bar v-show="showMenu" fixed @click-left="goBack" class="custom-nav" @click.stop>
+        <template #left><van-icon name="arrow-left" size="18" /></template>
+        <template #title><span class="book-title">{{ reading.bookInfo.value.title }}</span></template>
+        <template #right>
+          <van-icon name="setting-o" size="18" @click.stop="reading.showSettings.value = true" style="margin-right: 15px;" />
+          <van-icon name="wap-nav" size="18" @click.stop="reading.showCatalog.value = true" />
+        </template>
+      </van-nav-bar>
+    </transition>
 
     <van-loading v-if="reading.isLoading.value" type="spinner" vertical style="margin-top: 50px;">加载章节中...</van-loading>
 
@@ -191,27 +274,20 @@ onBeforeUnmount(() => {
         :id="'line-' + index"
         :data-index="index"
         class="text-paragraph"
-        :class="{ 'selected-paragraph': index === selectedParagraphIndex }"
-        @click.stop="handleParagraphClick(index)"
+        :class="{ 'selected-paragraph': selectedParagraphs.includes(index) }"
+        @touchstart="onTouchStart($event, index)"
+        @touchmove="onTouchMove"
+        @touchend="onTouchEnd"
       >
         {{ line }}
-        <!-- Paragraph Tools (visible when tapped) -->
-        <div v-if="index === selectedParagraphIndex" class="paragraph-tools">
-          <div class="tool-item" @click.stop="openParagraphComments(index)">
-            <van-icon name="chat-o" /><span>评论</span>
-          </div>
-          <div class="tool-item" @click.stop="share.openSharePopup('paragraph', index)">
-            <van-icon name="share-o" /><span>分享</span>
-          </div>
-        </div>
       </div>
 
       <van-empty v-if="reading.lines.value.length === 0" description="暂无内容" />
 
       <!-- Chapter Nav -->
       <div class="chapter-nav" v-if="reading.catalog.value.length > 0">
-        <van-button size="small" :disabled="reading.chapterIndex.value === 0" @click="reading.changeChapter(-1, selectedParagraphIndex, tts.stopAudioPlayback)">上一章</van-button>
-        <van-button size="small" :disabled="reading.chapterIndex.value >= reading.catalog.value.length - 1" @click="reading.changeChapter(1, selectedParagraphIndex, tts.stopAudioPlayback)">下一章</van-button>
+        <van-button size="small" round :disabled="reading.chapterIndex.value === 0" @click="handleChangeChapter(-1)">上一章</van-button>
+        <van-button size="small" round :disabled="reading.chapterIndex.value >= reading.catalog.value.length - 1" @click="handleChangeChapter(1)">下一章</van-button>
       </div>
     </div>
 
@@ -223,38 +299,86 @@ onBeforeUnmount(() => {
       <van-action-bar-button text="提炼" icon="label-o" @click.stop="handleAiAction('SUMMARY')" />
     </van-action-bar>
 
-    <!-- Side Floating Actions -->
-    <div class="floating-actions">
-      <div class="fab-btn" @click.stop="ai.showAiDrawer.value = true">
-        <van-icon name="notes-o" />
-        <span>助手</span>
+    <!-- Bottom Integrated Panel -->
+    <transition name="slide-up">
+      <div class="bottom-menu-bar" v-show="showMenu" @click.stop>
+        <div class="progress-bar-section">
+          <van-button size="small" icon="arrow-left" class="btn-nav-chapter" :disabled="reading.chapterIndex.value === 0" @click="handleChangeChapter(-1)"></van-button>
+          <div class="chapter-info-text">{{ reading.chapterIndex.value + 1 }} / {{ reading.catalog.value.length }}</div>
+          <van-button size="small" icon="arrow" class="btn-nav-chapter" :disabled="reading.chapterIndex.value >= reading.catalog.value.length - 1" @click="handleChangeChapter(1)"></van-button>
+        </div>
+        
+        <!-- Controls Grid Section -->
+        <div class="actions-section">
+          <div class="menu-action-btn" @click="showAiDrawer = true; showMenu = false">
+            <van-icon name="notes-o" />
+            <span>AI助手</span>
+          </div>
+          <div class="menu-action-btn" @click="toggleChapterTts">
+            <van-loading v-if="tts.isAudioLoading.value && tts.audioPlayback.sourceType === 'chapter'" type="spinner" size="18" />
+            <van-icon v-else :name="tts.isChapterPlaying.value ? 'pause-circle-o' : 'play-circle-o'" />
+            <span>{{ (tts.isAudioLoading.value && tts.audioPlayback.sourceType === 'chapter') ? '生成中' : (tts.isChapterPlaying.value ? '暂停听书' : '听本章') }}</span>
+          </div>
+          <div class="menu-action-btn" @click="shelf.toggleShelf" :class="{ 'is-added': shelf.isAddedToShelf.value }">
+            <van-icon :name="shelf.isAddedToShelf.value ? 'star' : 'star-o'" />
+            <span>{{ shelf.isAddedToShelf.value ? '已收藏' : '收藏' }}</span>
+          </div>
+          <div class="menu-action-btn" @click="share.openSharePopup('book')">
+            <van-icon name="share-o" />
+            <span>分享</span>
+          </div>
+          <div class="menu-action-btn" @click="reading.showSettings.value = true">
+            <van-icon name="setting-o" />
+            <span>设置</span>
+          </div>
+        </div>
       </div>
-      <div class="fab-btn" @click.stop="toggleChapterTts">
-        <van-loading v-if="tts.isAudioLoading.value && tts.audioPlayback.sourceType === 'chapter'" type="spinner" size="16" />
-        <van-icon v-else :name="tts.isChapterPlaying.value ? 'pause-circle-o' : 'play-circle-o'" />
-        <span>{{ (tts.isAudioLoading.value && tts.audioPlayback.sourceType === 'chapter') ? '生成中' : (tts.isChapterPlaying.value ? '暂停' : '听本章') }}</span>
+    </transition>
+
+    <!-- Paragraph Tap Sheet -->
+    <transition name="slide-up">
+      <div v-if="selectedParagraphs.length > 0" class="paragraph-action-bar glass-panel" @click.stop>
+        <div class="paragraph-preview-text">“{{ selectedParagraphsText }}”</div>
+        <div class="paragraph-action-buttons">
+          <div class="para-btn" @click="openParagraphComments(selectedParagraphs[0])">
+            <van-icon name="chat-o" />
+            <span>写评论</span>
+          </div>
+          <div class="para-btn" @click="handleAiAction('TTS')">
+            <van-icon name="volume-o" />
+            <span>朗读</span>
+          </div>
+          <div class="para-btn" @click="handleAiAction('EXPLAIN')">
+            <van-icon name="bulb-o" />
+            <span>释义</span>
+          </div>
+          <div class="para-btn" @click="handleAiAction('SUMMARY')">
+            <van-icon name="notes-o" />
+            <span>提炼</span>
+          </div>
+          <div class="para-btn" @click="share.openSharePopup('paragraph', selectedParagraphs[0])">
+            <van-icon name="share-o" />
+            <span>分享</span>
+          </div>
+          <div class="para-btn close-btn" @click="selectedParagraphs = []; selectedParagraphIndex = -1">
+            <van-icon name="cross" />
+            <span>取消</span>
+          </div>
+        </div>
       </div>
-      <div class="fab-btn" @click.stop="shelf.toggleShelf" :class="{ 'is-added': shelf.isAddedToShelf.value }">
-        <van-icon :name="shelf.isAddedToShelf.value ? 'star' : 'star-o'" />
-        <span>收藏</span>
-      </div>
-      <div class="fab-btn" @click.stop="share.openSharePopup('book')">
-        <van-icon name="share-o" />
-        <span>分享</span>
-      </div>
-    </div>
+    </transition>
 
     <!-- Components -->
     <MobileCatalogPopup 
       v-model:show="reading.showCatalog.value"
       :catalog="reading.catalog.value"
       :chapterIndex="reading.chapterIndex.value"
-      @jump-to="(idx) => reading.jumpToChapter(idx, selectedParagraphIndex, tts.stopAudioPlayback)"
+      @jump-to="handleJumpChapter"
     />
 
     <MobileAIPanel 
-      v-model:show="ai.showAiDrawer.value"
-      v-model:activeTab="ai.activeAiTab.value"
+      v-model:show="showAiDrawer"
+      v-model:activeTab="activeAiTab"
       :chatList="ai.chatList.value"
       v-model:inputMessage="ai.inputMessage.value"
       :isThinking="ai.isThinking.value"
@@ -267,13 +391,13 @@ onBeforeUnmount(() => {
     <MobileCommentsPopup 
       v-model:show="comments.showParagraphDrawer.value"
       :lines="reading.lines.value"
-      :selectedParagraphIndex="selectedParagraphIndex.value"
+      :selectedParagraphIndex="selectedParagraphIndex"
       :comments="comments.paragraphComments.value"
       v-model:newComment="comments.newParagraphComment.value"
       :isLoading="comments.isLoadingComments.value"
       :isSubmitting="comments.isSubmittingComment.value"
       :userInfo="userInfo"
-      @submit="comments.submitParagraphComment(reading.chapterIndex.value, reading.lines.value[selectedParagraphIndex.value])"
+      @submit="comments.submitParagraphComment(reading.chapterIndex.value, selectedParagraphsText)"
       @delete="(id) => comments.deleteComment(id, reading.chapterIndex.value)"
       @like="(c) => comments.toggleLike(c)"
     />
@@ -284,13 +408,13 @@ onBeforeUnmount(() => {
       :isLoadingFriends="share.isLoadingShareFriends.value"
       :friendOptions="share.shareFriends.value"
       :bookInfo="reading.bookInfo.value"
-      :selectedParagraphText="reading.lines.value[selectedParagraphIndex.value]"
+      :selectedParagraphText="selectedParagraphsText"
       :audioTitle="tts.audioPlayback.title"
       :audioSourceLabel="tts.audioSourceLabel.value"
       v-model:selectedFriendId="share.selectedShareFriendId.value"
       v-model:shareMessage="share.shareMessage.value"
       :isSubmitting="share.isSubmittingShare.value"
-      @submit="share.submitShare(reading.chapterIndex.value, reading.lines.value[selectedParagraphIndex.value])"
+      @submit="share.submitShare(reading.chapterIndex.value, selectedParagraphsText)"
     />
 
     <!-- Shared Audio Share -->
@@ -309,22 +433,43 @@ onBeforeUnmount(() => {
     />
 
     <!-- Settings Popup -->
-    <van-popup v-model:show="reading.showSettings.value" position="bottom" round :style="{ padding: '20px' }">
+    <van-popup v-model:show="reading.showSettings.value" position="bottom" round :style="{ padding: '24px 20px' }" @click.stop>
       <div class="setting-title">阅读设置</div>
       
-      <div class="setting-item">
-        <span class="label">主题</span>
-        <div class="theme-options">
-          <div class="theme-btn" :class="{active: readingConfig.theme==='default'}" @click="readingConfig.theme='default'">默认</div>
-          <div class="theme-btn" :class="{active: readingConfig.theme==='green'}" @click="readingConfig.theme='green'" style="background: #eaf5df; color: #2e4a2d">护眼</div>
-          <div class="theme-btn" :class="{active: readingConfig.theme==='dark'}" @click="readingConfig.theme='dark'" style="background: #1e1e1e; color: #eee">暗夜</div>
+      <div class="setting-item theme-setting-row">
+        <span class="label">背景主题</span>
+        <div class="theme-picker">
+          <div class="theme-circle-btn theme-wheat" :class="{active: readingConfig.theme==='default'}" @click="readingConfig.theme='default'" title="雅致麦香">
+            <van-icon v-if="readingConfig.theme==='default'" name="success" size="12" />
+          </div>
+          <div class="theme-circle-btn theme-pink" :class="{active: readingConfig.theme==='pink'}" @click="readingConfig.theme='pink'" title="淡雅粉蔻">
+            <van-icon v-if="readingConfig.theme==='pink'" name="success" size="12" />
+          </div>
+          <div class="theme-circle-btn theme-teal" :class="{active: readingConfig.theme==='green'}" @click="readingConfig.theme='green'" title="沁心碧茗">
+            <van-icon v-if="readingConfig.theme==='green'" name="success" size="12" />
+          </div>
+          <div class="theme-circle-btn theme-deepsea" :class="{active: readingConfig.theme==='blue'}" @click="readingConfig.theme='blue'" title="深海幽蓝">
+            <van-icon v-if="readingConfig.theme==='blue'" name="success" size="12" />
+          </div>
+          <div class="theme-circle-btn theme-charcoal" :class="{active: readingConfig.theme==='dark'}" @click="readingConfig.theme='dark'" title="极夜玄碳">
+            <van-icon v-if="readingConfig.theme==='dark'" name="success" size="12" />
+          </div>
         </div>
       </div>
       
-      <div class="setting-item">
+      <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 15px;">
         <span class="label">听书音色</span>
-        <div class="theme-options" style="flex-wrap: wrap;">
-          <div class="theme-btn" v-for="v in voiceOptions" :key="v.key" :class="{active: readingConfig.voice === v.key}" @click="readingConfig.voice = v.key">{{ v.label }}</div>
+        <div class="theme-options" style="flex-wrap: wrap; width: 100%; gap: 12px;">
+          <van-button 
+            v-for="v in voiceOptions" 
+            :key="v.key" 
+            size="small" 
+            round 
+            :type="readingConfig.voice === v.key ? 'primary' : 'default'" 
+            @click.stop="readingConfig.voice = v.key"
+          >
+            {{ v.label }}
+          </van-button>
         </div>
       </div>
 
@@ -340,86 +485,320 @@ onBeforeUnmount(() => {
     </van-popup>
 
     <!-- Global Audio Player Mini Bar -->
-    <div class="global-audio-bar" v-if="tts.audioPlayerVisible.value">
-      <div class="audio-info">
-        <van-icon name="music-o" class="music-icon" :class="{ rotating: tts.isAudioPlaying.value }" />
-        <div class="audio-text">
-          <div class="audio-title van-ellipsis">{{ tts.audioPlayback.title || '朗读中...' }}</div>
-          <div class="audio-time">{{ tts.formatAudioTime(tts.audioCurrentTime.value) }} / {{ tts.formatAudioTime(tts.audioDuration.value) }}</div>
-        </div>
-      </div>
-      <div class="audio-controls">
-        <van-icon :name="tts.isAudioPlaying.value ? 'pause-circle-o' : 'play-circle-o'" @click="tts.toggleDialogAudioPlayback" />
-        <van-icon name="share-o" @click="share.loadShareFriends().then(() => tts.audioSharePopupVisible.value = true)" />
-        <van-icon name="cross" @click="tts.closeAudioPlayer" />
-      </div>
-      <audio
-        ref="audioRef"
-        style="display:none;"
-        :src="tts.playableAudioUrl.value || undefined"
-        @loadedmetadata="tts.handleAudioLoadedMetadata"
-        @timeupdate="tts.handleAudioTimeUpdate"
-        @play="tts.handleAudioPlay"
-        @pause="tts.handleAudioPause"
-        @ended="tts.handleAudioEnded"
-      />
-    </div>
+    <!-- Extracted Mobile Audio Player Component -->
+    <MobileAudioPlayer
+      v-model:show="tts.audioPlayerVisible.value"
+      :isAudioLoading="tts.isAudioLoading.value"
+      :playback="tts.audioPlayback"
+      :sourceLabel="tts.audioSourceLabel.value"
+      :playableUrl="tts.playableAudioUrl.value"
+      :currentTime="tts.audioCurrentTime.value"
+      :duration="tts.audioDuration.value"
+      :isAudioPlaying="tts.isAudioPlaying.value"
+      :formatTime="tts.formatAudioTime"
+      @closed="tts.closeAudioPlayer"
+      @loadedmetadata="tts.handleAudioLoadedMetadata"
+      @timeupdate="tts.handleAudioTimeUpdate"
+      @play="tts.handleAudioPlay"
+      @pause="tts.handleAudioPause"
+      @ended="tts.handleAudioEnded"
+      @toggle-playback="tts.toggleDialogAudioPlayback"
+      @open-share="share.loadShareFriends().then(() => tts.audioSharePopupVisible.value = true)"
+      @register-audio-ref="(ref) => tts.currentAudio.value = ref.value"
+    />
 
   </div>
 </template>
 
 <style scoped>
-/* Base Styles */
-.read-container { min-height: 100vh; background-color: #f7f2e8; color: #333; transition: background-color 0.3s; padding-bottom: 80px; }
-.read-content { padding: 15px; }
+/* Base Styles & Padding Fix */
+.read-container {
+  min-height: 100vh;
+  background-color: #f7f2e8;
+  color: #333;
+  transition: background-color 0.3s;
+}
 
-/* Themes */
-.theme-default { background-color: #fdfcf8; color: #2c2925; }
-.theme-green { background-color: #eaf5df; color: #2e4a2d; }
-.theme-dark { background-color: #111; color: #aaa; }
-.theme-dark .custom-nav { background-color: #1a1a1a; }
-.theme-dark :deep(.van-nav-bar__title), .theme-dark :deep(.van-icon) { color: #ccc !important; }
+.read-content {
+  padding: calc(20px + var(--safe-top)) 20px calc(32px + var(--safe-bottom));
+}
 
-/* Chapter & Paragraph */
-.chapter-title { font-size: 22px; font-weight: bold; margin-bottom: 30px; text-align: center; }
-.text-paragraph { text-indent: 2em; margin-bottom: 20px; transition: background-color 0.2s; padding: 5px; border-radius: 4px; position: relative; }
-.text-paragraph.selected-paragraph { background-color: rgba(25, 137, 250, 0.1); }
-.theme-dark .text-paragraph.selected-paragraph { background-color: rgba(255, 255, 255, 0.1); }
+/* Custom Navigation Bar Overrides */
+.custom-nav {
+  z-index: 100;
+}
+:deep(.van-nav-bar__title) {
+  font-family: var(--font-serif), serif;
+  font-weight: 700;
+}
 
-/* Paragraph Tools */
-.paragraph-tools { position: absolute; right: 0; bottom: -30px; display: flex; gap: 15px; background: rgba(0,0,0,0.7); color: #fff; padding: 6px 12px; border-radius: 20px; z-index: 10; font-size: 12px; }
-.tool-item { display: flex; align-items: center; gap: 4px; }
+/* Professional Paper Themes */
+/* Wheat 麦香 */
+.theme-default { background-color: #f4efe2; color: #2c261e; }
+.theme-default .custom-nav { background-color: #ede7d7; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+.theme-default :deep(.van-nav-bar__title), .theme-default :deep(.van-icon) { color: #40362b !important; }
 
-.chapter-nav { display: flex; justify-content: space-around; margin-top: 40px; }
+/* Pink 粉蔻 */
+.theme-pink { background-color: #f6eef0; color: #463438; }
+.theme-pink .custom-nav { background-color: #efdee2; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+.theme-pink :deep(.van-nav-bar__title), .theme-pink :deep(.van-icon) { color: #5a3d43 !important; }
 
-/* Floating Actions */
-.floating-actions { position: fixed; right: 15px; bottom: 80px; display: flex; flex-direction: column; gap: 15px; z-index: 99; }
-.fab-btn { width: 44px; height: 44px; background: rgba(255,255,255,0.9); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 10px; color: #666; }
-.theme-dark .fab-btn { background: rgba(40,40,40,0.9); color: #ccc; }
-.fab-btn .van-icon { font-size: 18px; margin-bottom: 2px; }
-.fab-btn.is-added { color: #1989fa; }
+/* Teal 碧茗 */
+.theme-green { background-color: #e5eed9; color: #2a3c26; }
+.theme-green .custom-nav { background-color: #dbecd0; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+.theme-green :deep(.van-nav-bar__title), .theme-green :deep(.van-icon) { color: #324a2e !important; }
 
-/* AI Action Bar */
-.ai-action-bar { bottom: 60px; padding: 5px 10px; z-index: 100; border-radius: 20px; margin: 0 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: auto; }
+/* DeepSea 幽蓝 */
+.theme-blue { background-color: #162436; color: #a1b8cf; }
+.theme-blue .custom-nav { background-color: #1a2c42; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.theme-blue :deep(.van-nav-bar__title), .theme-blue :deep(.van-icon) { color: #b9d3eb !important; }
+.theme-blue .bottom-menu-bar { background: rgba(26, 44, 66, 0.9); border-color: rgba(255, 255, 255, 0.08); color: #fff; }
+.theme-blue .bottom-menu-bar .chapter-info-text, .theme-blue .bottom-menu-bar .menu-action-btn { color: #b9d3eb; }
+.theme-blue .bottom-menu-bar .progress-bar-section { border-bottom-color: rgba(255, 255, 255, 0.08); }
 
-/* Settings */
-.setting-title { font-size: 16px; font-weight: bold; margin-bottom: 20px; text-align: center; }
-.setting-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.theme-options { display: flex; gap: 10px; }
-.theme-btn { padding: 5px 15px; border-radius: 15px; font-size: 13px; border: 1px solid #ddd; }
-.theme-btn.active { border-color: #1989fa; color: #1989fa; font-weight: bold; }
+/* Charcoal 玄碳 */
+.theme-dark { background-color: #121212; color: #999999; }
+.theme-dark .custom-nav { background-color: #1c1c1c; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.theme-dark :deep(.van-nav-bar__title), .theme-dark :deep(.van-icon) { color: #b3b3b3 !important; }
+.theme-dark .bottom-menu-bar { background: rgba(28, 28, 28, 0.92); border-color: rgba(255, 255, 255, 0.06); }
+.theme-dark .bottom-menu-bar .chapter-info-text, .theme-dark .bottom-menu-bar .menu-action-btn { color: #b3b3b3; }
+.theme-dark .bottom-menu-bar .progress-bar-section { border-bottom-color: rgba(255, 255, 255, 0.06); }
 
-/* Audio Player Bar */
-.global-audio-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 110; }
-.theme-dark .global-audio-bar { background: rgba(30,30,30,0.95); }
-.audio-info { display: flex; align-items: center; flex: 1; overflow: hidden; }
-.music-icon { font-size: 32px; color: #1989fa; margin-right: 10px; }
-.rotating { animation: rotate 3s linear infinite; }
-@keyframes rotate { 100% { transform: rotate(360deg); } }
-.audio-text { flex: 1; overflow: hidden; }
-.audio-title { font-size: 14px; font-weight: bold; color: #333; }
-.theme-dark .audio-title { color: #eee; }
-.audio-time { font-size: 11px; color: #999; }
-.audio-controls { display: flex; gap: 15px; font-size: 24px; color: #666; }
-.theme-dark .audio-controls { color: #ccc; }
+/* Chapter & Paragraph Styles */
+.chapter-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 32px;
+  text-align: center;
+  font-family: var(--font-serif), serif;
+}
+
+.text-paragraph {
+  text-indent: 2em;
+  margin-bottom: 24px;
+  transition: all 0.25s ease;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+/* Elegant selection highlight with golden indent bar */
+.text-paragraph.selected-paragraph {
+  background-color: rgba(163, 107, 70, 0.08) !important;
+  box-shadow: inset 4px 0 0 0 #a36b46;
+  border-radius: 0 4px 4px 0;
+}
+.theme-dark .text-paragraph.selected-paragraph {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: inset 4px 0 0 0 rgba(255, 255, 255, 0.3);
+}
+
+.chapter-nav {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 48px;
+  padding-bottom: 12px;
+}
+
+/* Glassmorphism Bottom menu bar */
+.bottom-menu-bar {
+  position: fixed;
+  bottom: calc(10px + var(--safe-bottom));
+  left: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(60, 40, 20, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 16px;
+  z-index: 99;
+}
+
+.progress-bar-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(139, 111, 82, 0.08);
+}
+
+.btn-nav-chapter {
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+}
+
+.chapter-info-text {
+  font-size: 13px;
+  font-weight: 700;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions-section {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.menu-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: inherit;
+  opacity: 0.8;
+  transition: transform 0.2s;
+}
+.menu-action-btn:active {
+  transform: scale(0.95);
+}
+
+.menu-action-btn .van-icon {
+  font-size: 20px;
+}
+
+.menu-action-btn.is-added {
+  color: #a36b46 !important;
+  opacity: 1;
+}
+
+/* Elegant Paragraph tap action sheet */
+.paragraph-action-bar {
+  position: fixed;
+  bottom: calc(16px + var(--safe-bottom));
+  left: 12px;
+  right: 12px;
+  background: rgba(44, 38, 30, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  padding: 16px;
+  z-index: 101;
+  color: #fff;
+}
+
+.paragraph-preview-text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #d1c8bd;
+  max-height: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: 14px;
+  font-style: italic;
+  border-left: 2px solid #a36b46;
+  padding-left: 8px;
+}
+
+.paragraph-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.para-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #eae3da;
+}
+.para-btn .van-icon {
+  font-size: 18px;
+}
+.para-btn.close-btn {
+  color: #ff8b8b;
+}
+
+/* Settings dialog styles */
+.setting-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-align: center;
+  font-family: var(--font-serif), serif;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* Premium circular theme picker */
+.theme-picker {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.theme-circle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.theme-circle-btn.active {
+  transform: scale(1.15);
+  border-color: #a36b46;
+  box-shadow: 0 6px 14px rgba(163, 107, 70, 0.25);
+}
+.theme-circle-btn .van-icon {
+  font-weight: bold;
+}
+
+/* Up-to-date color styles for theme circles */
+.theme-wheat { background-color: #f4efe2; color: #40362b; }
+.theme-pink { background-color: #f6eef0; color: #5a3d43; }
+.theme-teal { background-color: #e5eed9; color: #324a2e; }
+.theme-deepsea { background-color: #162436; color: #b9d3eb; }
+.theme-charcoal { background-color: #121212; color: #b3b3b3; }
+
+/* Transition animations */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.slide-down-enter-from,
+.slide-down-leave-to {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(120%);
+  opacity: 0;
+}
 </style>

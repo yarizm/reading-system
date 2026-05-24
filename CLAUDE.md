@@ -48,7 +48,7 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 |---|---|---|
 | `src/main` | Java 17 / Spring Boot 3.2.2 | REST API, WebSocket, business logic |
 | `reading-ui` | Vue 3 / Vite / Element Plus | Desktop web frontend |
-| `reading-mobile-ui` | Vue 3 / Vite / Vant | Mobile web frontend |
+| `reading-mobile-ui` | Vue 3 / Vite / Vant / Pinia | Mobile web frontend |
 | `lightweight-tts-service` | Python / FastAPI / edge-tts | TTS microservice |
 
 ### Backend Package Structure (`com.example.reading`)
@@ -72,6 +72,15 @@ Standard layered architecture:
 - **Frontend proxy**: Both frontends proxy `/api`, `/ws`, `/files` to `http://localhost:8090` via Vite config. No `VITE_API_BASE_URL` env var is used.
 - **TTS abstraction**: `TtsProvider` interface allows switching between lightweight (FastAPI) and DashScope providers via `tts.provider` config.
 - **AI integration**: Uses Dify API for reading assistant and recommendations, DashScope/Qwen for other AI features. All API keys come from environment variables.
+
+### Mobile Frontend Patterns
+
+- **State management**: Pinia `useAuthStore()` stores user info + token. All views read `userInfo` via `computed(() => authStore.user || {})` instead of reading `localStorage` directly. Login calls `authStore.login()`, logout calls `authStore.logout()`.
+- **HTTP**: Use the shared `request` instance from `src/utils/request.js` (not raw `axios`). A global 401 response interceptor in `main.js` redirects to `/login` on token expiry.
+- **Image caching**: `CachedImage.vue` component wraps `<img>` with IndexedDB-backed caching via `src/utils/imageCache.js`. Use it instead of `<van-image>` for user avatars and book covers. LRU eviction (max 50) with automatic blob URL revocation via `src/utils/lruCache.js`.
+- **XSS**: Markdown rendered via `marked` must be sanitized with `DOMPurify.sanitize()` before `v-html`.
+- **New views**: `MyBooks.vue` — user's uploaded books management (CRUD + review timeline).
+- **New components**: `MobileAudioPlayer.vue` — extracted audio player bar used in Read.vue.
 
 ### External Services
 

@@ -1,22 +1,21 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const shareCode = route.params.shareCode
 const defaultCover = 'https://via.placeholder.com/80x110'
 
 const booklistInfo = ref(null)
-const userInfo = ref({})
+const userInfo = computed(() => authStore.user || {})
 const importing = ref(false)
 
 onMounted(async () => {
-  const user = localStorage.getItem('user')
-  if (user) userInfo.value = JSON.parse(user)
-
   try {
     const res = await axios.get(`/api/booklist/share/${shareCode}`)
     if (res.data.code === '200') {

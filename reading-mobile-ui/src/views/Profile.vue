@@ -1,9 +1,10 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { getCachedImage } from '../utils/imageCache'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,6 +14,17 @@ const activeTab = ref('info')
 
 const form = reactive({ id: null, nickname: '', avatar: '', age: null, infoVisible: 1 })
 const pwdForm = reactive({ oldPassword: '', password: '', confirmPassword: '' })
+
+const displayAvatar = ref(defaultAvatar)
+const formDisplayAvatar = ref(defaultAvatar)
+
+watch(() => userInfo.value.avatar, async (newVal) => {
+  displayAvatar.value = newVal ? await getCachedImage(newVal) : defaultAvatar
+}, { immediate: true })
+
+watch(() => form.avatar, async (newVal) => {
+  formDisplayAvatar.value = newVal ? await getCachedImage(newVal) : defaultAvatar
+}, { immediate: true })
 
 onMounted(() => {
   const user = authStore.user
@@ -94,7 +106,7 @@ const logout = () => {
   <div class="profile-page">
     <section class="profile-card">
       <div class="card-eyebrow">Account Center</div>
-      <van-image round width="78" height="78" :src="userInfo.avatar || defaultAvatar" class="user-avatar" />
+      <img :src="displayAvatar" class="user-avatar" style="border-radius: 50%; width: 78px; height: 78px; object-fit: cover;" />
       <h1 class="user-name">{{ userInfo.nickname || userInfo.username }}</h1>
       <div class="user-meta">{{ userInfo.role === 1 ? '管理员账号' : '普通用户账号' }}</div>
     </section>
@@ -112,7 +124,7 @@ const logout = () => {
           <van-cell title="头像">
             <template #right-icon>
               <van-uploader :after-read="handleAvatarUpload" :max-count="1" :preview-image="false">
-                <van-image round width="52" height="52" :src="form.avatar || defaultAvatar" />
+                <img :src="formDisplayAvatar" style="border-radius: 50%; width: 52px; height: 52px; object-fit: cover;" />
               </van-uploader>
             </template>
           </van-cell>
@@ -134,6 +146,10 @@ const logout = () => {
       </van-tab>
     </van-tabs>
 
+    <section class="menu-card">
+      <van-cell title="我的书籍" is-link to="/my-books" icon="notes-o" />
+    </section>
+
     <div class="logout-block">
       <van-button block round plain type="danger" @click="logout">退出登录</van-button>
     </div>
@@ -151,7 +167,8 @@ const logout = () => {
 
 .profile-card,
 .tabs-card,
-.form-card {
+.form-card,
+.menu-card {
   border-radius: 22px;
   background: rgba(255, 252, 247, 0.96);
   box-shadow: 0 18px 38px rgba(93, 67, 43, 0.08);
@@ -207,5 +224,16 @@ const logout = () => {
 .logout-block {
   padding-left: 32px;
   padding-right: 32px;
+}
+
+.menu-card {
+  margin: 16px 16px 0;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.menu-card :deep(.van-cell) {
+  background: transparent;
+  color: #3d2c1f;
 }
 </style>

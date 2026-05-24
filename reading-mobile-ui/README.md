@@ -8,7 +8,10 @@
 - Vite
 - Vue Router
 - Vant
+- Pinia
 - Axios
+- marked + dompurify（Markdown 渲染 + XSS 防护）
+- IndexedDB（图片本地缓存）
 
 ## 环境要求
 

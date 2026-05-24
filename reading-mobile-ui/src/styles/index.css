@@ -1,25 +1,36 @@
 /* ================================
    Mobile Design System
-   Color Palette: Warm brown / paper
+   Color Palette: Amber wood / Paper (Inherited from Desktop)
 ================================ */
 :root {
-  --color-primary: #8b6f52;
-  --color-primary-light: #a38c75;
-  --color-primary-dark: #6b5040;
-  --color-bg: #f5f0e8;
-  --color-bg-card: #fffdf9;
+  --color-primary: #a36b46;
+  --color-primary-light: #c29b7a;
+  --color-primary-dark: #8f5d3d;
+  --color-bg: #f8fafc;
+  --color-bg-card: rgba(255, 255, 255, 0.75);
   --color-bg-warm: #faf5ed;
   --color-text: #2e2520;
-  --color-text-secondary: #7a6e63;
-  --color-text-muted: #9b8e82;
-  --color-border: #e8e0d6;
-  --color-border-light: #f0ece4;
+  --color-text-secondary: #6b5e53;
+  --color-text-muted: #8b6f52;
+  --color-border: rgba(139, 111, 82, 0.2);
+  --color-border-light: rgba(139, 111, 82, 0.1);
   --color-danger: #ee4d38;
   --color-success: #52c41a;
   --color-gold: #f5a623;
   --font-serif: 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile Glass Panel & Legacy Glass Panel */
+.mobile-glass-panel,
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 111, 82, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
 }
 
 * {
@@ -42,18 +53,18 @@ html, body {
 
 /* Override Vant theme colors */
 :root:root {
-  --van-primary-color: #8b6f52;
+  --van-primary-color: #a36b46;
   --van-success-color: #52c41a;
   --van-danger-color: #ee4d38;
   --van-warning-color: #f5a623;
   --van-text-color: #2e2520;
-  --van-text-color-2: #7a6e63;
-  --van-text-color-3: #9b8e82;
-  --van-border-color: #e8e0d6;
-  --van-background: #f5f0e8;
-  --van-background-2: #fffdf9;
-  --van-nav-bar-background: rgba(255, 253, 249, 0.92);
-  --van-tabbar-background: rgba(255, 253, 249, 0.95);
+  --van-text-color-2: #6b5e53;
+  --van-text-color-3: #8b6f52;
+  --van-border-color: rgba(139, 111, 82, 0.2);
+  --van-background: #f8fafc;
+  --van-background-2: rgba(255, 255, 255, 0.75);
+  --van-nav-bar-background: rgba(255, 255, 255, 0.85);
+  --van-tabbar-background: rgba(255, 255, 255, 0.85);
 }
 
 /* Smooth page transitions */
