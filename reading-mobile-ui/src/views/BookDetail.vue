@@ -30,6 +30,7 @@ const inShelf = ref(false)
 const myComment = ref('')
 const myRating = ref(5)
 const submitting = ref(false)
+const generatingDraft = ref(false)
 const replyTarget = ref(null)
 const replyParent = ref(null)
 
@@ -176,6 +177,27 @@ const submitComment = async () => {
     showFailToast('提交失败，请稍后再试')
   } finally {
     submitting.value = false
+  }
+}
+
+const generateAiReviewDraft = async () => {
+  if (!userInfo.value.id) {
+    showToast('请先登录')
+    return
+  }
+  generatingDraft.value = true
+  try {
+    const res = await axios.post('/api/social/ai/draft-review', { bookId: bookId })
+    if (res.data && res.data.result) {
+      myComment.value = res.data.result
+      showSuccessToast('已生成 AI 书评草稿，请修改完善')
+    } else {
+      showFailToast('生成草稿失败')
+    }
+  } catch (error) {
+    showFailToast('生成草稿请求失败')
+  } finally {
+    generatingDraft.value = false
   }
 }
 
@@ -377,6 +399,9 @@ const handleUserClick = (targetUserId) => {
           placeholder="写下你的真实阅读感受..."
           class="comment-field"
         />
+        <van-button type="success" plain round block :loading="generatingDraft" @click="generateAiReviewDraft" style="margin-bottom: 10px;" v-if="!replyTarget">
+          ✨ AI 辅助写书评
+        </van-button>
         <van-button type="primary" round block :loading="submitting" @click="submitComment">
           {{ replyTarget ? '发送回复' : '发布评论' }}
         </van-button>

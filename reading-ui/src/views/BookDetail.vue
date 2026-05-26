@@ -148,6 +148,9 @@
           />
         </div>
         <div class="submit-row">
+          <el-button type="success" plain @click="generateAiReviewDraft" :loading="generatingDraft" v-if="!replyTarget">
+            <el-icon><MagicStick /></el-icon> AI 辅助写书评
+          </el-button>
           <el-button type="primary" @click="submitComment" :loading="submitting">
             {{ replyTarget ? '发送回复' : '发表书评' }}
           </el-button>
@@ -164,7 +167,7 @@ import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, CollectionTag, Reading, Collection, Delete,
-  ChatDotSquare, Close, Star, StarFilled
+  ChatDotSquare, Close, Star, StarFilled, MagicStick
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 
@@ -186,6 +189,7 @@ const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e5
 const myComment = ref('')
 const myRating = ref(5) // 默认评分
 const submitting = ref(false)
+const generatingDraft = ref(false)
 
 // 回复状态
 const replyTarget = ref(null)
@@ -299,6 +303,24 @@ const submitComment = async () => {
     ElMessage.error('发表失败')
   } finally {
     submitting.value = false
+  }
+}
+
+const generateAiReviewDraft = async () => {
+  if (!userInfo.value.id) return ElMessage.warning('请先登录')
+  generatingDraft.value = true
+  try {
+    const res = await request.post('/api/social/ai/draft-review', { bookId: bookId })
+    if (res.data && res.data.result) {
+      myComment.value = res.data.result
+      ElMessage.success('已生成 AI 书评草稿，您可以继续修改完善')
+    } else {
+      ElMessage.error('生成草稿失败')
+    }
+  } catch (e) {
+    ElMessage.error('生成草稿请求失败')
+  } finally {
+    generatingDraft.value = false
   }
 }
 
