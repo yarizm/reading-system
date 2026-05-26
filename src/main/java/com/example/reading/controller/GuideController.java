@@ -1,6 +1,7 @@
 package com.example.reading.controller;
 
 import com.example.reading.service.AuthContextService;
+import com.example.reading.service.GlobalContextService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,76 +15,59 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Dify AI 阅读助手控制器
- * 作为后端与 Dify 平台的 SSE 代理，将前端选中的文本和分析模式转发给 Dify 聊天助手，
- * 并以流式方式将 AI 输出实时推送回前端。
- */
 @RestController
-@RequestMapping("/difyreading")
+@RequestMapping("/guide")
 @CrossOrigin
-public class DifyAiController {
+public class GuideController {
 
     @Autowired
     private AuthContextService authContextService;
 
     @Autowired
-    private com.example.reading.service.ReadingContextService readingContextService;
+    private GlobalContextService globalContextService;
 
     @Value("${dify.url}")
     private String difyBaseUrl;
 
-    @Value("${dify.reading.api-key}")
+    @Value("${dify.guide.api-key}")
     private String difyApiKey;
 
     private final WebClient webClient;
 
-    public DifyAiController(WebClient.Builder builder) {
+    public GuideController(WebClient.Builder builder) {
         this.webClient = builder.build();
     }
 
-    /** Dify 分析请求体 */
-    public static class AskRequest {
-        public String text;
-        public String mode;
+    public static class GuideRequest {
+        public String query;
         public String conversationId;
-        public String bookName;
-        public Long bookId;
     }
 
-    /** 将选中文本发送给 Dify 进行流式分析 */
-    @PostMapping(value = "/analyze", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter analyzeText(@RequestBody AskRequest request,
-                                  HttpServletRequest httpRequest) {
+    @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chat(@RequestBody GuideRequest request, HttpServletRequest httpRequest) {
         Long currentUserId = authContextService.currentUserId(httpRequest);
         if (currentUserId == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        SseEmitter emitter = new SseEmitter(300000L); // 5分钟
+        
+        SseEmitter emitter = new SseEmitter(300000L);
 
         Map<String, Object> payload = new HashMap<>();
 
+        // 构建全局上下文
+        Map<String, Object> globalContext = globalContextService.buildGlobalContext(currentUserId);
+        
         Map<String, String> inputs = new HashMap<>();
-        inputs.put("selected_text", request.text);
-        inputs.put("custom_mode", request.mode);
-        inputs.put("book_name", request.bookName != null ? request.bookName : "未知书籍");
-        if (request.bookId != null) {
-            inputs.put("book_id", String.valueOf(request.bookId));
-            
-            // 注入阅读上下文
-            Map<String, Object> readingContext = readingContextService.buildReadingContext(currentUserId, request.bookId);
-            inputs.put("reading_progress", String.valueOf(readingContext.getOrDefault("reading_progress", "")));
-            inputs.put("recent_notes", String.valueOf(readingContext.getOrDefault("recent_notes", "")));
-        }
+        inputs.put("books_reading_count", String.valueOf(globalContext.get("books_reading_count")));
+        inputs.put("books_finished_count", String.valueOf(globalContext.get("books_finished_count")));
+        inputs.put("total_notes_count", String.valueOf(globalContext.get("total_notes_count")));
+        inputs.put("last_read_book_title", String.valueOf(globalContext.getOrDefault("last_read_book_title", "无")));
+        inputs.put("system_features", String.valueOf(globalContext.get("system_features")));
+
         payload.put("inputs", inputs);
         payload.put("response_mode", "streaming");
         payload.put("user", "user-" + currentUserId);
-
-        String queryText = request.mode;
-        if (request.bookName != null) {
-            queryText = "关于《" + request.bookName + "》：" + queryText;
-        }
-        payload.put("query", queryText);
+        payload.put("query", request.query);
 
         if (request.conversationId != null && !request.conversationId.isEmpty()) {
             payload.put("conversation_id", request.conversationId);

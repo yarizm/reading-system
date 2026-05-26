@@ -30,6 +30,14 @@
               </div>
             </div>
           </div>
+          
+          <!-- 快捷操作栏 -->
+          <div class="quick-actions" style="padding: 10px; display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; border-top: 1px solid rgba(0,0,0,0.05);">
+            <van-button size="mini" round type="primary" plain @click="$emit('send-chat', null, '帮我总结目前的笔记', '帮我总结目前的笔记')" style="flex-shrink: 0;">总结笔记</van-button>
+            <van-button size="mini" round type="primary" plain @click="$emit('send-chat', null, '基于我的阅读进度，向我提问复习', '基于进度复习提问')" style="flex-shrink: 0;">复习提问</van-button>
+            <van-button size="mini" round type="primary" plain @click="$emit('send-chat', null, '我遇到了瓶颈，能否根据我前几章的笔记给我些启发？', '笔记启发思考')" style="flex-shrink: 0;">笔记启发</van-button>
+          </div>
+
           <div class="chat-input-area">
             <van-field
               :model-value="inputMessage"

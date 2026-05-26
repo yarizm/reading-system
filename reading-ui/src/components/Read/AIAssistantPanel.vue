@@ -38,6 +38,14 @@
               </div>
             </div>
           </div>
+          
+          <!-- 快捷操作栏 -->
+          <div class="quick-actions" style="padding: 10px; display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid rgba(0,0,0,0.05);">
+            <el-button size="small" round @click="$emit('send-chat', null, '帮我总结目前的笔记', '帮我总结目前的笔记')">总结笔记</el-button>
+            <el-button size="small" round @click="$emit('send-chat', null, '基于我的阅读进度，向我提问复习', '基于进度复习提问')">复习提问</el-button>
+            <el-button size="small" round @click="$emit('send-chat', null, '我遇到了瓶颈，能否根据我前几章的笔记给我些启发？', '笔记启发思考')">笔记启发</el-button>
+          </div>
+
           <div class="chat-input-area">
             <el-input 
               :model-value="inputMessage" 

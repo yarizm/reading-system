@@ -5,6 +5,7 @@ import { showNotify } from 'vant'
 import axios from 'axios'
 
 import { useAuthStore } from './stores/auth'
+import MobileAgentGuide from '@/components/MobileAgentGuide.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -113,6 +114,9 @@ onUnmounted(() => {
       <van-tabbar-item icon="friends-o" :badge="unreadCount > 0 ? unreadCount : ''">好友</van-tabbar-item>
       <van-tabbar-item icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
+
+    <!-- 仅在移动端使用此底部向导 -->
+    <MobileAgentGuide />
   </div>
 </template>
 
