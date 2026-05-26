@@ -89,7 +89,7 @@
 <script setup>
 import { DArrowLeft, DArrowRight, Service, UserFilled, DocumentAdd, Position, Delete } from '@element-plus/icons-vue'
 import { marked } from 'marked'
-import NoteAiToolbar from './NoteAiToolbar.vue'
+import NoteAiToolbar from '../NoteAiToolbar.vue'
 import DOMPurify from 'dompurify'
 
 marked.setOptions({ breaks: true, gfm: true })

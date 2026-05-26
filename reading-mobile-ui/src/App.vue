@@ -5,7 +5,7 @@ import { showNotify } from 'vant'
 import axios from 'axios'
 
 import { useAuthStore } from './stores/auth'
-import MobileAgentGuide from '@/components/MobileAgentGuide.vue'
+import MobileAgentGuide from './components/MobileAgentGuide.vue'
 
 const router = useRouter()
 const route = useRoute()

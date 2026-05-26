@@ -77,8 +77,8 @@ import { useRouter } from 'vue-router'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { getAuthHeaders } from '@/utils/authHeaders'
-import { useAuthStore } from '@/stores/auth'
+import { getAuthHeaders } from '../utils/authHeaders'
+import { useAuthStore } from '../stores/auth'
 import { showToast } from 'vant'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -153,6 +153,9 @@ const sendChat = async (textOverride = null) => {
           if (dataJson.conversation_id) {
             currentConversationId.value = dataJson.conversation_id
           }
+        } else if (dataJson.event === 'message_end' || dataJson.event === 'workflow_finished') {
+          isThinking.value = false
+          scrollToBottom()
         }
       },
       onclose() {

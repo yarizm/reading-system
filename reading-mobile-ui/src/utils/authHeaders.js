@@ -1,12 +1,10 @@
 export const getAuthToken = () => {
   const userStr = localStorage.getItem('user')
   if (!userStr) return ''
-
   try {
     const token = JSON.parse(userStr).token
     return token || ''
   } catch (e) {
-    localStorage.removeItem('user')
     return ''
   }
 }

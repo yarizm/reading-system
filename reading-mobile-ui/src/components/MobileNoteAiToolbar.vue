@@ -33,7 +33,7 @@
 import { ref, computed } from 'vue'
 import { showToast } from 'vant'
 import axios from 'axios'
-import { getAuthHeaders } from '@/utils/authHeaders'
+import { getAuthHeaders } from '../utils/authHeaders'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 

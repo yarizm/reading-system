@@ -170,7 +170,7 @@ const emit = defineEmits([
 ])
 
 import { ref } from 'vue'
-import request from '@/utils/request'
+import request from '../../utils/request'
 import { ElMessage } from 'element-plus'
 import { MagicStick } from '@element-plus/icons-vue'
 

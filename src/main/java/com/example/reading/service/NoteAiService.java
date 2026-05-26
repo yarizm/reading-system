@@ -23,8 +23,9 @@ public class NoteAiService {
         if (notes.isEmpty()) return "无笔记";
         
         return notes.stream()
-                .map(n -> String.format("- 页码:%s | 章节:%s | 类型:%s | 内容:%s", 
-                        n.getPageNum(), n.getChapterTitle(), n.getNoteType(), n.getContent()))
+                .map(n -> String.format("- 摘录:%s | 笔记内容:%s", 
+                        n.getSelectedText() != null ? n.getSelectedText() : "无摘录", 
+                        n.getContent() != null ? n.getContent() : "无心得"))
                 .collect(Collectors.joining("\n"));
     }
 }

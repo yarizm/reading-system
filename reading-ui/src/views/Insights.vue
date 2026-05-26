@@ -1,10 +1,14 @@
 <template>
-  <div class="insights-container">
-    <el-card class="insight-card">
+  <div class="insights-container page-glass-container">
+    <el-card class="insight-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>阅读洞察报告</span>
-          <el-button type="primary" :loading="isGenerating" @click="generateInsight">
+          <el-page-header @back="goBack">
+            <template #content>
+              <span class="header-title">阅读洞察报告</span>
+            </template>
+          </el-page-header>
+          <el-button type="primary" :loading="isGenerating" @click="generateInsight" round>
             生成最新报告
           </el-button>
         </div>
@@ -30,11 +34,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { getAuthHeaders } from '@/utils/authHeaders'
+import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage } from 'element-plus'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+
+const router = useRouter()
+const goBack = () => router.back()
 
 const isGenerating = ref(false)
 const hasReport = ref(false)
@@ -84,16 +92,27 @@ onMounted(() => {
 
 <style scoped>
 .insights-container {
-  padding: 20px;
+  padding: 24px;
   max-width: 1000px;
   margin: 0 auto;
+}
+:deep(.insight-card) {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
 }
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.header-title {
   font-weight: bold;
   font-size: 18px;
+  color: #2e2520;
 }
 .report-content {
   line-height: 1.8;

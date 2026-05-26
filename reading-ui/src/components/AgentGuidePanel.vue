@@ -66,7 +66,7 @@ import { MagicStick, Monitor, Close, Position, ArrowRight } from '@element-plus/
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { getAuthHeaders } from '@/utils/authHeaders'
+import { getAuthHeaders } from '../utils/authHeaders'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -151,6 +151,9 @@ const sendChat = async (textOverride = null) => {
           if (dataJson.conversation_id) {
             currentConversationId.value = dataJson.conversation_id
           }
+        } else if (dataJson.event === 'message_end' || dataJson.event === 'workflow_finished') {
+          isThinking.value = false
+          scrollToBottom()
         }
       },
       onclose() {

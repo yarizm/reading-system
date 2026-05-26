@@ -1,6 +1,6 @@
 <script setup>
-import { useAuthStore } from '@/stores/auth'
-import AgentGuidePanel from '@/components/AgentGuidePanel.vue'
+import { useAuthStore } from './stores/auth'
+import AgentGuidePanel from './components/AgentGuidePanel.vue'
 
 const authStore = useAuthStore()
 </script>

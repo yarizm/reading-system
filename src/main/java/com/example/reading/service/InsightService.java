@@ -51,7 +51,8 @@ public class InsightService {
                 .limit(3)
                 .map(b -> {
                     SysBook sysBook = sysBookService.getById(b.getBookId());
-                    return sysBook != null ? sysBook.getTitle() + "(进度:" + b.getReadingProgress() + "%)" : "未知书籍";
+                    String progressStr = b.getCurrentChapterIndex() != null ? "第" + (b.getCurrentChapterIndex() + 1) + "章" : "未知";
+                    return sysBook != null ? sysBook.getTitle() + "(进度:" + progressStr + ")" : "未知书籍";
                 })
                 .collect(Collectors.toList());
 
@@ -68,7 +69,7 @@ public class InsightService {
         // 获取最近笔记内容
         List<String> recentNotes = notes.stream()
                 .limit(5)
-                .map(n -> String.format("[%s] %s", n.getNoteType(), n.getContent()))
+                .map(n -> String.format("[笔记] %s", n.getContent() != null ? n.getContent() : n.getSelectedText()))
                 .collect(Collectors.toList());
         
         stats.put("recent_notes_preview", String.join(" | ", recentNotes));

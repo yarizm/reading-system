@@ -36,7 +36,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { getAuthHeaders } from '@/utils/authHeaders'
+import { getAuthHeaders } from '../utils/authHeaders'
 import { showToast } from 'vant'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -90,7 +90,9 @@ onMounted(() => {
 <style scoped>
 .insights-container {
   min-height: 100vh;
-  background-color: #f7f8fa;
+  background:
+    radial-gradient(circle at top left, rgba(214, 191, 165, 0.22), transparent 28%),
+    linear-gradient(180deg, #f8f2ea 0%, #f6efe5 34%, #faf6f0 100%);
 }
 .insights-content {
   padding: 15px;
@@ -99,39 +101,48 @@ onMounted(() => {
   width: 160px;
   height: 40px;
 }
-.generating-state {
+.generating-state, .empty-state {
   margin-top: 20px;
   padding: 15px;
-  background: #fff;
-  border-radius: 8px;
+  border-radius: 22px;
+  background: var(--color-bg-card, rgba(255, 255, 255, 0.45));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.6));
+  box-shadow: 0 8px 32px rgba(139, 111, 82, 0.08);
 }
 .gen-tip {
   text-align: center;
-  color: #969799;
+  color: #8a725d;
   margin-top: 20px;
   font-size: 14px;
 }
 .report-box {
-  background: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin-top: 10px;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--color-bg-card, rgba(255, 255, 255, 0.45));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.6));
+  box-shadow: 0 8px 32px rgba(139, 111, 82, 0.08);
 }
 .report-header {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 10px;
-  border-bottom: 1px solid #ebedf0;
+  border-bottom: 1px solid rgba(143, 117, 87, 0.12);
   padding-bottom: 10px;
 }
 .report-text {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.8;
+  color: #3d2c1f;
 }
 .report-footer {
   margin-top: 20px;
   text-align: right;
   font-size: 12px;
-  color: #c8c9cc;
+  color: #9a826c;
 }
 </style>
