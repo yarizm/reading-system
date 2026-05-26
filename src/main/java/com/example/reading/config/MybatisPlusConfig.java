@@ -6,7 +6,10 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import org.mybatis.spring.annotation.MapperScan;
+
 @Configuration
+@MapperScan("com.example.reading.mapper")
 public class MybatisPlusConfig {
 
     /**

@@ -55,9 +55,7 @@ class FileControllerTest {
 
         when(sysBookService.list(any(QueryWrapper.class))).thenReturn(List.of(publicBook, privateBook));
         when(authContextService.isPublicBook(publicBook)).thenReturn(true);
-        when(authContextService.isPublicBook(privateBook)).thenReturn(false);
-        when(authContextService.currentUserId(request)).thenReturn(null);
-        when(authContextService.canViewBook(privateBook, (Long) null)).thenReturn(false);
+
 
         FileController controller = new FileController(sysBookService, chapterMapper, authContextService);
         ReflectionTestUtils.setField(controller, "uploadPath", tempDir.toString());

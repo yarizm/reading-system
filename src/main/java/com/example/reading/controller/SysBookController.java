@@ -558,6 +558,10 @@ public class SysBookController {
             return Result.success("该书已存在章节信息，跳过分析");
         }
 
+        if (book.getFilePath() == null || book.getFilePath().isBlank()) {
+            return Result.error("400", "书籍文件路径为空");
+        }
+
         String fileName = book.getFilePath().substring(book.getFilePath().lastIndexOf("/") + 1);
         String finalPath = uploadPath.endsWith("/") || uploadPath.endsWith("\\")
                 ? uploadPath + fileName

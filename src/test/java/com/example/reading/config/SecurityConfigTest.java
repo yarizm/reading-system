@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SecurityConfigTest.TestController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, SecurityConfigTest.TestController.class})
 class SecurityConfigTest {
 
     @Autowired
@@ -42,14 +42,14 @@ class SecurityConfigTest {
     }
 
     @RestController
-    static class TestController {
+    public static class TestController {
         @PostMapping("/protected")
-        String protectedEndpoint() {
+        public String protectedEndpoint() {
             return "ok";
         }
 
         @GetMapping("/sysBook/list")
-        String publicEndpoint() {
+        public String publicEndpoint() {
             return "ok";
         }
     }

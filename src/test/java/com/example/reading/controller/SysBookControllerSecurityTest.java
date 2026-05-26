@@ -80,7 +80,7 @@ class SysBookControllerSecurityTest {
 
         when(authContextService.currentUserId(request)).thenReturn(200L);
         when(sysBookService.getById(10L)).thenReturn(book);
-        when(authContextService.isAdmin(200L)).thenReturn(false);
+
 
         Result<?> result = controller.analyzeBook(10L, request);
 
@@ -95,6 +95,7 @@ class SysBookControllerSecurityTest {
 
         when(authContextService.currentUserId(request)).thenReturn(100L);
         when(sysBookService.getById(11L)).thenReturn(book);
+        when(authContextService.canViewBook(book, 100L)).thenReturn(true);
         when(chapterMapper.selectCount(any(QueryWrapper.class))).thenReturn(0L);
 
         Result<?> result = controller.analyzeBook(11L, request);
