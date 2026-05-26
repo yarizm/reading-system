@@ -57,6 +57,8 @@
 
       <van-tab title="我的笔记" name="note">
         <div class="note-list-container">
+          <MobileNoteAiToolbar :bookId="bookId" v-if="bookId" />
+          
           <van-empty v-if="noteList.length === 0" description="暂无笔记" />
           <div class="note-card" v-for="note in noteList" :key="note.id">
             <div class="note-header">
@@ -76,6 +78,7 @@
 import { ref } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import MobileNoteAiToolbar from '../MobileNoteAiToolbar.vue'
 
 marked.setOptions({ breaks: true, gfm: true })
 const renderMarkdown = (text) => DOMPurify.sanitize(marked.parse(text || ''))
@@ -86,7 +89,11 @@ const props = defineProps({
   chatList: Array,
   inputMessage: String,
   isThinking: Boolean,
-  noteList: Array
+  noteList: Array,
+  bookId: {
+    type: [Number, String],
+    required: false
+  }
 })
 
 const emit = defineEmits([

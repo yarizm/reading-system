@@ -66,6 +66,9 @@
       
       <el-tab-pane label="我的笔记" name="note">
         <div class="note-list-container">
+          <!-- 引入笔记 AI 工具栏 -->
+          <NoteAiToolbar :bookId="bookId" v-if="bookId" />
+
           <el-empty v-if="noteList.length === 0" description="暂无笔记" />
           <div class="note-card" v-for="note in noteList" :key="note.id">
             <div class="note-header">
@@ -86,6 +89,7 @@
 <script setup>
 import { DArrowLeft, DArrowRight, Service, UserFilled, DocumentAdd, Position, Delete } from '@element-plus/icons-vue'
 import { marked } from 'marked'
+import NoteAiToolbar from './NoteAiToolbar.vue'
 import DOMPurify from 'dompurify'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -100,7 +104,11 @@ const props = defineProps({
   chatList: Array,
   inputMessage: String,
   isThinking: Boolean,
-  noteList: Array
+  noteList: Array,
+  bookId: {
+    type: [Number, String],
+    required: false
+  }
 })
 
 const emit = defineEmits([
