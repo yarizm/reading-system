@@ -24,6 +24,7 @@
             <el-dropdown-menu>
               <el-dropdown-item command="profile">个人中心</el-dropdown-item>
               <el-dropdown-item command="myBooks">我的书籍</el-dropdown-item>
+              <el-dropdown-item command="insights">阅读洞察</el-dropdown-item>
               <el-dropdown-item command="admin" v-if="userInfo.role === 1" divided>
                 <span style="color: orange; font-weight: bold;">后台管理</span>
               </el-dropdown-item>
@@ -432,6 +433,8 @@ const handleUserCommand = (cmd) => {
     router.push('/profile')
   } else if (cmd === 'myBooks') {
     router.push('/my-books')
+  } else if (cmd === 'insights') {
+    router.push('/insights')
   } else if (cmd === 'admin') {
     router.push('/admin')
   }

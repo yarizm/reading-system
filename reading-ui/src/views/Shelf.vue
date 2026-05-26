@@ -327,6 +327,19 @@ onMounted(() => {
   }
 })
 
+const handleDropdownCommand = (cmd, item) => {
+  if (cmd === 'profile') {
+    router.push('/profile')
+  } else if (cmd === 'insights') {
+    router.push('/insights')
+  } else if (cmd === 'logout') {
+    authStore.logout()
+    router.push('/login')
+  } else {
+    addBookToList(cmd, item.bookId)
+  }
+}
+
 // ===== 书架 =====
 const loadShelf = async () => {
   loading.value = true

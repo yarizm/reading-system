@@ -38,6 +38,11 @@ const routes = [
     meta: { hideTabBar: true }
   },
   {
+    path: '/insights',
+    name: 'Insights',
+    component: () => import('../views/Insights.vue')
+  },
+  {
     path: '/read/:id',
     name: 'Read',
     component: () => import('../views/Read.vue'),
