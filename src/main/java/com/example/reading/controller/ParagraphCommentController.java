@@ -6,6 +6,7 @@ import com.example.reading.mapper.SysParagraphCommentMapper;
 import com.example.reading.service.AuthContextService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -69,23 +70,27 @@ public class ParagraphCommentController {
             return Result.error("403", "Forbidden");
         }
 
-        String checkSql = "SELECT count(*) FROM sys_paragraph_like WHERE comment_id = ? AND user_id = ?";
-        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, commentId, userId);
-
         boolean isLikedNow;
-        if (count != null && count > 0) {
-            jdbcTemplate.update("DELETE FROM sys_paragraph_like WHERE comment_id = ? AND user_id = ?", commentId, userId);
-            comment.setLikeCount(Math.max(0, comment.getLikeCount() - 1));
+        int deleted = jdbcTemplate.update("DELETE FROM sys_paragraph_like WHERE comment_id = ? AND user_id = ?", commentId, userId);
+        if (deleted > 0) {
+            jdbcTemplate.update("UPDATE sys_paragraph_comment SET like_count = GREATEST(IFNULL(like_count, 0) - 1, 0) WHERE id = ?", commentId);
             isLikedNow = false;
         } else {
-            jdbcTemplate.update("INSERT INTO sys_paragraph_like (comment_id, user_id) VALUES (?, ?)", commentId, userId);
-            comment.setLikeCount(comment.getLikeCount() + 1);
+            try {
+                jdbcTemplate.update("INSERT INTO sys_paragraph_like (comment_id, user_id) VALUES (?, ?)", commentId, userId);
+                jdbcTemplate.update("UPDATE sys_paragraph_comment SET like_count = IFNULL(like_count, 0) + 1 WHERE id = ?", commentId);
+            } catch (DuplicateKeyException ignored) {
+                // Concurrent request already inserted the like; return the current liked state.
+            }
             isLikedNow = true;
         }
-        commentMapper.updateById(comment);
+        Integer likeCount = jdbcTemplate.queryForObject(
+                "SELECT IFNULL(like_count, 0) FROM sys_paragraph_comment WHERE id = ?",
+                Integer.class,
+                commentId);
 
         Map<String, Object> res = new HashMap<>();
-        res.put("likeCount", comment.getLikeCount());
+        res.put("likeCount", likeCount == null ? 0 : likeCount);
         res.put("isLiked", isLikedNow);
         return Result.success(res);
     }

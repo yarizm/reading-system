@@ -30,7 +30,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchAndVerify() {
     try {
-      const res = await axios.get('/api/sysUser/me')
+      const currentToken = user.value?.token || ''
+      const res = await axios.get('/api/sysUser/me', {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
+      })
       if (res.data.code === '200') {
         const serverData = res.data.data
         user.value = { ...user.value, ...serverData }

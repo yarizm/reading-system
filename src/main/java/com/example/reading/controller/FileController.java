@@ -117,7 +117,7 @@ public class FileController {
         if (books == null || books.isEmpty()) {
             return false;
         }
-        return books.stream().allMatch(book -> canViewBook(book, request, token));
+        return books.stream().anyMatch(book -> canViewBook(book, request, token));
     }
 
     private boolean canViewBook(SysBook book, HttpServletRequest request, String token) {

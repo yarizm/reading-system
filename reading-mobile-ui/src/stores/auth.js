@@ -3,7 +3,16 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const safeParseJSON = (str) => {
+    if (!str || str === 'null') return null
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      localStorage.removeItem('user')
+      return null
+    }
+  }
+  const user = ref(safeParseJSON(localStorage.getItem('user')))
 
   const isLoggedIn = computed(() => user.value !== null && !!user.value.token)
   const isAdmin = computed(() => user.value?.role === 1)
@@ -21,7 +30,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchAndVerify() {
     try {
-      const res = await axios.get('/api/sysUser/me')
+      const currentToken = user.value?.token || ''
+      const res = await axios.get('/api/sysUser/me', {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
+      })
       if (res.data.code === '200') {
         const serverData = res.data.data
         user.value = { ...user.value, ...serverData }
