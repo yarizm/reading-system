@@ -148,6 +148,7 @@ const logout = () => {
 
     <section class="menu-card">
       <van-cell title="我的书籍" is-link to="/my-books" icon="notes-o" />
+      <van-cell title="阅读洞察" is-link to="/insights" icon="bar-chart-o" />
     </section>
 
     <div class="logout-block">

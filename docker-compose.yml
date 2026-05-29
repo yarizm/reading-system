@@ -69,9 +69,8 @@ services:
       TTS_LIGHTWEIGHT_BASE_URL: http://tts:8091
       FILE_UPLOAD_PATH: /app/uploads
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      QWEN_API_KEY: ${QWEN_API_KEY}
       DIFY_BASE_URL: ${DIFY_DOCKER_BASE_URL:-http://docker-api-1:5001/v1}
-      DIFY_CHAT_URL: ${DIFY_DOCKER_CHAT_URL:-http://docker-api-1:5001/v1/chat-messages}
+      DIFY_CHAT_URL: ${DIFY_DOCKER_CHAT_URL:-http://docker-api-1:5001/v1}
       DIFY_KB_URL: ${DIFY_DOCKER_KB_URL:-http://docker-api-1:5001/v1}
       DIFY_READING_KEY: ${DIFY_READING_KEY}
       DIFY_RECOMMEND_KEY: ${DIFY_RECOMMEND_KEY}

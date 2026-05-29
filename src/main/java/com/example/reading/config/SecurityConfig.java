@@ -27,6 +27,12 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        // ASYNC: permitAll is required for SseEmitter endpoints. Spring MVC re-dispatches
+                        // the request with ASYNC dispatcher type during async processing. With this rule,
+                        // ASYNC dispatch bypasses security filters. Authentication is enforced at the
+                        // controller level via authContextService.currentUserId().
+                        // ERROR: permitAll is required for Spring Boot's default error handling.
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC, jakarta.servlet.DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/auth/**",
                                 "/sysUser/login",

@@ -50,14 +50,26 @@
             </div>
           </div>
           
-          <van-field
-            :model-value="shareMessage"
-            @update:model-value="$emit('update:shareMessage', $event)"
-            type="textarea"
-            rows="2"
-            placeholder="捎一句话（可选）"
-            class="msg-input"
-          />
+          <div style="position: relative;">
+            <van-field
+              :model-value="shareMessage"
+              @update:model-value="$emit('update:shareMessage', $event)"
+              type="textarea"
+              rows="3"
+              placeholder="捎一句话（可选）"
+              class="msg-input"
+            />
+            <van-button 
+              size="mini" 
+              plain 
+              type="success" 
+              style="position: absolute; right: 8px; bottom: 8px; height: 22px; padding: 0 6px;"
+              @click="generateAiShareMessage"
+              :loading="isGenerating"
+            >
+              ✨ AI 帮写
+            </van-button>
+          </div>
           
           <van-button 
             block 
@@ -92,6 +104,41 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:show', 'update:selectedFriendId', 'update:shareMessage', 'submit'])
+
+import { ref } from 'vue'
+import request from '../../utils/request'
+import { showSuccessToast, showFailToast } from 'vant'
+
+const isGenerating = ref(false)
+
+const generateAiShareMessage = async () => {
+  let content = ''
+  let bookTitle = props.bookInfo?.title || '未知书籍'
+  if (props.shareMode === 'paragraph') {
+    content = props.selectedParagraphText || ''
+  } else if (props.shareMode === 'audio') {
+    content = props.audioTitle || '音频片段'
+  }
+  
+  isGenerating.value = true
+  try {
+    const res = await request.post('/api/social/ai/draft-share', {
+      type: props.shareMode,
+      content,
+      bookTitle
+    })
+    if (res.data && res.data.result) {
+      emit('update:shareMessage', res.data.result)
+      showSuccessToast('推荐语已生成')
+    } else {
+      showFailToast('生成失败')
+    }
+  } catch (err) {
+    showFailToast('AI 生成请求失败')
+  } finally {
+    isGenerating.value = false
+  }
+}
 </script>
 
 <style scoped>

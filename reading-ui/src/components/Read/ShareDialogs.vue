@@ -21,16 +21,22 @@
                   :value="friend.friendUserId"
               />
             </el-select>
-            <el-input
-                :model-value="bookShareMessage"
-                @update:model-value="$emit('update:bookShareMessage', $event)"
-                type="textarea"
-                :rows="3"
-                maxlength="200"
-                show-word-limit
-                placeholder="给好友捎一句话（可选）"
-                style="margin-top: 15px;"
-            />
+            <div style="margin-top: 15px; position: relative;">
+              <el-input
+                  :model-value="bookShareMessage"
+                  @update:model-value="$emit('update:bookShareMessage', $event)"
+                  type="textarea"
+                  :rows="3"
+                  maxlength="200"
+                  show-word-limit
+                  placeholder="给好友捎一句话（可选）"
+              />
+              <el-button size="small" type="success" plain 
+                         style="position: absolute; right: 8px; bottom: 8px;"
+                         @click="generateShareMessage('book')" :loading="isGeneratingMessage">
+                <el-icon><MagicStick /></el-icon> AI 帮写
+              </el-button>
+            </div>
           </div>
         </template>
       </div>
@@ -61,16 +67,22 @@
                   :value="friend.friendUserId"
               />
             </el-select>
-            <el-input
-                :model-value="paragraphShareMessage"
-                @update:model-value="$emit('update:paragraphShareMessage', $event)"
-                type="textarea"
-                :rows="3"
-                maxlength="200"
-                show-word-limit
-                placeholder="可以补充你为什么想分享这段（可选）"
-                style="margin-top: 15px;"
-            />
+            <div style="margin-top: 15px; position: relative;">
+              <el-input
+                  :model-value="paragraphShareMessage"
+                  @update:model-value="$emit('update:paragraphShareMessage', $event)"
+                  type="textarea"
+                  :rows="3"
+                  maxlength="200"
+                  show-word-limit
+                  placeholder="可以补充你为什么想分享这段（可选）"
+              />
+              <el-button size="small" type="success" plain 
+                         style="position: absolute; right: 8px; bottom: 8px;"
+                         @click="generateShareMessage('paragraph')" :loading="isGeneratingMessage">
+                <el-icon><MagicStick /></el-icon> AI 帮写
+              </el-button>
+            </div>
           </div>
         </template>
       </div>
@@ -98,16 +110,22 @@
                 :value="friend.friendUserId"
             />
           </el-select>
-          <el-input
-              :model-value="audioShareMessage"
-              @update:model-value="$emit('update:audioShareMessage', $event)"
-              type="textarea"
-              :rows="3"
-              maxlength="200"
-              show-word-limit
-              placeholder="给好友捎一句话（可选）"
-              style="margin-top: 15px;"
-          />
+          <div style="margin-top: 15px; position: relative;">
+            <el-input
+                :model-value="audioShareMessage"
+                @update:model-value="$emit('update:audioShareMessage', $event)"
+                type="textarea"
+                :rows="3"
+                maxlength="200"
+                show-word-limit
+                placeholder="给好友捎一句话（可选）"
+            />
+            <el-button size="small" type="success" plain 
+                       style="position: absolute; right: 8px; bottom: 8px;"
+                       @click="generateShareMessage('audio')" :loading="isGeneratingMessage">
+              <el-icon><MagicStick /></el-icon> AI 帮写
+            </el-button>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -150,6 +168,38 @@ const emit = defineEmits([
   'update:showParagraphShare', 'update:paragraphShareFriendId', 'update:paragraphShareMessage', 'submit-paragraph',
   'update:showAudioShare', 'update:audioShareFriendId', 'update:audioShareMessage', 'submit-audio'
 ])
+
+import { ref } from 'vue'
+import request from '../../utils/request'
+import { ElMessage } from 'element-plus'
+import { MagicStick } from '@element-plus/icons-vue'
+
+const isGeneratingMessage = ref(false)
+
+const generateShareMessage = async (type) => {
+  let content = ''
+  let bookTitle = props.bookInfo?.title || '未知书籍'
+  if (type === 'paragraph') {
+    content = props.selectedParagraphText
+  } else if (type === 'audio') {
+    content = props.audioPlayback?.title || '音频片段'
+  }
+  
+  isGeneratingMessage.value = true
+  try {
+    const res = await request.post('/api/social/ai/draft-share', { type, content, bookTitle })
+    if (res.data && res.data.result) {
+      if (type === 'book') emit('update:bookShareMessage', res.data.result)
+      if (type === 'paragraph') emit('update:paragraphShareMessage', res.data.result)
+      if (type === 'audio') emit('update:audioShareMessage', res.data.result)
+      ElMessage.success('推荐语已生成')
+    }
+  } catch (err) {
+    ElMessage.error('AI 生成失败')
+  } finally {
+    isGeneratingMessage.value = false
+  }
+}
 </script>
 
 <style scoped>

@@ -2,7 +2,7 @@ import { useAuthStore } from '../stores/auth'
 
 export const getAuthToken = () => {
   const authStore = useAuthStore()
-  return authStore.token
+  return authStore.token || ''
 }
 
 export const getAuthHeaders = () => {

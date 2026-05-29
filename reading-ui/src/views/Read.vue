@@ -405,6 +405,7 @@ onBeforeUnmount(() => {
       @send-chat="ai.sendChat"
       @save-note="ai.saveNote"
       @delete-note="ai.handleDeleteNote"
+      :bookId="bookId"
     />
 
     <AudioPlayer 

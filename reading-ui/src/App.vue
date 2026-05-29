@@ -1,5 +1,8 @@
 <script setup>
-// 这里不需要写逻辑了，逻辑都在 views 里
+import { useAuthStore } from './stores/auth'
+import AgentGuidePanel from './components/AgentGuidePanel.vue'
+
+const authStore = useAuthStore()
 </script>
 
 <template>
@@ -8,6 +11,9 @@
       <component :is="Component" :key="route.path" />
     </transition>
   </router-view>
+  
+  <!-- 全局向导组件，仅在登录后显示 -->
+  <AgentGuidePanel v-if="authStore.isLoggedIn" />
 </template>
 
 <style>

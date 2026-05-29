@@ -48,6 +48,11 @@ const routes = [
         component: () => import('../views/BookDetail.vue')
     },
     {
+        path: '/insights',
+        name: 'Insights',
+        component: () => import('../views/Insights.vue')
+    },
+    {
         path: '/shelf/import/:shareCode',
         name: 'ImportBooklist',
         component: () => import('../views/ImportBooklist.vue')

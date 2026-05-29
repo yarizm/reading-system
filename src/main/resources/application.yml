@@ -64,34 +64,39 @@ app:
     token-secret: ${APP_AUTH_TOKEN_SECRET:${random.uuid}}
     token-ttl-millis: ${APP_AUTH_TOKEN_TTL_MILLIS:86400000}
 ai:
-  dashscope:
-    api-key: ${QWEN_API_KEY}
   enable-recommendation: true
 tts:
   provider: lightweight
   lightweight:
     base-url: "http://localhost:8091"
     timeout-ms: 60000
-  dashscope:
-    enabled: true
 dify:
-  url: ${DIFY_BASE_URL:${DIFY_KB_URL}}   # 共享基础 URL，所有 Dify 应用共用
+  url: ${DIFY_BASE_URL}
   client-config:
     connect-timeout: 30
     read-timeout: 60
     logging: true
     logging-mask-enabled: true
   reading:
-    api-url: ${DIFY_CHAT_URL}
-    api-key: ${DIFY_READING_KEY}
+    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL}}
+    api-key: ${DIFY_READING_KEY:}
   recommend:
-    api-url: ${DIFY_CHAT_URL}
-    api-key: ${DIFY_RECOMMEND_KEY}
+    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL}}
+    api-key: ${DIFY_RECOMMEND_KEY:}
   kb:
-    api-url: ${DIFY_KB_URL}
-    api-key: ${DIFY_KB_KEY}
-    dataset-id: ${DIFY_KB_DATASET_ID}
+    api-url: ${DIFY_KB_URL:${DIFY_BASE_URL}}
+    api-key: ${DIFY_KB_KEY:}
+    dataset-id: ${DIFY_KB_DATASET_ID:}
     chapter-delay-ms: 200
+  guide:
+    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL}}
+    api-key: ${DIFY_GUIDE_KEY:}
+  note:
+    api-url: ${DIFY_WORKFLOW_URL:${DIFY_BASE_URL}}
+    api-key: ${DIFY_NOTE_KEY:}
+  insight:
+    api-url: ${DIFY_WORKFLOW_URL:${DIFY_BASE_URL}}
+    api-key: ${DIFY_INSIGHT_KEY:}
 
 logging:
   pattern:

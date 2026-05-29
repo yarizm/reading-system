@@ -25,10 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private AuthContextService authContextService;
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().startsWith("/difyreading");
-    }
+
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

@@ -38,6 +38,14 @@
               </div>
             </div>
           </div>
+          
+          <!-- 快捷操作栏 -->
+          <div class="quick-actions" style="padding: 10px; display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid rgba(0,0,0,0.05);">
+            <el-button size="small" round @click="$emit('send-chat', null, '帮我总结目前的笔记', '帮我总结目前的笔记')">总结笔记</el-button>
+            <el-button size="small" round @click="$emit('send-chat', null, '基于我的阅读进度，向我提问复习', '基于进度复习提问')">复习提问</el-button>
+            <el-button size="small" round @click="$emit('send-chat', null, '我遇到了瓶颈，能否根据我前几章的笔记给我些启发？', '笔记启发思考')">笔记启发</el-button>
+          </div>
+
           <div class="chat-input-area">
             <el-input 
               :model-value="inputMessage" 
@@ -58,6 +66,9 @@
       
       <el-tab-pane label="我的笔记" name="note">
         <div class="note-list-container">
+          <!-- 引入笔记 AI 工具栏 -->
+          <NoteAiToolbar :bookId="bookId" v-if="bookId" />
+
           <el-empty v-if="noteList.length === 0" description="暂无笔记" />
           <div class="note-card" v-for="note in noteList" :key="note.id">
             <div class="note-header">
@@ -78,6 +89,7 @@
 <script setup>
 import { DArrowLeft, DArrowRight, Service, UserFilled, DocumentAdd, Position, Delete } from '@element-plus/icons-vue'
 import { marked } from 'marked'
+import NoteAiToolbar from '../NoteAiToolbar.vue'
 import DOMPurify from 'dompurify'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -92,7 +104,11 @@ const props = defineProps({
   chatList: Array,
   inputMessage: String,
   isThinking: Boolean,
-  noteList: Array
+  noteList: Array,
+  bookId: {
+    type: [Number, String],
+    required: false
+  }
 })
 
 const emit = defineEmits([
@@ -106,6 +122,24 @@ const emit = defineEmits([
   margin-bottom: 0;
   padding: 15px 20px;
   border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.ai-drawer :deep(.el-drawer__body) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ai-drawer :deep(.el-tabs) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ai-drawer :deep(.el-tabs__content) {
+  flex: 1;
+  overflow: hidden;
+}
+.ai-drawer :deep(.el-tab-pane) {
+  height: 100%;
 }
 .theme-dark .ai-drawer :deep(.el-drawer__header) {
   border-bottom-color: rgba(255,255,255,0.05);
@@ -138,7 +172,7 @@ const emit = defineEmits([
 .chat-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  height: 100%;
 }
 
 .chat-history-box {
@@ -214,7 +248,7 @@ const emit = defineEmits([
 }
 
 .note-list-container {
-  height: calc(100vh - 120px);
+  height: 100%;
   overflow-y: auto;
   padding: 15px;
 }
