@@ -142,7 +142,13 @@ const sendChat = async (textOverride = null) => {
         conversationId: currentConversationId.value
       }),
       onmessage(event) {
-        const dataJson = JSON.parse(event.data)
+        let dataJson
+        try {
+          dataJson = JSON.parse(event.data)
+        } catch (e) {
+          console.warn('Guide SSE parse error:', e, event.data)
+          return
+        }
         if (dataJson.event === 'message') {
           const newText = dataJson.answer || ''
           chatList.value[aiMsgIndex].content += newText
@@ -168,6 +174,7 @@ const sendChat = async (textOverride = null) => {
     })
   } catch (e) {
     isThinking.value = false
+    ElMessage.error('向导连接失败，请稍后重试')
   }
 }
 </script>

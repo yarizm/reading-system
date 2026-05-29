@@ -12,8 +12,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.example.reading.utils.DifyUrlUtils;
+import jakarta.annotation.PostConstruct;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RestController
 @RequestMapping("/guide")
@@ -26,7 +30,7 @@ public class GuideController {
     @Autowired
     private GlobalContextService globalContextService;
 
-    @Value("${dify.url}")
+    @Value("${dify.guide.api-url}")
     private String difyBaseUrl;
 
     @Value("${dify.guide.api-key}")
@@ -36,6 +40,11 @@ public class GuideController {
 
     public GuideController(WebClient.Builder builder) {
         this.webClient = builder.build();
+    }
+
+    @PostConstruct
+    private void normalizeUrl() {
+        this.difyBaseUrl = DifyUrlUtils.trimChatMessagesSuffix(difyBaseUrl);
     }
 
     public static class GuideRequest {
@@ -74,8 +83,22 @@ public class GuideController {
         }
 
         final boolean[] hasContent = {false};
+        final AtomicReference<reactor.core.Disposable> subscriptionRef = new AtomicReference<>();
 
-        webClient.post()
+        emitter.onTimeout(() -> {
+            reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
+            if (sub != null && !sub.isDisposed()) {
+                sub.dispose();
+            }
+        });
+        emitter.onCompletion(() -> {
+            reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
+            if (sub != null && !sub.isDisposed()) {
+                sub.dispose();
+            }
+        });
+
+        subscriptionRef.set(webClient.post()
                 .uri(difyBaseUrl + "/chat-messages")
                 .header("Authorization", "Bearer " + difyApiKey)
                 .bodyValue(payload)
@@ -98,7 +121,7 @@ public class GuideController {
                             }
                         },
                         emitter::complete
-                );
+                ));
 
         return emitter;
     }

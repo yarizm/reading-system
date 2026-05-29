@@ -56,7 +56,7 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 Standard layered architecture:
 - `controller/` — REST endpoints. All controllers return `Result<T>` wrapper.
 - `service/` + `service/impl/` — Business logic interfaces and implementations.
-- `service/tts/` — TTS provider abstraction (`TtsProvider` interface, `LightweightTtsProvider`, `DashScopeTtsProvider`).
+- `service/tts/` — TTS provider abstraction (`TtsProvider` interface, `LightweightTtsProvider`).
 - `mapper/` — MyBatis-Plus mapper interfaces (scanned via `@MapperScan`).
 - `entity/` — Database entities with Lombok annotations.
 - `dto/` — Request/response DTOs.
@@ -70,7 +70,7 @@ Standard layered architecture:
 - **Security**: Spring Security uses `.anyRequest().permitAll()` — authentication is handled at the controller level via `authContextService.currentUserId()`. JWT filter sets SecurityContext for valid tokens but doesn't block unauthenticated requests. CSRF disabled, stateless sessions.
 - **ORM**: MyBatis-Plus with XML mappers in `src/main/resources/mapper/`. Entity-table mapping uses camelCase-to-underscore convention.
 - **Frontend proxy**: Both frontends proxy `/api`, `/ws`, `/files` to `http://localhost:8090` via Vite config. No `VITE_API_BASE_URL` env var is used. **Important**: Nginx `proxy_set_header` resets headers — `Authorization` must be explicitly forwarded (`$http_authorization`).
-- **TTS abstraction**: `TtsProvider` interface allows switching between lightweight (FastAPI) and DashScope providers via `tts.provider` config.
+- **TTS abstraction**: `TtsProvider` interface with `LightweightTtsProvider` (FastAPI + edge-tts) via `tts.provider` config.
 - **AI integration**: All Dify API calls use `dify-spring-boot-starter` (v2.2.0). Three interfaces:
   - `DifyChat` (injected as bean) — SSE streaming chat (`DifyAiController`) + blocking chat (`BookRecommendationServiceImpl` for recommendations)
   - `DifyWorkflow` — Workflow API (not currently used; recommend app is Chat Assistant mode)
@@ -95,7 +95,7 @@ Standard layered architecture:
 | Redis | 6379 | Caching |
 | Elasticsearch | 9200 | Book search |
 | TTS service | 8091 | Text-to-speech |
-| Dify / DashScope | External | AI features |
+| Dify | External | AI features |
 
 ### Database
 
@@ -107,8 +107,7 @@ Standard layered architecture:
 
 Required (see `.env.example`):
 - `MYSQL_PASSWORD` — MySQL root password
-- `QWEN_API_KEY` — DashScope API key
-- `DIFY_BASE_URL` — Dify base URL for all apps (optional, falls back to `DIFY_KB_URL`)
+- `DIFY_BASE_URL` — Dify base URL for all apps (required)
 - `DIFY_CHAT_URL` — Dify chat endpoint
 - `DIFY_READING_KEY` — Dify reading assistant key
 - `DIFY_RECOMMEND_KEY` — Dify recommendation key

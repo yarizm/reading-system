@@ -70,9 +70,8 @@ const generateInsight = async () => {
     if (res.data && res.data.report) {
       hasReport.value = true
       reportContent.value = res.data.report
-      reportTime.value = new Date().toISOString()
+      reportTime.value = res.data.createTime || new Date().toISOString()
       showToast('报告生成成功')
-      fetchLatestInsight()
     }
   } catch (err) {
     console.error(err)

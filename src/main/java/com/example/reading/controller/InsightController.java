@@ -96,6 +96,7 @@ public class InsightController {
                             Map<String, Object> finalRes = new HashMap<>();
                             finalRes.put("id", content.getId());
                             finalRes.put("report", reportText);
+                            finalRes.put("createTime", content.getCreateTime());
                             return finalRes;
                         }
                     }

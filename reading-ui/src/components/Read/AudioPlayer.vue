@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   show: Boolean,
@@ -49,15 +49,15 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'update:show', 'closed', 'loadedmetadata', 'timeupdate', 
+  'update:show', 'closed', 'loadedmetadata', 'timeupdate',
   'play', 'pause', 'ended', 'toggle-playback', 'download', 'open-share',
   'register-audio-ref'
 ])
 
 const audioRef = ref(null)
 
-onMounted(() => {
-  emit('register-audio-ref', audioRef)
+watch(audioRef, (newVal) => {
+  if (newVal) emit('register-audio-ref', audioRef)
 })
 </script>
 

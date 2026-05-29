@@ -66,10 +66,17 @@ public class InsightService {
 
         stats.put("total_notes", notes.size());
         
-        // 获取最近笔记内容
+        // 获取最近笔记内容（先过滤空内容，再取前5条，确保返回的都是有效笔记）
         List<String> recentNotes = notes.stream()
+                .filter(n -> (n.getContent() != null && !n.getContent().trim().isEmpty()) || (n.getSelectedText() != null && !n.getSelectedText().trim().isEmpty()))
                 .limit(5)
-                .map(n -> String.format("[笔记] %s", n.getContent() != null ? n.getContent() : n.getSelectedText()))
+                .map(n -> {
+                    String content = n.getContent();
+                    if (content == null || content.trim().isEmpty()) {
+                        content = n.getSelectedText();
+                    }
+                    return String.format("[笔记] %s", content);
+                })
                 .collect(Collectors.toList());
         
         stats.put("recent_notes_preview", String.join(" | ", recentNotes));

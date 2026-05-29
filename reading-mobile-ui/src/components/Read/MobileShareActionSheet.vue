@@ -106,8 +106,8 @@ const props = defineProps({
 const emit = defineEmits(['update:show', 'update:selectedFriendId', 'update:shareMessage', 'submit'])
 
 import { ref } from 'vue'
-import axios from 'axios'
-import { showToast, showSuccessToast, showFailToast } from 'vant'
+import request from '../../utils/request'
+import { showSuccessToast, showFailToast } from 'vant'
 
 const isGenerating = ref(false)
 
@@ -122,10 +122,10 @@ const generateAiShareMessage = async () => {
   
   isGenerating.value = true
   try {
-    const res = await axios.post('/api/social/ai/draft-share', { 
-      type: props.shareMode, 
-      content, 
-      bookTitle 
+    const res = await request.post('/api/social/ai/draft-share', {
+      type: props.shareMode,
+      content,
+      bookTitle
     })
     if (res.data && res.data.result) {
       emit('update:shareMessage', res.data.result)

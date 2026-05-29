@@ -5,6 +5,7 @@ import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'v
 import axios from 'axios'
 
 import { useAuthStore } from '../stores/auth'
+import { getAuthHeaders } from '../utils/authHeaders'
 import CachedImage from '../components/CachedImage.vue'
 
 import { LruCache } from '../utils/lruCache'
@@ -187,7 +188,7 @@ const generateAiReviewDraft = async () => {
   }
   generatingDraft.value = true
   try {
-    const res = await axios.post('/api/social/ai/draft-review', { bookId: bookId })
+    const res = await axios.post('/api/social/ai/draft-review', { bookId: bookId }, { headers: getAuthHeaders() })
     if (res.data && res.data.result) {
       myComment.value = res.data.result
       showSuccessToast('已生成 AI 书评草稿，请修改完善')

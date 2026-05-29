@@ -15,7 +15,6 @@ Browser/App
     │
     └── External APIs
           ├── Dify (AI 阅读助手 / 推荐 / 知识库)
-          ├── DashScope/Qwen (AI 能力)
           └── edge-tts (语音合成)
 ```
 
@@ -33,7 +32,6 @@ Browser/App
 | 前端框架 | Vue 3 + Vite |
 | UI 库 | Element Plus (桌面) / Vant (移动) |
 | AI 平台 | Dify (聊天/推荐/知识库) |
-| AI 模型 | DashScope/Qwen |
 | TTS | edge-tts (Python FastAPI) |
 | 部署 | Docker Compose |
 

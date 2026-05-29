@@ -22,7 +22,7 @@
 - 书单创建、书籍加入、分享码导入
 - Elasticsearch 图书搜索，使用 Docker 兼容的内置 `cjk` 分词
 - Dify 阅读助手 SSE 流式输出和 Dify 知识库章节级同步
-- DashScope/Qwen 推荐与轻量 TTS 听书能力
+- 轻量 TTS 听书能力
 - 桌面端和移动端前端
 - Docker Compose 启动 MySQL、Redis、Elasticsearch、后端、两个前端和 TTS
 - Flyway V0 baseline 自动建表
@@ -43,7 +43,7 @@
 | 存储与中间件 | MySQL 8, Redis 7, Elasticsearch 8 |
 | 桌面端 | Vue 3, Vite, Pinia, Vue Router, Element Plus, Vitest |
 | 移动端 | Vue 3, Vite, Pinia, Vue Router, Vant |
-| AI 与推荐 | Dify, DashScope/Qwen |
+| AI 与推荐 | Dify |
 | 听书服务 | FastAPI, uvicorn, edge-tts |
 | 部署 | Docker, Docker Compose, Nginx |
 
@@ -75,10 +75,8 @@ MYSQL_PASSWORD=your_mysql_password
 APP_AUTH_TOKEN_SECRET=change_this_to_a_long_random_secret
 APP_AUTH_TOKEN_TTL_MILLIS=86400000
 
-QWEN_API_KEY=your_dashscope_api_key
-
 DIFY_BASE_URL=https://api.dify.ai/v1
-DIFY_CHAT_URL=https://api.dify.ai/v1/chat-messages
+DIFY_CHAT_URL=https://api.dify.ai/v1
 DIFY_READING_KEY=your_dify_reading_key
 DIFY_RECOMMEND_KEY=your_dify_recommend_key
 
@@ -159,8 +157,7 @@ Windows PowerShell：
 ```powershell
 $env:MYSQL_PASSWORD="your_mysql_password"
 $env:APP_AUTH_TOKEN_SECRET="change_this_to_a_long_random_secret"
-$env:QWEN_API_KEY="your_dashscope_api_key"
-$env:DIFY_CHAT_URL="https://api.dify.ai/v1/chat-messages"
+$env:DIFY_CHAT_URL="https://api.dify.ai/v1"
 $env:DIFY_READING_KEY="your_dify_reading_key"
 $env:DIFY_RECOMMEND_KEY="your_dify_recommend_key"
 $env:DIFY_KB_URL="https://api.dify.ai/v1"
@@ -174,8 +171,7 @@ Linux/macOS：
 ```bash
 export MYSQL_PASSWORD=your_mysql_password
 export APP_AUTH_TOKEN_SECRET=change_this_to_a_long_random_secret
-export QWEN_API_KEY=your_dashscope_api_key
-export DIFY_CHAT_URL=https://api.dify.ai/v1/chat-messages
+export DIFY_CHAT_URL=https://api.dify.ai/v1
 export DIFY_READING_KEY=your_dify_reading_key
 export DIFY_RECOMMEND_KEY=your_dify_recommend_key
 export DIFY_KB_URL=https://api.dify.ai/v1

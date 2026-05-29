@@ -11,8 +11,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.example.reading.utils.DifyUrlUtils;
+import jakarta.annotation.PostConstruct;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Dify AI 阅读助手控制器
@@ -30,7 +34,7 @@ public class DifyAiController {
     @Autowired
     private com.example.reading.service.ReadingContextService readingContextService;
 
-    @Value("${dify.url}")
+    @Value("${dify.reading.api-url}")
     private String difyBaseUrl;
 
     @Value("${dify.reading.api-key}")
@@ -40,6 +44,11 @@ public class DifyAiController {
 
     public DifyAiController(WebClient.Builder builder) {
         this.webClient = builder.build();
+    }
+
+    @PostConstruct
+    private void normalizeUrl() {
+        this.difyBaseUrl = DifyUrlUtils.trimChatMessagesSuffix(difyBaseUrl);
     }
 
     /** Dify 分析请求体 */
@@ -90,8 +99,22 @@ public class DifyAiController {
         }
 
         final boolean[] hasContent = {false};
+        final AtomicReference<reactor.core.Disposable> subscriptionRef = new AtomicReference<>();
 
-        webClient.post()
+        emitter.onTimeout(() -> {
+            reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
+            if (sub != null && !sub.isDisposed()) {
+                sub.dispose();
+            }
+        });
+        emitter.onCompletion(() -> {
+            reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
+            if (sub != null && !sub.isDisposed()) {
+                sub.dispose();
+            }
+        });
+
+        subscriptionRef.set(webClient.post()
                 .uri(difyBaseUrl + "/chat-messages")
                 .header("Authorization", "Bearer " + difyApiKey)
                 .bodyValue(payload)
@@ -114,7 +137,7 @@ public class DifyAiController {
                             }
                         },
                         emitter::complete
-                );
+                ));
 
         return emitter;
     }

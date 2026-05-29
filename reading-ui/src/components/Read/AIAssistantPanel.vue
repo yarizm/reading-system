@@ -123,6 +123,24 @@ const emit = defineEmits([
   padding: 15px 20px;
   border-bottom: 1px solid rgba(0,0,0,0.05);
 }
+.ai-drawer :deep(.el-drawer__body) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ai-drawer :deep(.el-tabs) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ai-drawer :deep(.el-tabs__content) {
+  flex: 1;
+  overflow: hidden;
+}
+.ai-drawer :deep(.el-tab-pane) {
+  height: 100%;
+}
 .theme-dark .ai-drawer :deep(.el-drawer__header) {
   border-bottom-color: rgba(255,255,255,0.05);
   color: #e8e8e8;
@@ -154,7 +172,7 @@ const emit = defineEmits([
 .chat-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  height: 100%;
 }
 
 .chat-history-box {
@@ -230,7 +248,7 @@ const emit = defineEmits([
 }
 
 .note-list-container {
-  height: calc(100vh - 120px);
+  height: 100%;
   overflow-y: auto;
   padding: 15px;
 }

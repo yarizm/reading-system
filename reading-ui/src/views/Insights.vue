@@ -73,9 +73,8 @@ const generateInsight = async () => {
     if (res.data && res.data.report) {
       hasReport.value = true
       reportContent.value = res.data.report
-      reportTime.value = new Date().toISOString()
+      reportTime.value = res.data.createTime || new Date().toISOString()
       ElMessage.success('报告生成成功')
-      fetchLatestInsight() // 刷新获取最新
     }
   } catch (err) {
     console.error(err)

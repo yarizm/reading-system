@@ -56,7 +56,15 @@ public class SocialAiController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
 
-        Long bookId = req.containsKey("bookId") ? Long.valueOf(req.get("bookId").toString()) : null;
+        Object bookIdObj = req.get("bookId");
+        Long bookId = null;
+        if (bookIdObj != null) {
+            try {
+                bookId = Long.valueOf(bookIdObj.toString());
+            } catch (NumberFormatException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bookId must be a number");
+            }
+        }
         if (bookId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bookId is required");
         }
@@ -67,7 +75,10 @@ public class SocialAiController {
         QueryWrapper<SysNote> noteQuery = new QueryWrapper<>();
         noteQuery.eq("user_id", currentUserId).eq("book_id", bookId);
         List<SysNote> notes = sysNoteService.list(noteQuery);
-        String notesContext = notes.stream().map(SysNote::getContent).collect(Collectors.joining(" | "));
+        String notesContext = notes.stream()
+                .map(SysNote::getContent)
+                .filter(c -> c != null && !c.trim().isEmpty())
+                .collect(Collectors.joining(" | "));
 
         Map<String, Object> payload = new HashMap<>();
         Map<String, String> inputs = new HashMap<>();
@@ -89,9 +100,12 @@ public class SocialAiController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
 
-        String type = (String) req.get("type"); // book or paragraph
-        String content = (String) req.get("content");
-        String bookTitle = (String) req.get("bookTitle");
+        String type = req.get("type") != null ? req.get("type").toString() : "book";
+        String content = req.get("content") != null ? req.get("content").toString() : null;
+        if (content == null || content.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content is required");
+        }
+        String bookTitle = req.get("bookTitle") != null ? req.get("bookTitle").toString() : "未知书籍";
 
         Map<String, Object> payload = new HashMap<>();
         Map<String, String> inputs = new HashMap<>();

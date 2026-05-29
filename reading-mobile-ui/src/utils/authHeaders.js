@@ -1,12 +1,8 @@
+import { useAuthStore } from '../stores/auth'
+
 export const getAuthToken = () => {
-  const userStr = localStorage.getItem('user')
-  if (!userStr) return ''
-  try {
-    const token = JSON.parse(userStr).token
-    return token || ''
-  } catch (e) {
-    return ''
-  }
+  const authStore = useAuthStore()
+  return authStore.token || ''
 }
 
 export const getAuthHeaders = () => {
