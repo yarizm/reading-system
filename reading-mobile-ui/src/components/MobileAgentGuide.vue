@@ -72,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -92,6 +92,14 @@ const chatList = ref([])
 const inputMessage = ref('')
 const isThinking = ref(false)
 const currentConversationId = ref('')
+
+let abortController = null
+
+onUnmounted(() => {
+  if (abortController) {
+    abortController.abort()
+  }
+})
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -132,9 +140,15 @@ const sendChat = async (textOverride = null) => {
 
   const aiMsgIndex = chatList.value.push({ role: 'ai', content: '', actions: [] }) - 1
 
+  if (abortController) {
+    abortController.abort()
+  }
+  abortController = new AbortController()
+
   try {
     await fetchEventSource('/api/guide/chat', {
       method: 'POST',
+      signal: abortController.signal,
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',

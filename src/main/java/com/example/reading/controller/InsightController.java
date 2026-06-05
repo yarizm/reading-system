@@ -77,13 +77,14 @@ public class InsightController {
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Map.class)
+                .publishOn(reactor.core.scheduler.Schedulers.boundedElastic())
                 .map(response -> {
                     Map<String, Object> data = (Map<String, Object>) response.get("data");
                     if (data != null) {
                         Map<String, Object> outputs = (Map<String, Object>) data.get("outputs");
                         if (outputs != null && outputs.containsKey("report")) {
                             String reportText = (String) outputs.get("report");
-                            
+
                             AiGeneratedContent content = new AiGeneratedContent();
                             content.setUserId(currentUserId);
                             content.setContentType("insight_report");
@@ -91,6 +92,7 @@ public class InsightController {
                             content.setReferenceId(currentUserId);
                             content.setTitle("阅读洞察报告");
                             content.setContent(reportText);
+                            content.setCreateTime(java.time.LocalDateTime.now());
                             aiGeneratedContentService.save(content);
                             
                             Map<String, Object> finalRes = new HashMap<>();

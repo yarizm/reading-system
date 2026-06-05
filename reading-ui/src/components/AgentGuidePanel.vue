@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onUnmounted } from 'vue'
 import { MagicStick, Monitor, Close, Position, ArrowRight } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -80,6 +80,14 @@ const isThinking = ref(false)
 const currentConversationId = ref('')
 const chatBox = ref(null)
 const router = useRouter()
+
+let abortController = null
+
+onUnmounted(() => {
+  if (abortController) {
+    abortController.abort()
+  }
+})
 
 const toggleGuide = () => {
   show.value = !show.value
@@ -129,9 +137,15 @@ const sendChat = async (textOverride = null) => {
 
   const aiMsgIndex = chatList.value.push({ role: 'ai', content: '', actions: [] }) - 1
 
+  if (abortController) {
+    abortController.abort()
+  }
+  abortController = new AbortController()
+
   try {
     await fetchEventSource('/api/guide/chat', {
       method: 'POST',
+      signal: abortController.signal,
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',

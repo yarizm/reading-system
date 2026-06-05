@@ -58,7 +58,10 @@ public class GuideController {
         if (currentUserId == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        
+        if (request == null || request.query == null || request.query.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query cannot be empty");
+        }
+
         SseEmitter emitter = new SseEmitter(300000L);
 
         Map<String, Object> payload = new HashMap<>();
@@ -92,6 +95,12 @@ public class GuideController {
             }
         });
         emitter.onCompletion(() -> {
+            reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
+            if (sub != null && !sub.isDisposed()) {
+                sub.dispose();
+            }
+        });
+        emitter.onError(throwable -> {
             reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
             if (sub != null && !sub.isDisposed()) {
                 sub.dispose();

@@ -56,7 +56,7 @@ public class ReadingContextService {
             List<SysNote> recentNotes = sysNoteService.list(noteWrapper);
             if (recentNotes != null && !recentNotes.isEmpty()) {
                 String notesStr = recentNotes.stream()
-                        .map(n -> "选文: " + n.getSelectedText() + " | 笔记: " + n.getContent())
+                        .map(n -> "选文: " + (n.getSelectedText() != null ? n.getSelectedText() : "") + " | 笔记: " + (n.getContent() != null ? n.getContent() : ""))
                         .collect(Collectors.joining("\n---\n"));
                 context.put("recent_notes", notesStr);
                 context.put("notes_count", recentNotes.size());

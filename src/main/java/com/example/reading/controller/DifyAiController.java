@@ -113,6 +113,12 @@ public class DifyAiController {
                 sub.dispose();
             }
         });
+        emitter.onError(throwable -> {
+            reactor.core.Disposable sub = subscriptionRef.getAndSet(null);
+            if (sub != null && !sub.isDisposed()) {
+                sub.dispose();
+            }
+        });
 
         subscriptionRef.set(webClient.post()
                 .uri(difyBaseUrl + "/chat-messages")

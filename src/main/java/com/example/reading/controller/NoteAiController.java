@@ -76,6 +76,7 @@ public class NoteAiController {
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Map.class)
+                .publishOn(reactor.core.scheduler.Schedulers.boundedElastic())
                 .map(response -> {
                     // 解析 Dify Workflow 返回结果
                     Map<String, Object> data = (Map<String, Object>) response.get("data");
@@ -83,7 +84,7 @@ public class NoteAiController {
                         Map<String, Object> outputs = (Map<String, Object>) data.get("outputs");
                         if (outputs != null && outputs.containsKey("result")) {
                             String resultText = (String) outputs.get("result");
-                            
+
                             // 保存到数据库
                             AiGeneratedContent content = new AiGeneratedContent();
                             content.setUserId(currentUserId);
@@ -92,6 +93,7 @@ public class NoteAiController {
                             content.setReferenceId(bookId);
                             content.setTitle(request.title != null ? request.title : "AI Generated " + request.action);
                             content.setContent(resultText);
+                            content.setCreateTime(java.time.LocalDateTime.now());
                             aiGeneratedContentService.save(content);
                             
                             Map<String, Object> finalRes = new HashMap<>();
