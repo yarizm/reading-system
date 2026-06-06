@@ -65,17 +65,45 @@
               <span class="note-time">{{ note.createTime?.replace('T', ' ') }}</span>
               <van-icon name="delete-o" color="#ee0a24" size="18" @click="$emit('delete-note', note.id)" />
             </div>
-            <div class="note-quote">“{{ note.selectedText.substring(0, 30) }}...”</div>
+            <div class="note-quote">"{{ note.selectedText.substring(0, 30) }}..."</div>
             <div class="note-content markdown-body" v-html="renderMarkdown(note.content)"></div>
+            <div class="note-tags" style="margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;">
+              <van-tag
+                v-for="tag in (note.tags || [])"
+                :key="tag.id"
+                :color="tag.color"
+                size="medium"
+                closeable
+                @close="$emit('unbind-note-tag', note.id, tag.id)"
+              >
+                {{ tag.name }}
+              </van-tag>
+              <van-button
+                size="mini"
+                plain
+                type="primary"
+                style="border: none; padding: 0; font-size: 12px;"
+                @click="showTagSheet(note)"
+              >
+                + 标签
+              </van-button>
+            </div>
           </div>
         </div>
       </van-tab>
     </van-tabs>
+
+    <van-action-sheet
+      v-model:show="showTagSheetVisible"
+      :actions="tagSheetActions"
+      cancel-text="取消"
+      @select="onTagSheetSelect"
+    />
   </van-popup>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import MobileNoteAiToolbar from '../MobileNoteAiToolbar.vue'
@@ -93,13 +121,48 @@ const props = defineProps({
   bookId: {
     type: [Number, String],
     required: false
+  },
+  tagList: {
+    type: Array,
+    default: () => []
   }
 })
 
 const emit = defineEmits([
   'update:show', 'update:activeTab', 'update:inputMessage',
-  'send-chat', 'save-note', 'delete-note'
+  'send-chat', 'save-note', 'delete-note',
+  'bind-note-tag', 'unbind-note-tag'
 ])
+
+const availableTags = (note) => {
+  const noteTagIds = (note.tags || []).map(t => t.id)
+  return props.tagList.filter(t => !noteTagIds.includes(t.id))
+}
+
+// Tag action sheet state
+const showTagSheetVisible = ref(false)
+const currentTagNote = ref(null)
+
+const tagSheetActions = computed(() => {
+  if (!currentTagNote.value) return []
+  return availableTags(currentTagNote.value).map(t => ({
+    name: t.name,
+    value: t.id,
+    color: t.color
+  }))
+})
+
+const showTagSheet = (note) => {
+  currentTagNote.value = note
+  showTagSheetVisible.value = true
+}
+
+const onTagSheetSelect = (action) => {
+  if (currentTagNote.value) {
+    emit('bind-note-tag', currentTagNote.value.id, action.value)
+  }
+  showTagSheetVisible.value = false
+}
 </script>
 
 <style scoped>

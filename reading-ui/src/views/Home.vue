@@ -10,6 +10,12 @@
           <el-icon><User /></el-icon> 好友
           <el-badge v-if="unreadCount > 0" :value="unreadCount" :max="99" class="unread-badge" />
         </el-button>
+        <el-button link class="nav-item" @click="goToNotes">
+          📝 我的笔记
+        </el-button>
+        <el-button link class="nav-item" @click="goToReview">
+          📅 每日回顾
+        </el-button>
         <el-button link class="nav-item notification-bell" :class="{ blinking: isBlinking }" @click="toggleNotifyPanel" v-if="userInfo.id">
           <el-icon><Bell /></el-icon>
           <el-badge v-if="notifications.length > 0" :value="notifications.length" :max="99" class="unread-badge" />
@@ -328,6 +334,16 @@ const goToShelf = () => {
 const goToFriends = () => {
   if (!userInfo.value.id) return ElMessage.warning('请先登录')
   router.push('/friends')
+}
+
+const goToNotes = () => {
+  if (!userInfo.value.id) return ElMessage.warning('请先登录')
+  router.push('/notes')
+}
+
+const goToReview = () => {
+  if (!userInfo.value.id) return ElMessage.warning('请先登录')
+  router.push('/review')
 }
 
 const loadUnreadCount = async () => {

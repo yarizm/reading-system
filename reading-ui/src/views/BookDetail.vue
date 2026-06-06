@@ -157,6 +157,33 @@
         </div>
       </div>
     </div>
+
+    <div class="notes-section" style="margin-top: 30px;">
+      <h3>📝 我的笔记</h3>
+      <div class="note-tag-filter" style="margin-bottom: 10px">
+        <el-tag
+          :type="noteTagFilter === null ? 'primary' : 'info'"
+          style="cursor: pointer; margin-right: 6px"
+          @click="noteTagFilter = null; loadBookNotes()"
+        >全部</el-tag>
+        <el-tag
+          v-for="tag in noteTagList"
+          :key="tag.id"
+          :type="noteTagFilter === tag.id ? 'primary' : 'info'"
+          :color="noteTagFilter === tag.id ? tag.color : undefined"
+          style="cursor: pointer; margin-right: 6px"
+          @click="noteTagFilter = tag.id; loadBookNotes()"
+        >{{ tag.name }}</el-tag>
+      </div>
+      <div v-if="noteList.length === 0" style="color: #999; text-align: center; padding: 20px">暂无笔记</div>
+      <div v-for="note in noteList" :key="note.id" class="note-card" style="background: #f9f9f9; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+        <div class="note-quote" v-if="note.selectedText" style="font-size: 13px; color: #888; font-style: italic; border-left: 3px solid #ddd; padding-left: 10px; margin-bottom: 6px;">
+          "{{ note.selectedText.substring(0, 60) }}{{ note.selectedText.length > 60 ? '...' : '' }}"
+        </div>
+        <div class="note-content" style="font-size: 14px; color: #333; line-height: 1.5; margin-bottom: 6px;">{{ note.content }}</div>
+        <div class="note-time" style="font-size: 12px; color: #999;">{{ note.createTime?.replace('T', ' ') }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -195,6 +222,11 @@ const generatingDraft = ref(false)
 const replyTarget = ref(null)
 const replyParent = ref(null)
 
+// 笔记
+const noteList = ref([])
+const noteTagFilter = ref(null)
+const noteTagList = ref([])
+
 const totalComments = computed(() => {
   let count = commentList.value.length
   commentList.value.forEach(c => {
@@ -209,6 +241,8 @@ onMounted(() => {
   loadBookDetail()
   loadComments()
   checkShelf()
+  loadNoteTags()
+  loadBookNotes()
 })
 
 const loadBookDetail = async () => {
@@ -242,6 +276,30 @@ const checkShelf = async () => {
   const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
   if (res.data.code === '200') {
     inShelf.value = res.data.data.some(b => b.bookId === bookId)
+  }
+}
+
+const loadBookNotes = async () => {
+  try {
+    const params = { userId: userInfo.value.id }
+    if (noteTagFilter.value) params.tagId = noteTagFilter.value
+    const res = await request.get(`/api/sysNote/list/${bookId}`, { params })
+    if (res.data.code === '200') {
+      noteList.value = res.data.data || []
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const loadNoteTags = async () => {
+  try {
+    const res = await request.get('/api/tag/list')
+    if (res.data.code === '200') {
+      noteTagList.value = res.data.data || []
+    }
+  } catch (e) {
+    console.error(e)
   }
 }
 

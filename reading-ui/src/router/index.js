@@ -80,6 +80,24 @@ const routes = [
         component: () => import('../views/Chat.vue'),
         meta: { requireAuth: true }
     },
+    {
+        path: '/notes',
+        name: 'Notes',
+        component: () => import('../views/Notes.vue'),
+        meta: { requireAuth: true }
+    },
+    {
+        path: '/review',
+        name: 'Review',
+        component: () => import('../views/Review.vue'),
+        meta: { requireAuth: true }
+    },
+    {
+        path: '/import-notes',
+        name: 'ImportNotes',
+        component: () => import('../views/ImportNotes.vue'),
+        meta: { requireAuth: true }
+    },
 ]
 
 const router = createRouter({

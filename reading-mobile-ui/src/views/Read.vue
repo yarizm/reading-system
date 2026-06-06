@@ -234,6 +234,7 @@ onMounted(async () => {
   await reading.loadCurrentChapter(tts.stopAudioPlayback)
   shelf.checkShelfStatus()
   ai.fetchNotes()
+  ai.fetchTags()
   
   document.addEventListener('selectionchange', handleSelectionEnd)
   window.addEventListener('beforeunload', handleBeforeUnload)
@@ -376,16 +377,19 @@ onBeforeUnmount(() => {
       @jump-to="handleJumpChapter"
     />
 
-    <MobileAIPanel 
+    <MobileAIPanel
       v-model:show="showAiDrawer"
       v-model:activeTab="activeAiTab"
       :chatList="ai.chatList.value"
       v-model:inputMessage="ai.inputMessage.value"
       :isThinking="ai.isThinking.value"
       :noteList="ai.noteList.value"
+      :tagList="ai.tagList.value"
       @send-chat="ai.sendChat"
       @save-note="ai.saveNote"
       @delete-note="ai.handleDeleteNote"
+      @bind-note-tag="ai.bindNoteTag"
+      @unbind-note-tag="ai.unbindNoteTag"
       :bookId="bookId"
     />
 

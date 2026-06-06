@@ -12,6 +12,7 @@ export function useMobileAI(bookId, userInfo, bookInfo, selectedText) {
   const inputMessage = ref('')
   const isThinking = ref(false)
   const currentConversationId = ref('')
+  const tagList = ref([])
 
   const scrollToBottom = () => {
     nextTick(() => {
@@ -111,9 +112,41 @@ export function useMobileAI(bookId, userInfo, bookInfo, selectedText) {
     fetchNotes()
   }
 
+  const fetchTags = async () => {
+    try {
+      const res = await request.get('/api/tag/list')
+      if (res.data.code === '200') {
+        tagList.value = res.data.data || []
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const bindNoteTag = async (noteId, tagId) => {
+    try {
+      const existingTags = noteList.value.find(n => n.id === noteId)?.tags || []
+      const tagIds = [...existingTags.map(t => t.id), tagId]
+      await request.post('/api/tag/bind', { noteId, tagIds })
+      fetchNotes()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const unbindNoteTag = async (noteId, tagId) => {
+    try {
+      await request.delete('/api/tag/unbind', { data: { noteId, tagIds: [tagId] } })
+      fetchNotes()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   return {
     activeAiTab, noteList, showAiDrawer,
     chatList, inputMessage, isThinking, currentConversationId,
-    sendChat, fetchNotes, saveNote, handleDeleteNote
+    sendChat, fetchNotes, saveNote, handleDeleteNote,
+    tagList, fetchTags, bindNoteTag, unbindNoteTag
   }
 }

@@ -150,6 +150,8 @@ const goToLogin = () => router.push('/login')
 const goToProfile = () => router.push('/profile')
 const goToShelf = () => router.push(userInfo.value.id ? '/shelf' : '/login')
 const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
+const goToNotes = () => router.push(userInfo.value.id ? '/notes' : '/login')
+const goToReview = () => router.push(userInfo.value.id ? '/review' : '/login')
 </script>
 
 <template>
@@ -178,6 +180,14 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
         <div class="quick-action" @click="goToFriends">
           <van-icon name="friends-o" size="18" />
           <span>好友中心</span>
+        </div>
+        <div class="quick-action" @click="goToNotes">
+          <van-icon name="edit" size="18" />
+          <span>我的笔记</span>
+        </div>
+        <div class="quick-action" @click="goToReview">
+          <van-icon name="todo-list-o" size="18" />
+          <span>每日回顾</span>
         </div>
       </div>
       <div class="search-shell">
@@ -372,7 +382,7 @@ const goToFriends = () => router.push(userInfo.value.id ? '/friends' : '/login')
 
 .hero-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 10px;
   margin-top: 14px;
 }

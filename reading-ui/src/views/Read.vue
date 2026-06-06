@@ -263,6 +263,7 @@ onMounted(async () => {
 
   document.addEventListener('mousedown', handleGlobalClick)
   ai.fetchNotes()
+  ai.fetchTags()
   window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -390,7 +391,7 @@ onBeforeUnmount(() => {
       @go-to-user="(id) => { if(id) router.push(`/user/${id}`) }"
     />
 
-    <AIAssistantPanel 
+    <AIAssistantPanel
       v-model:show="ai.drawerVisible.value"
       :aiTitle="ai.aiTitle.value"
       :drawerDirection="ai.drawerDirection.value"
@@ -400,11 +401,14 @@ onBeforeUnmount(() => {
       v-model:inputMessage="ai.inputMessage.value"
       :isThinking="ai.isThinking.value"
       :noteList="ai.noteList.value"
+      :tagList="ai.tagList.value"
       @toggle-direction="ai.toggleDrawerDirection"
       @start-resize="ai.startResize"
       @send-chat="ai.sendChat"
       @save-note="ai.saveNote"
       @delete-note="ai.handleDeleteNote"
+      @bind-note-tag="ai.bindNoteTag"
+      @unbind-note-tag="ai.unbindNoteTag"
       :bookId="bookId"
     />
 

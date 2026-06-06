@@ -14,6 +14,17 @@
         </div>
       </template>
       
+      <div style="background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <h3>📖 回顾统计</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0;">
+          <div><div style="font-size: 24px; font-weight: bold; color: #409eff;">{{ reviewStats.totalNotes || 0 }}</div><div style="font-size: 12px; color: #999;">总笔记</div></div>
+          <div><div style="font-size: 24px; font-weight: bold; color: #2ecc71;">{{ reviewStats.reviewNotes || 0 }}</div><div style="font-size: 12px; color: #999;">已加入回顾</div></div>
+          <div><div style="font-size: 24px; font-weight: bold; color: #f39c12;">{{ reviewStats.todayPending || 0 }}</div><div style="font-size: 12px; color: #999;">今日待回顾</div></div>
+          <div><div style="font-size: 24px; font-weight: bold; color: #e74c3c;">{{ reviewStats.streakDays || 0 }}</div><div style="font-size: 12px; color: #999;">连续天数</div></div>
+        </div>
+        <el-button type="primary" @click="$router.push('/review')">开始回顾</el-button>
+      </div>
+
       <div v-if="!hasReport && !isGenerating" class="empty-state">
         <el-empty description="暂无洞察报告，点击右上角生成您的第一份阅读洞察报告吧" />
       </div>
@@ -40,6 +51,7 @@ import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage } from 'element-plus'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import request from '../utils/request'
 
 const router = useRouter()
 const goBack = () => router.back()
@@ -48,6 +60,14 @@ const isGenerating = ref(false)
 const hasReport = ref(false)
 const reportContent = ref('')
 const reportTime = ref('')
+const reviewStats = ref({})
+
+const loadReviewStats = async () => {
+  try {
+    const res = await request.get('/api/review/stats')
+    if (res.data.code === '200') reviewStats.value = res.data.data
+  } catch (e) { console.error(e) }
+}
 
 const parsedReport = computed(() => DOMPurify.sanitize(marked.parse(reportContent.value || '')))
 
@@ -86,6 +106,7 @@ const generateInsight = async () => {
 
 onMounted(() => {
   fetchLatestInsight()
+  loadReviewStats()
 })
 </script>
 

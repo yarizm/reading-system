@@ -77,8 +77,35 @@
                 <el-icon><Delete /></el-icon>
               </el-button>
             </div>
-            <div class="note-quote">“{{ note.selectedText.substring(0, 30) }}...”</div>
+            <div class="note-quote">"{{ note.selectedText.substring(0, 30) }}..."</div>
             <div class="note-content">{{ note.content }}</div>
+            <div class="note-tags" style="margin-top: 6px">
+              <el-tag
+                v-for="tag in (note.tags || [])"
+                :key="tag.id"
+                :color="tag.color"
+                size="small"
+                closable
+                style="color: #fff; border: none; margin-right: 4px"
+                @close="$emit('unbind-note-tag', note.id, tag.id)"
+              >
+                {{ tag.name }}
+              </el-tag>
+              <el-dropdown trigger="click" @command="(tagId) => $emit('bind-note-tag', note.id, tagId)">
+                <el-button link size="small" type="primary">+ 标签</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="tag in availableTags(note)"
+                      :key="tag.id"
+                      :command="tag.id"
+                    >
+                      {{ tag.name }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -108,13 +135,23 @@ const props = defineProps({
   bookId: {
     type: [Number, String],
     required: false
+  },
+  tagList: {
+    type: Array,
+    default: () => []
   }
 })
 
 const emit = defineEmits([
-  'update:show', 'update:activeTab', 'update:inputMessage', 
-  'toggle-direction', 'start-resize', 'send-chat', 'save-note', 'delete-note'
+  'update:show', 'update:activeTab', 'update:inputMessage',
+  'toggle-direction', 'start-resize', 'send-chat', 'save-note', 'delete-note',
+  'bind-note-tag', 'unbind-note-tag'
 ])
+
+const availableTags = (note) => {
+  const noteTagIds = (note.tags || []).map(t => t.id)
+  return props.tagList.filter(t => !noteTagIds.includes(t.id))
+}
 </script>
 
 <style scoped>

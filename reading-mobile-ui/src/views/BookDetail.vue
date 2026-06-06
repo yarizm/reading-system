@@ -35,6 +35,11 @@ const generatingDraft = ref(false)
 const replyTarget = ref(null)
 const replyParent = ref(null)
 
+// 笔记
+const noteList = ref([])
+const noteTagFilter = ref(null)
+const noteTagList = ref([])
+
 const totalComments = computed(() => {
   let count = commentList.value.length
   commentList.value.forEach((item) => {
@@ -47,6 +52,8 @@ onMounted(() => {
   loadBookDetail()
   loadComments()
   checkShelf()
+  loadNoteTags()
+  loadBookNotes()
 })
 
 const loadBookDetail = async () => {
@@ -96,6 +103,30 @@ const checkShelf = async () => {
     const isInShelf = shelfBooks.some((book) => String(book.bookId) === String(bookId))
     inShelf.value = isInShelf
     shelfCache.set(bookId, isInShelf)
+  }
+}
+
+const loadBookNotes = async () => {
+  try {
+    const params = { userId: userInfo.value.id }
+    if (noteTagFilter.value) params.tagId = noteTagFilter.value
+    const res = await axios.get(`/api/sysNote/list/${bookId}`, { params })
+    if (res.data.code === '200') {
+      noteList.value = res.data.data || []
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const loadNoteTags = async () => {
+  try {
+    const res = await axios.get('/api/tag/list')
+    if (res.data.code === '200') {
+      noteTagList.value = res.data.data || []
+    }
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -364,6 +395,39 @@ const handleUserClick = (targetUserId) => {
             </div>
           </div>
         </article>
+      </div>
+    </section>
+
+    <section class="content-card">
+      <div class="section-head">
+        <div>
+          <div class="section-title">📝 我的笔记</div>
+        </div>
+      </div>
+      <div class="note-tag-filter" style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px;">
+        <van-tag
+          :type="noteTagFilter === null ? 'primary' : 'default'"
+          style="cursor: pointer;"
+          @click="noteTagFilter = null; loadBookNotes()"
+        >全部</van-tag>
+        <van-tag
+          v-for="tag in noteTagList"
+          :key="tag.id"
+          :type="noteTagFilter === tag.id ? 'primary' : 'default'"
+          :color="noteTagFilter === tag.id ? tag.color : undefined"
+          style="cursor: pointer;"
+          @click="noteTagFilter = tag.id; loadBookNotes()"
+        >{{ tag.name }}</van-tag>
+      </div>
+      <van-empty v-if="noteList.length === 0" description="暂无笔记" image="search" />
+      <div v-else>
+        <div v-for="note in noteList" :key="note.id" style="background: var(--color-bg-card); border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid var(--color-border);">
+          <div v-if="note.selectedText" style="font-size: 13px; color: #999; font-style: italic; border-left: 3px solid #ddd; padding-left: 10px; margin-bottom: 6px;">
+            "{{ note.selectedText.substring(0, 60) }}{{ note.selectedText.length > 60 ? '...' : '' }}"
+          </div>
+          <div style="font-size: 14px; color: #333; line-height: 1.5; margin-bottom: 6px;">{{ note.content }}</div>
+          <div style="font-size: 12px; color: #999;">{{ note.createTime?.replace('T', ' ') }}</div>
+        </div>
       </div>
     </section>
 

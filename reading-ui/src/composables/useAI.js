@@ -18,6 +18,7 @@ export function useAI(bookId, userInfo, bookInfo, selectedText) {
   const isThinking = ref(false)
   const aiTitle = ref('AI 助手')
   const currentConversationId = ref('')
+  const tagList = ref([])
 
   const scrollToBottom = () => {
     nextTick(() => {
@@ -117,6 +118,37 @@ export function useAI(bookId, userInfo, bookInfo, selectedText) {
     fetchNotes()
   }
 
+  const fetchTags = async () => {
+    try {
+      const res = await request.get('/api/tag/list')
+      if (res.data.code === '200') {
+        tagList.value = res.data.data || []
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const bindNoteTag = async (noteId, tagId) => {
+    try {
+      const existingTags = noteList.value.find(n => n.id === noteId)?.tags || []
+      const tagIds = [...existingTags.map(t => t.id), tagId]
+      await request.post('/api/tag/bind', { noteId, tagIds })
+      fetchNotes()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const unbindNoteTag = async (noteId, tagId) => {
+    try {
+      await request.delete('/api/tag/unbind', { data: { noteId, tagIds: [tagId] } })
+      fetchNotes()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const handleMouseUp = (e) => {
     const selection = window.getSelection()
     const text = selection.toString().trim()
@@ -170,6 +202,7 @@ export function useAI(bookId, userInfo, bookInfo, selectedText) {
   return {
     activeTab, noteList, menuVisible, menuStyle, drawerVisible, drawerWidth, drawerDirection, isResizing,
     chatList, inputMessage, isThinking, aiTitle, currentConversationId,
-    sendChat, fetchNotes, saveNote, handleDeleteNote, handleMouseUp, toggleSidebar, toggleDrawerDirection, startResize
+    sendChat, fetchNotes, saveNote, handleDeleteNote, handleMouseUp, toggleSidebar, toggleDrawerDirection, startResize,
+    tagList, fetchTags, bindNoteTag, unbindNoteTag
   }
 }
