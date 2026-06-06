@@ -27,13 +27,12 @@ const commonStubs = {
   'el-input': { template: '<input />' },
   'el-dialog': { template: '<div />' },
   'el-pagination': { template: '<div />' },
-  'el-image': { template: '<img />' }
+  'el-image': { template: '<img />' },
+  'el-tag': { template: '<span><slot /></span>' }
 }
 
 function mockGet(url) {
-  if (url.includes('/comment/'))
-    return { data: { code: '200', data: [] } }
-  if (url.includes('/bookshelf/'))
+  if (url.includes('/comment/') || url.includes('/bookshelf/') || url.includes('/tag/list') || url.includes('/sysNote/list'))
     return { data: { code: '200', data: [] } }
   // book detail
   return { data: { code: '200', data: { id: 1, title: '测试书籍', author: '作者', description: '', coverUrl: null, category: '', tags: '', filePath: '', uploaderId: 1, status: 2 } } }
@@ -51,8 +50,7 @@ describe('BookDetail', () => {
 
   it('should show error state when book not found', async () => {
     request.get.mockImplementation((url) => {
-      if (url.includes('/comment/')) return { data: { code: '200', data: [] } }
-      if (url.includes('/bookshelf/')) return { data: { code: '200', data: [] } }
+      if (url.includes('/comment/') || url.includes('/bookshelf/') || url.includes('/tag/list') || url.includes('/sysNote/list')) return { data: { code: '200', data: [] } }
       return { data: { code: '404', data: [] } }
     })
 
