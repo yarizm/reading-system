@@ -1,13 +1,21 @@
 <template>
-  <div class="page-glass-container">
-    <div class="review-page">
-      <div class="review-header">
-        <h2>📖 每日回顾</h2>
-        <div class="review-stats" v-if="reviewList.length > 0">
-          今日 {{ currentIndex + 1 }} / {{ reviewList.length }} 完成
+  <div class="page-glass-container review-container-page">
+    <div class="page-header">
+      <div class="header-left">
+        <el-button plain round class="back-btn glass-btn" @click="router.push('/')">
+          <el-icon><ArrowLeft /></el-icon> 返回首页
+        </el-button>
+        <el-divider direction="vertical" />
+        <div class="header-title-box">
+          <h2>📖 每日回顾</h2>
         </div>
       </div>
+      <div class="review-stats" v-if="reviewList.length > 0">
+        今日 {{ currentIndex + 1 }} / {{ reviewList.length }} 完成
+      </div>
+    </div>
 
+    <div class="review-page">
       <div v-if="!loading && reviewList.length === 0" class="empty-state">
         <div class="empty-icon">🎉</div>
         <h3>今日回顾已完成！</h3>
@@ -52,8 +60,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '../utils/request'
+
+const router = useRouter()
 
 const loading = ref(true)
 const reviewList = ref([])
@@ -84,9 +96,8 @@ onMounted(() => loadToday())
 </script>
 
 <style scoped>
-.review-page { max-width: 600px; margin: 0 auto; padding: 20px; }
-.review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.review-header h2 { margin: 0; }
+.review-container-page { padding: 18px 24px; }
+.review-page { max-width: 600px; margin: 0 auto; padding: 20px 0; }
 .review-stats { font-size: 14px; color: #666; }
 .empty-state { text-align: center; padding: 60px 20px; }
 .empty-icon { font-size: 48px; margin-bottom: 16px; }

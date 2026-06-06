@@ -92,13 +92,24 @@ public class TagController {
         if (body.get("noteId") == null || body.get("tagIds") == null) {
             return Result.error("400", "参数不完整");
         }
-        Long noteId = Long.valueOf(body.get("noteId").toString());
+        Long noteId;
+        try {
+            noteId = Long.valueOf(body.get("noteId").toString());
+        } catch (NumberFormatException e) {
+            return Result.error("400", "noteId 格式错误");
+        }
         SysNote note = sysNoteService.getById(noteId);
         if (note == null || !note.getUserId().equals(userId)) {
             return Result.error("403", "无权操作此笔记");
         }
-        @SuppressWarnings("unchecked")
-        List<Long> tagIds = ((List<Number>) body.get("tagIds")).stream().map(Number::longValue).toList();
+        List<Long> tagIds;
+        try {
+            @SuppressWarnings("unchecked")
+            List<Number> rawList = (List<Number>) body.get("tagIds");
+            tagIds = rawList.stream().map(Number::longValue).toList();
+        } catch (ClassCastException | NullPointerException e) {
+            return Result.error("400", "tagIds 格式错误");
+        }
         noteTagService.bindTags(noteId, tagIds);
         return Result.success();
     }
@@ -110,13 +121,24 @@ public class TagController {
         if (body.get("noteId") == null || body.get("tagIds") == null) {
             return Result.error("400", "参数不完整");
         }
-        Long noteId = Long.valueOf(body.get("noteId").toString());
+        Long noteId;
+        try {
+            noteId = Long.valueOf(body.get("noteId").toString());
+        } catch (NumberFormatException e) {
+            return Result.error("400", "noteId 格式错误");
+        }
         SysNote note = sysNoteService.getById(noteId);
         if (note == null || !note.getUserId().equals(userId)) {
             return Result.error("403", "无权操作此笔记");
         }
-        @SuppressWarnings("unchecked")
-        List<Long> tagIds = ((List<Number>) body.get("tagIds")).stream().map(Number::longValue).toList();
+        List<Long> tagIds;
+        try {
+            @SuppressWarnings("unchecked")
+            List<Number> rawList = (List<Number>) body.get("tagIds");
+            tagIds = rawList.stream().map(Number::longValue).toList();
+        } catch (ClassCastException | NullPointerException e) {
+            return Result.error("400", "tagIds 格式错误");
+        }
         noteTagService.unbindTags(noteId, tagIds);
         return Result.success();
     }

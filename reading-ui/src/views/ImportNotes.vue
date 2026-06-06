@@ -1,8 +1,18 @@
 <template>
   <div class="page-glass-container">
-    <div class="import-page">
-      <h2>📥 导入笔记</h2>
+    <div class="page-header">
+      <div class="header-left">
+        <el-button plain round class="back-btn glass-btn" @click="$router.back()">
+          <el-icon><ArrowLeft /></el-icon> 返回
+        </el-button>
+        <el-divider direction="vertical" />
+        <div class="header-title-box">
+          <h2>📥 导入笔记</h2>
+        </div>
+      </div>
+    </div>
 
+    <div class="import-page">
       <div class="upload-section">
         <el-upload
           drag
@@ -68,7 +78,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Upload } from '@element-plus/icons-vue'
+import { Upload, ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '../utils/request'
 
@@ -108,6 +118,9 @@ const doImport = async () => {
 </script>
 
 <style scoped>
+.page-glass-container {
+  padding: 24px;
+}
 .import-page { max-width: 700px; margin: 0 auto; padding: 20px; }
 .import-page h2 { margin-bottom: 20px; }
 .upload-section { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }

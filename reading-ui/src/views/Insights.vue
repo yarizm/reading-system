@@ -1,19 +1,23 @@
 <template>
-  <div class="insights-container page-glass-container">
-    <el-card class="insight-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <el-page-header @back="goBack">
-            <template #content>
-              <span class="header-title">阅读洞察报告</span>
-            </template>
-          </el-page-header>
-          <el-button type="primary" :loading="isGenerating" @click="generateInsight" round>
-            生成最新报告
-          </el-button>
+  <div class="page-glass-container">
+    <div class="page-header">
+      <div class="header-left">
+        <el-button plain round class="back-btn glass-btn" @click="goBack">
+          <el-icon><ArrowLeft /></el-icon> 返回
+        </el-button>
+        <el-divider direction="vertical" />
+        <div class="header-title-box">
+          <h2>📊 阅读洞察报告</h2>
         </div>
-      </template>
-      
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <el-button type="primary" :loading="isGenerating" @click="generateInsight" round>
+          生成最新报告
+        </el-button>
+      </div>
+    </div>
+
+    <div class="insights-page">
       <div style="background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
         <h3>📖 回顾统计</h3>
         <div style="display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0;">
@@ -39,7 +43,7 @@
       <div class="report-footer" v-if="hasReport && !isGenerating">
         <span class="report-time">报告生成时间：{{ reportTime?.replace('T', ' ') }}</span>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -49,6 +53,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import request from '../utils/request'
@@ -111,28 +116,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.insights-container {
+.page-glass-container {
+  padding: 24px;
+}
+.insights-page {
   padding: 24px;
   max-width: 1000px;
   margin: 0 auto;
-}
-:deep(.insight-card) {
-  background: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
-  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.05) !important;
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.header-title {
-  font-weight: bold;
-  font-size: 18px;
-  color: #2e2520;
 }
 .report-content {
   line-height: 1.8;

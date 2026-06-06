@@ -83,8 +83,14 @@ public class ReviewController {
             return Result.error("400", "参数不完整");
         }
 
-        Long noteId = Long.valueOf(body.get("noteId").toString());
-        int score = Integer.parseInt(body.get("score").toString());
+        Long noteId;
+        int score;
+        try {
+            noteId = Long.valueOf(body.get("noteId").toString());
+            score = Integer.parseInt(body.get("score").toString());
+        } catch (NumberFormatException e) {
+            return Result.error("400", "参数格式错误");
+        }
 
         if (score != 0 && score != 3 && score != 5) {
             return Result.error("400", "score 必须为 0、3 或 5");
@@ -97,6 +103,51 @@ public class ReviewController {
 
         Map<String, Object> result = noteReviewService.rate(userId, noteId, score);
         return Result.success(result);
+    }
+
+    @PostMapping("/add")
+    public Result<String> add(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        Long userId = authContextService.currentUserId(request);
+        if (userId == null) return Result.error("403", "Forbidden");
+        if (body.get("noteId") == null) return Result.error("400", "noteId 不能为空");
+
+        Long noteId;
+        try {
+            noteId = Long.valueOf(body.get("noteId").toString());
+        } catch (NumberFormatException e) {
+            return Result.error("400", "noteId 格式错误");
+        }
+
+        SysNote note = sysNoteService.getById(noteId);
+        if (note == null || !note.getUserId().equals(userId)) {
+            return Result.error("403", "Forbidden");
+        }
+
+        noteReviewService.autoAddToReview(userId, noteId);
+        return Result.success("已加入回顾");
+    }
+
+    @DeleteMapping("/remove/{noteId}")
+    public Result<String> remove(@PathVariable Long noteId, HttpServletRequest request) {
+        Long userId = authContextService.currentUserId(request);
+        if (userId == null) return Result.error("403", "Forbidden");
+
+        SysNote note = sysNoteService.getById(noteId);
+        if (note == null || !note.getUserId().equals(userId)) {
+            return Result.error("403", "Forbidden");
+        }
+
+        noteReviewService.removeFromReview(userId, noteId);
+        return Result.success("已取消回顾");
+    }
+
+    @GetMapping("/reviewed-note-ids")
+    public Result<Set<Long>> reviewedNoteIds(HttpServletRequest request) {
+        Long userId = authContextService.currentUserId(request);
+        if (userId == null) return Result.error("403", "Forbidden");
+
+        Set<Long> ids = noteReviewService.getReviewedNoteIds(userId);
+        return Result.success(ids);
     }
 
     @GetMapping("/stats")
@@ -113,6 +164,8 @@ public class ReviewController {
         return Result.success(stats);
     }
 
+
+
     @PostMapping("/summary/{bookId}")
     public Result<?> summary(@PathVariable Long bookId, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
@@ -127,6 +180,9 @@ public class ReviewController {
         List<SysNote> notes = sysNoteService.list(noteQuery);
 
         if (notes.isEmpty()) return Result.error("400", "该书暂无笔记");
+
+        // 限制最多 50 条笔记，防止超出 Dify 上下文窗口
+        if (notes.size() > 50) notes = notes.subList(0, 50);
 
         StringBuilder sb = new StringBuilder();
         SysBook book = sysBookService.getById(bookId);
@@ -147,7 +203,7 @@ public class ReviewController {
         chatRequest.setContent(sb.toString());
 
         ChatMessageSendResponse response = difyChat.send(chatRequest);
-        String summary = response != null && response.getAnswer() != null
+        String summaryResult = response != null && response.getAnswer() != null
                 ? response.getAnswer().toString()
                 : "摘要生成失败";
 
@@ -157,13 +213,13 @@ public class ReviewController {
         content.setReferenceType("book");
         content.setReferenceId(bookId);
         content.setTitle(bookTitle + " - 笔记回顾摘要");
-        content.setContent(summary);
+        content.setContent(summaryResult);
         content.setCreateTime(java.time.LocalDateTime.now());
         aiGeneratedContentService.save(content);
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", content.getId());
-        result.put("content", summary);
+        result.put("content", summaryResult);
         result.put("createTime", content.getCreateTime());
         return Result.success(result);
     }

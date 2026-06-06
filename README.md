@@ -21,9 +21,17 @@
 - 好友搜索、好友申请、好友列表、私聊、未读消息和分享消息
 - 书单创建、书籍加入、分享码导入
 - Elasticsearch 图书搜索，使用 Docker 兼容的内置 `cjk` 分词
-- Dify 阅读助手 SSE 流式输出和 Dify 知识库章节级同步
+- Elasticsearch 笔记搜索（多字段关键词 + 标签/书籍筛选，批量标签获取）
+- 笔记标签系统（增量绑定、全量替换、解绑、标签列表与统计）
+- 笔记关联（创建关联、查询关联笔记，自动排序去重）
+- SM-2 间隔重复笔记回顾（加入/移除回顾队列、每日复习、评分、连续天数统计）
+- 笔记导入（WeRead 格式、CSV 格式，RFC 4180 转义引号支持，自动去重）
+- 笔记 Markdown 渲染（前端共享 `utils/markdown.js`，DOMPurify XSS 防护）
+- Dify 阅读助手 SSE 流式输出、笔记 AI 工作流（润色/摘要/测验）、笔记回顾摘要
+- Dify 知识库章节级同步（顺序执行，聚合完成日志）
+- 阅读洞察报告生成（Dify Workflow）
 - 轻量 TTS 听书能力
-- 桌面端和移动端前端
+- 桌面端和移动端前端（共享工具函数：markdown、request、authHeaders）
 - Docker Compose 启动 MySQL、Redis、Elasticsearch、后端、两个前端和 TTS
 - Flyway V0 baseline 自动建表
 - 后端 JUnit 测试、桌面端 Vitest 测试和 GitHub Actions 基础 CI
@@ -54,6 +62,7 @@
 | `src/main` | Spring Boot 后端源码 |
 | `src/test` | 后端单元测试 |
 | `src/main/resources/db/migration` | Flyway 数据库迁移脚本，目前为 `V0__baseline.sql` |
+| `src/main/resources/dify-apps-guide.md` | Dify 应用编排构建清单（6 个应用的配置指南） |
 | `src/main/resources/mapper` | MyBatis XML Mapper |
 | `reading-ui` | 桌面端 Vue 前端 |
 | `reading-ui/src/__tests__` | 桌面端组件测试 |
@@ -75,15 +84,26 @@ MYSQL_PASSWORD=your_mysql_password
 APP_AUTH_TOKEN_SECRET=change_this_to_a_long_random_secret
 APP_AUTH_TOKEN_TTL_MILLIS=86400000
 
+# Dify 基础配置
 DIFY_BASE_URL=https://api.dify.ai/v1
 DIFY_CHAT_URL=https://api.dify.ai/v1
-DIFY_READING_KEY=your_dify_reading_key
-DIFY_RECOMMEND_KEY=your_dify_recommend_key
 
+# Dify Chat 应用 Key
+DIFY_READING_KEY=your_dify_reading_key      # 阅读助手 + 笔记回顾摘要
+DIFY_RECOMMEND_KEY=your_dify_recommend_key  # 书籍推荐
+DIFY_GUIDE_KEY=your_dify_guide_key          # 系统向导
+
+# Dify Workflow 应用 Key
+DIFY_NOTE_KEY=your_dify_note_key            # 笔记 AI（润色/摘要/测验）
+DIFY_INSIGHT_KEY=your_dify_insight_key      # 阅读洞察报告
+
+# Dify 知识库
 DIFY_KB_URL=https://api.dify.ai/v1
 DIFY_KB_KEY=dataset-xxxx
 DIFY_KB_DATASET_ID=your-dataset-uuid
 ```
+
+> 每个 Dify 应用的类型、输入变量、输出格式和构建步骤，详见 [`src/main/resources/dify-apps-guide.md`](src/main/resources/dify-apps-guide.md)。
 
 生产或公开部署必须替换 `APP_AUTH_TOKEN_SECRET`，不要提交 `.env` 或真实密钥。
 
@@ -157,10 +177,11 @@ Windows PowerShell：
 ```powershell
 $env:MYSQL_PASSWORD="your_mysql_password"
 $env:APP_AUTH_TOKEN_SECRET="change_this_to_a_long_random_secret"
-$env:DIFY_CHAT_URL="https://api.dify.ai/v1"
+$env:DIFY_BASE_URL="https://api.dify.ai/v1"
 $env:DIFY_READING_KEY="your_dify_reading_key"
 $env:DIFY_RECOMMEND_KEY="your_dify_recommend_key"
-$env:DIFY_KB_URL="https://api.dify.ai/v1"
+$env:DIFY_NOTE_KEY="your_dify_note_key"
+$env:DIFY_INSIGHT_KEY="your_dify_insight_key"
 $env:DIFY_KB_KEY="dataset-xxxx"
 $env:DIFY_KB_DATASET_ID="your-dataset-uuid"
 .\mvnw.cmd spring-boot:run
@@ -171,16 +192,17 @@ Linux/macOS：
 ```bash
 export MYSQL_PASSWORD=your_mysql_password
 export APP_AUTH_TOKEN_SECRET=change_this_to_a_long_random_secret
-export DIFY_CHAT_URL=https://api.dify.ai/v1
+export DIFY_BASE_URL=https://api.dify.ai/v1
 export DIFY_READING_KEY=your_dify_reading_key
 export DIFY_RECOMMEND_KEY=your_dify_recommend_key
-export DIFY_KB_URL=https://api.dify.ai/v1
+export DIFY_NOTE_KEY=your_dify_note_key
+export DIFY_INSIGHT_KEY=your_dify_insight_key
 export DIFY_KB_KEY=dataset-xxxx
 export DIFY_KB_DATASET_ID=your-dataset-uuid
 ./mvnw spring-boot:run
 ```
 
-如暂不使用 AI 功能，可以先填占位值；调用 AI、推荐或知识库接口时需要真实可用配置。
+如暂不使用 AI 功能，可以先填占位值；调用 AI、推荐、笔记 AI、洞察报告或知识库接口时需要真实可用配置。
 
 ### 3. 启动前端
 
@@ -267,6 +289,59 @@ git diff --check
 
 GitHub Actions 当前使用 Maven Wrapper 运行后端 JUnit 测试，并运行桌面端测试和两个前端构建；CI 不连接真实 MySQL、Redis、Elasticsearch，也不需要真实外部 API Key。
 
+## API 接口概览
+
+所有接口前缀为 `/api`（前端通过 Vite proxy 转发，直接调用后端时不带 `/api`）。需要认证的接口通过 `Authorization: Bearer <token>` 头传递 Token。
+
+### 笔记回顾（ReviewController）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/review/add` | 加入回顾队列（幂等） |
+| `DELETE` | `/review/remove/{noteId}` | 移出回顾队列 |
+| `GET` | `/review/reviewed-note-ids` | 已加入回顾的笔记 ID 列表 |
+| `GET` | `/review/today` | 今日待回顾笔记（最多 20 条） |
+| `POST` | `/review/rate` | 提交回顾评分（score: 0=忘记, 3=模糊, 5=记得） |
+| `GET` | `/review/stats` | 回顾统计（总笔记、已回顾、今日待回顾、连续天数） |
+| `POST` | `/review/summary/{bookId}` | 生成书籍笔记 AI 摘要 |
+| `GET` | `/review/summary/history` | 历史摘要列表 |
+
+### 标签（TagController）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/tag/list` | 用户标签列表（含笔记数量统计） |
+| `POST` | `/tag/bind` | 给笔记绑定标签（增量添加，不删除已有） |
+| `POST` | `/tag/unbind` | 移除笔记的指定标签 |
+
+### 笔记关联（NoteRelationController）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/noteRelation/create` | 创建两条笔记的关联 |
+| `GET` | `/noteRelation/list/{noteId}` | 获取笔记的关联列表 |
+
+### 笔记 AI（NoteAiController）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/note/ai/run/{bookId}` | 执行笔记 AI 工作流（action: enhance/summarize/quiz） |
+| `GET` | `/note/ai/result/{id}` | 获取 AI 生成结果 |
+
+### 笔记导入（ImportController）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/import/weread` | 导入 WeRead 格式笔记 |
+| `POST` | `/import/csv` | 导入 CSV 格式笔记 |
+
+### 阅读洞察（InsightController）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/insight/latest` | 获取最新洞察报告 |
+| `POST` | `/insight/generate` | 生成新的洞察报告（Dify Workflow） |
+
 ## 常见问题
 
 ### Docker 启动后后端无法连接数据库
@@ -292,9 +367,12 @@ docker compose up -d
 - 删除旧 `es_book` 索引后重新执行全量同步
 - Docker 官方 ES 镜像不含 IK 插件，本项目默认不依赖 IK
 
-### AI 阅读助手无响应
+### AI 功能无响应
 
-- 检查 `DIFY_CHAT_URL`、`DIFY_READING_KEY` 是否有效
+- 阅读助手：检查 `DIFY_CHAT_URL`、`DIFY_READING_KEY` 是否有效
+- 笔记 AI（润色/摘要/测验）：检查 `DIFY_NOTE_KEY` 是否为 Workflow 应用的 Key
+- 阅读洞察报告：检查 `DIFY_INSIGHT_KEY` 是否为 Workflow 应用的 Key
+- 笔记回顾摘要：检查 `DIFY_READING_KEY` 是否有效
 - Dify 也在 Docker 中运行时，后端容器不能用 `localhost` 访问 Dify；使用 `docker-compose.dify.yml` 接入 Dify 网络，或在 `.env` 中配置可访问的 Dify 地址
 - Nginx 代理 SSE 时需要关闭 buffering，仓库内前端 Nginx 配置已包含 `proxy_buffering off`
 

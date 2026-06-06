@@ -11,7 +11,12 @@ import java.time.LocalDateTime;
 public class NoteRelation {
     @TableId(type = IdType.AUTO)
     private Long id;
+    
+    @com.baomidou.mybatisplus.annotation.TableField("note_id_1")
     private Long noteId1;
+    
+    @com.baomidou.mybatisplus.annotation.TableField("note_id_2")
     private Long noteId2;
+    
     private LocalDateTime createTime;
 }

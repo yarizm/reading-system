@@ -98,7 +98,7 @@ public class DifyAiController {
             payload.put("conversation_id", request.conversationId);
         }
 
-        final boolean[] hasContent = {false};
+        final java.util.concurrent.atomic.AtomicBoolean hasContent = new java.util.concurrent.atomic.AtomicBoolean(false);
         final AtomicReference<reactor.core.Disposable> subscriptionRef = new AtomicReference<>();
 
         emitter.onTimeout(() -> {
@@ -129,14 +129,14 @@ public class DifyAiController {
                 .subscribe(
                         chunk -> {
                             try {
-                                hasContent[0] = true;
+                                hasContent.set(true);
                                 emitter.send(chunk);
                             } catch (Exception e) {
                                 emitter.completeWithError(e);
                             }
                         },
                         error -> {
-                            if (hasContent[0]) {
+                            if (hasContent.get()) {
                                 emitter.complete();
                             } else {
                                 emitter.completeWithError(error);

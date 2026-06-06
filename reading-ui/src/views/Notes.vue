@@ -1,11 +1,18 @@
 <template>
-  <div class="page-glass-container">
-    <div class="notes-page">
-      <div class="notes-header">
-        <h2>📝 我的笔记</h2>
-        <div style="display: flex; align-items: center; gap: 10px">
-          <el-button @click="$router.push('/import-notes')">📥 导入笔记</el-button>
-          <el-input
+  <div class="page-glass-container notes-container-page">
+    <div class="page-header">
+      <div class="header-left">
+        <el-button plain round class="back-btn glass-btn" @click="router.push('/')">
+          <el-icon><ArrowLeft /></el-icon> 返回首页
+        </el-button>
+        <el-divider direction="vertical" />
+        <div class="header-title-box">
+          <h2>📝 我的笔记</h2>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <el-button @click="$router.push('/import-notes')">📥 导入笔记</el-button>
+        <el-input
           v-model="searchKeyword"
           placeholder="搜索笔记..."
           clearable
@@ -14,9 +21,10 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        </div>
       </div>
+    </div>
 
+    <div class="notes-page">
       <div class="notes-body">
         <!-- 左侧筛选面板 -->
         <div class="filter-panel">
@@ -70,7 +78,7 @@
             <div class="note-quote" v-if="note.selectedText">
               "{{ note.selectedText.substring(0, 80) }}{{ note.selectedText.length > 80 ? '...' : '' }}"
             </div>
-            <div class="note-content">{{ note.content }}</div>
+            <div class="note-content markdown-body" v-html="renderMarkdown(note.content)"></div>
             <div class="note-footer">
               <div class="note-tags">
                 <el-tag
@@ -84,7 +92,13 @@
                 </el-tag>
               </div>
               <div class="note-actions">
-                <el-button link size="small" type="success" @click="addToReview(note.id)">📖 加入回顾</el-button>
+                <el-button
+                  link size="small"
+                  :type="reviewedNoteIds.has(note.id) ? 'warning' : 'success'"
+                  @click="addToReview(note.id)"
+                >
+                  {{ reviewedNoteIds.has(note.id) ? '📖 取消回顾' : '📖 加入回顾' }}
+                </el-button>
                 <el-button link size="small" @click="viewRelations(note)">
                   🔗 关联
                 </el-button>
@@ -109,7 +123,7 @@
       </div>
 
       <!-- 关联笔记对话框 -->
-      <el-dialog v-model="showRelations" title="关联笔记" width="500px">
+      <el-dialog v-model="showRelations" title="关联笔记" width="500px" append-to-body>
         <div v-if="relationList.length === 0" style="text-align: center; color: #999">
           暂无关联笔记
         </div>
@@ -129,19 +143,23 @@
           </div>
         </div>
       </el-dialog>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Search, ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { renderMarkdown } from '../utils/markdown'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
 
+const router = useRouter()
 const authStore = useAuthStore()
-const userInfo = authStore.user || {}
+const userInfo = computed(() => authStore.user || {})
 
 const tagList = ref([])
 const noteList = ref([])
@@ -154,6 +172,7 @@ const total = ref(0)
 
 const showRelations = ref(false)
 const relationList = ref([])
+const reviewedNoteIds = ref(new Set())
 
 const formatTime = (time) => {
   if (!time) return ''
@@ -210,10 +229,26 @@ const deleteNote = async (id) => {
   }
 }
 
+const loadReviewedIds = async () => {
+  try {
+    const res = await request.get('/api/review/reviewed-note-ids')
+    if (res.data.code === '200') {
+      reviewedNoteIds.value = new Set(res.data.data || [])
+    }
+  } catch (e) { console.error(e) }
+}
+
 const addToReview = async (noteId) => {
   try {
-    await request.post('/api/review/rate', { noteId, score: 5 })
-    ElMessage.success('已加入回顾')
+    if (reviewedNoteIds.value.has(noteId)) {
+      await request.delete(`/api/review/remove/${noteId}`)
+      reviewedNoteIds.value.delete(noteId)
+      ElMessage.success('已取消回顾')
+    } else {
+      await request.post('/api/review/add', { noteId })
+      reviewedNoteIds.value.add(noteId)
+      ElMessage.success('已加入回顾')
+    }
   } catch (e) { ElMessage.error('操作失败') }
 }
 
@@ -229,27 +264,33 @@ const viewRelations = async (note) => {
   }
 }
 
+
 onMounted(() => {
   loadTags()
   loadNotes()
+  loadReviewedIds()
 })
 </script>
 
 <style scoped>
+.notes-container-page { padding: 0 24px 18px; }
+.notes-container-page :deep(.page-header) {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin: 0 -24px 24px;
+  padding: 18px 32px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
 .notes-page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
 }
-.notes-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-.notes-header h2 { margin: 0; }
 .notes-body {
   display: flex;
+  align-items: flex-start;
   gap: 20px;
 }
 .filter-panel {
@@ -261,7 +302,7 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   height: fit-content;
   position: sticky;
-  top: 60px;
+  top: 100px;
 }
 .filter-section { margin-bottom: 20px; }
 .filter-section h4 { margin: 0 0 10px 0; font-size: 14px; color: #333; }
@@ -311,6 +352,25 @@ onMounted(() => {
   line-height: 1.6;
   margin-bottom: 8px;
 }
+.note-content :deep(p) { margin: 0 0 8px; }
+.note-content :deep(*:last-child) { margin-bottom: 0; }
+.note-content :deep(ul),
+.note-content :deep(ol) { padding-left: 20px; margin: 4px 0; }
+.note-content :deep(li) { margin-bottom: 2px; }
+.note-content :deep(code) {
+  background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 13px;
+}
+.note-content :deep(pre) {
+  background: #f5f5f5; padding: 10px; border-radius: 6px; overflow-x: auto; margin: 6px 0;
+}
+.note-content :deep(pre code) { background: none; padding: 0; }
+.note-content :deep(blockquote) {
+  border-left: 3px solid #ddd; padding-left: 10px; color: #666; margin: 6px 0;
+}
+.note-content :deep(h1),
+.note-content :deep(h2),
+.note-content :deep(h3) { font-size: 15px; margin: 8px 0 4px; }
+.note-content :deep(strong) { font-weight: 600; }
 .note-footer {
   display: flex;
   justify-content: space-between;

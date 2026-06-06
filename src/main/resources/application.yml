@@ -71,31 +71,31 @@ tts:
     base-url: "http://localhost:8091"
     timeout-ms: 60000
 dify:
-  url: ${DIFY_BASE_URL}
+  url: ${DIFY_BASE_URL:http://localhost/v1}
   client-config:
     connect-timeout: 30
     read-timeout: 60
     logging: true
     logging-mask-enabled: true
   reading:
-    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL}}
+    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL:http://localhost/v1}}
     api-key: ${DIFY_READING_KEY:}
   recommend:
-    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL}}
+    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL:http://localhost/v1}}
     api-key: ${DIFY_RECOMMEND_KEY:}
   kb:
-    api-url: ${DIFY_KB_URL:${DIFY_BASE_URL}}
+    api-url: ${DIFY_KB_URL:${DIFY_BASE_URL:http://localhost/v1}}
     api-key: ${DIFY_KB_KEY:}
     dataset-id: ${DIFY_KB_DATASET_ID:}
     chapter-delay-ms: 200
   guide:
-    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL}}
+    api-url: ${DIFY_CHAT_URL:${DIFY_BASE_URL:http://localhost/v1}}
     api-key: ${DIFY_GUIDE_KEY:}
   note:
-    api-url: ${DIFY_WORKFLOW_URL:${DIFY_BASE_URL}}
+    api-url: ${DIFY_WORKFLOW_URL:${DIFY_BASE_URL:http://localhost/v1}}
     api-key: ${DIFY_NOTE_KEY:}
   insight:
-    api-url: ${DIFY_WORKFLOW_URL:${DIFY_BASE_URL}}
+    api-url: ${DIFY_WORKFLOW_URL:${DIFY_BASE_URL:http://localhost/v1}}
     api-key: ${DIFY_INSIGHT_KEY:}
 
 logging:

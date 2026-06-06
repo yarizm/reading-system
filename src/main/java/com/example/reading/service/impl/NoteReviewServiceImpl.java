@@ -6,6 +6,7 @@ import com.example.reading.entity.NoteReview;
 import com.example.reading.mapper.NoteReviewMapper;
 import com.example.reading.service.INoteReviewService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 public class NoteReviewServiceImpl extends ServiceImpl<NoteReviewMapper, NoteReview> implements INoteReviewService {
 
     @Override
+    @Transactional
     public void autoAddToReview(Long userId, Long noteId) {
         QueryWrapper<NoteReview> check = new QueryWrapper<>();
         check.eq("user_id", userId).eq("note_id", noteId);
@@ -32,9 +34,11 @@ public class NoteReviewServiceImpl extends ServiceImpl<NoteReviewMapper, NoteRev
 
     @Override
     public List<NoteReview> getTodayReviews(Long userId) {
+        String validNoteIdsSql = validNoteIdsSubquery(userId);
         QueryWrapper<NoteReview> query = new QueryWrapper<>();
         query.eq("user_id", userId)
              .le("next_review_date", LocalDate.now())
+             .inSql("note_id", validNoteIdsSql)
              .orderByAsc("next_review_date")
              .last("LIMIT 20");
         return list(query);
@@ -65,7 +69,8 @@ public class NoteReviewServiceImpl extends ServiceImpl<NoteReviewMapper, NoteRev
             } else if (review.getRepetitions() == 1) {
                 review.setIntervalDays(6);
             } else {
-                review.setIntervalDays((int) Math.round(review.getIntervalDays() * review.getEaseFactor()));
+                long calculated = Math.round(review.getIntervalDays() * (double) review.getEaseFactor());
+                review.setIntervalDays((int) Math.min(calculated, 36500)); // 上限 100 年，防止 int 溢出
             }
             review.setRepetitions(review.getRepetitions() + 1);
         }
@@ -92,16 +97,41 @@ public class NoteReviewServiceImpl extends ServiceImpl<NoteReviewMapper, NoteRev
     public Map<String, Object> getStats(Long userId) {
         Map<String, Object> stats = new HashMap<>();
 
+        // 只统计笔记仍然存在的 review 记录，排除已删除笔记的孤儿数据
+        String validNoteIdsSql = validNoteIdsSubquery(userId);
+
         QueryWrapper<NoteReview> reviewQuery = new QueryWrapper<>();
-        reviewQuery.eq("user_id", userId);
+        reviewQuery.eq("user_id", userId).inSql("note_id", validNoteIdsSql);
         stats.put("reviewNotes", count(reviewQuery));
 
         QueryWrapper<NoteReview> pendingQuery = new QueryWrapper<>();
-        pendingQuery.eq("user_id", userId).le("next_review_date", LocalDate.now());
+        pendingQuery.eq("user_id", userId).le("next_review_date", LocalDate.now()).inSql("note_id", validNoteIdsSql);
         stats.put("todayPending", count(pendingQuery));
 
         stats.put("streakDays", calculateStreak(userId));
         return stats;
+    }
+
+    @Override
+    public void removeFromReview(Long userId, Long noteId) {
+        QueryWrapper<NoteReview> query = new QueryWrapper<>();
+        query.eq("user_id", userId).eq("note_id", noteId);
+        remove(query);
+    }
+
+    @Override
+    public Set<Long> getReviewedNoteIds(Long userId) {
+        String validNoteIdsSql = validNoteIdsSubquery(userId);
+        QueryWrapper<NoteReview> query = new QueryWrapper<>();
+        query.eq("user_id", userId).inSql("note_id", validNoteIdsSql).select("note_id");
+        return list(query).stream().map(NoteReview::getNoteId).collect(Collectors.toSet());
+    }
+
+    /**
+     * 构造有效的笔记 ID 子查询，排除已删除笔记的孤儿 review 记录
+     */
+    private String validNoteIdsSubquery(Long userId) {
+        return "SELECT id FROM sys_note WHERE user_id = " + userId;
     }
 
     private int calculateStreak(Long userId) {

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.reading.entity.NoteRelation;
 import com.example.reading.mapper.NoteRelationMapper;
 import com.example.reading.service.INoteRelationService;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
@@ -25,7 +26,12 @@ public class NoteRelationServiceImpl extends ServiceImpl<NoteRelationMapper, Not
         NoteRelation relation = new NoteRelation();
         relation.setNoteId1(smaller);
         relation.setNoteId2(larger);
-        save(relation);
+        try {
+            save(relation);
+        } catch (DuplicateKeyException e) {
+            // 并发请求命中唯一约束，返回已有记录
+            return getOne(check);
+        }
         return relation;
     }
 

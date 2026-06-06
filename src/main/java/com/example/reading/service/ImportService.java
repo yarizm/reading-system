@@ -71,11 +71,25 @@ public class ImportService {
         for (ImportItem item : items) {
             try {
                 Long bookId = findOrCreateBook(item.bookTitle, userId);
+                String selectedText = item.selectedText != null ? item.selectedText : "";
+
+                // 去重：检查是否已存在相同用户、书籍、选文的笔记
+                if (!selectedText.isEmpty()) {
+                    var dedupQuery = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<SysNote>();
+                    dedupQuery.eq("user_id", userId)
+                            .eq("book_id", bookId)
+                            .eq("selected_text", selectedText)
+                            .last("LIMIT 1");
+                    if (sysNoteService.count(dedupQuery) > 0) {
+                        result.skipped++;
+                        continue;
+                    }
+                }
 
                 SysNote note = new SysNote();
                 note.setUserId(userId);
                 note.setBookId(bookId);
-                note.setSelectedText(item.selectedText != null ? item.selectedText : "");
+                note.setSelectedText(selectedText);
                 note.setContent(item.content != null ? item.content : "");
                 note.setCreateTime(item.createTime != null ? item.createTime : LocalDateTime.now());
                 sysNoteService.save(note);
@@ -150,12 +164,13 @@ public class ImportService {
             if (section.isEmpty()) continue;
             String[] lines = section.split("\n");
 
+            int startIdx = 0;
             if (lines[0].startsWith("## ")) {
                 currentBook = lines[0].substring(3).trim();
-                continue;
+                startIdx = 1; // 跳过标题行，继续处理后续行
             }
 
-            for (int i = 0; i < lines.length; i++) {
+            for (int i = startIdx; i < lines.length; i++) {
                 if (lines[i].startsWith("> ")) {
                     ImportItem item = new ImportItem();
                     item.bookTitle = currentBook;
@@ -197,10 +212,23 @@ public class ImportService {
         List<String> fields = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
-        for (char c : line.toCharArray()) {
-            if (c == '"') inQuotes = !inQuotes;
-            else if (c == ',' && !inQuotes) { fields.add(current.toString().trim()); current = new StringBuilder(); }
-            else current.append(c);
+        char[] chars = line.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
+            if (c == '"') {
+                if (inQuotes && i + 1 < chars.length && chars[i + 1] == '"') {
+                    // 转义引号 "" -> "
+                    current.append('"');
+                    i++; // 跳过下一个引号
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                fields.add(current.toString().trim());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
         }
         fields.add(current.toString().trim());
         return fields.toArray(new String[0]);

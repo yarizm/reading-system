@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'vant'
 import axios from 'axios'
+import request from '../utils/request'
 
 import { useAuthStore } from '../stores/auth'
 import { getAuthHeaders } from '../utils/authHeaders'
@@ -110,7 +111,7 @@ const loadBookNotes = async () => {
   try {
     const params = { userId: userInfo.value.id }
     if (noteTagFilter.value) params.tagId = noteTagFilter.value
-    const res = await axios.get(`/api/sysNote/list/${bookId}`, { params })
+    const res = await request.get(`/api/sysNote/list/${bookId}`, { params })
     if (res.data.code === '200') {
       noteList.value = res.data.data || []
     }
@@ -121,7 +122,7 @@ const loadBookNotes = async () => {
 
 const loadNoteTags = async () => {
   try {
-    const res = await axios.get('/api/tag/list')
+    const res = await request.get('/api/tag/list')
     if (res.data.code === '200') {
       noteTagList.value = res.data.data || []
     }

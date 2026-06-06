@@ -17,4 +17,12 @@ public class DifyUrlUtils {
         if (url == null) return null;
         return url.replaceAll("/chat-messages/?$", "");
     }
+
+    /**
+     * 去除 URL 末尾的斜杠，防止拼接时出现双斜杠。
+     */
+    public static String trimTrailingSlash(String url) {
+        if (url == null) return null;
+        return url.replaceAll("/+$", "");
+    }
 }

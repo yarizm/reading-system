@@ -7,7 +7,7 @@
           <van-button size="small" type="primary" @click="$router.push('/import-notes')">导入</van-button>
         </template>
       </van-nav-bar>
-      <van-search v-model="searchKeyword" placeholder="搜索笔记..." @search="loadNotes" />
+      <van-search v-model="searchKeyword" placeholder="搜索笔记..." @search="currentPage = 1; loadNotes()" />
     </div>
 
     <!-- 标签筛选 -->
@@ -16,7 +16,7 @@
         <van-tag
           :type="selectedTagId === null ? 'primary' : 'default'"
           size="medium"
-          @click="selectedTagId = null; loadNotes()"
+          @click="selectedTagId = null; currentPage = 1; loadNotes()"
         >
           全部
         </van-tag>
@@ -25,7 +25,7 @@
           :key="tag.id"
           :type="selectedTagId === tag.id ? 'primary' : 'default'"
           size="medium"
-          @click="selectedTagId = tag.id; loadNotes()"
+          @click="selectedTagId = tag.id; currentPage = 1; loadNotes()"
           :style="selectedTagId === tag.id ? { background: tag.color } : {}"
         >
           {{ tag.name }}
@@ -45,7 +45,7 @@
         <div class="note-quote" v-if="note.selectedText">
           "{{ note.selectedText.substring(0, 60) }}{{ note.selectedText.length > 60 ? '...' : '' }}"
         </div>
-        <div class="note-content">{{ note.content }}</div>
+        <div class="note-content markdown-body" v-html="renderMarkdown(note.content)"></div>
         <div class="note-footer">
           <div class="note-tags">
             <van-tag
@@ -59,7 +59,13 @@
             </van-tag>
           </div>
           <div class="note-actions">
-            <van-button plain size="mini" type="success" @click="addToReview(note.id)">📖 回顾</van-button>
+            <van-button
+              plain size="mini"
+              :type="reviewedNoteIds.has(note.id) ? 'warning' : 'success'"
+              @click="addToReview(note.id)"
+            >
+              {{ reviewedNoteIds.has(note.id) ? '取消回顾' : '📖 回顾' }}
+            </van-button>
             <van-button plain size="mini" type="danger" @click="deleteNote(note.id)">删除</van-button>
           </div>
         </div>
@@ -77,12 +83,15 @@
         加载更多
       </van-button>
     </div>
+
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
+import { renderMarkdown } from '../utils/markdown'
 import request from '../utils/request'
 
 const tagList = ref([])
@@ -92,6 +101,8 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
+
+
 
 const formatTime = (time) => {
   if (!time) return ''
@@ -132,10 +143,28 @@ const loadNotes = async () => {
   }
 }
 
+const reviewedNoteIds = ref(new Set())
+
+const loadReviewedIds = async () => {
+  try {
+    const res = await request.get('/api/review/reviewed-note-ids')
+    if (res.data.code === '200') {
+      reviewedNoteIds.value = new Set(res.data.data || [])
+    }
+  } catch (e) { console.error(e) }
+}
+
 const addToReview = async (noteId) => {
   try {
-    await request.post('/api/review/rate', { noteId, score: 5 })
-    showToast('已加入回顾')
+    if (reviewedNoteIds.value.has(noteId)) {
+      await request.delete(`/api/review/remove/${noteId}`)
+      reviewedNoteIds.value.delete(noteId)
+      showToast('已取消回顾')
+    } else {
+      await request.post('/api/review/add', { noteId })
+      reviewedNoteIds.value.add(noteId)
+      showToast('已加入回顾')
+    }
   } catch (e) { showToast('操作失败') }
 }
 
@@ -154,9 +183,11 @@ const deleteNote = async (id) => {
   }
 }
 
+
 onMounted(() => {
   loadTags()
   loadNotes()
+  loadReviewedIds()
 })
 </script>
 
@@ -188,6 +219,25 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 .note-content { font-size: 14px; color: #333; line-height: 1.5; margin-bottom: 8px; }
+.note-content :deep(p) { margin: 0 0 8px; }
+.note-content :deep(*:last-child) { margin-bottom: 0; }
+.note-content :deep(ul),
+.note-content :deep(ol) { padding-left: 20px; margin: 4px 0; }
+.note-content :deep(li) { margin-bottom: 2px; }
+.note-content :deep(code) {
+  background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 13px;
+}
+.note-content :deep(pre) {
+  background: #f5f5f5; padding: 10px; border-radius: 6px; overflow-x: auto; margin: 6px 0;
+}
+.note-content :deep(pre code) { background: none; padding: 0; }
+.note-content :deep(blockquote) {
+  border-left: 3px solid #ddd; padding-left: 10px; color: #666; margin: 6px 0;
+}
+.note-content :deep(h1),
+.note-content :deep(h2),
+.note-content :deep(h3) { font-size: 15px; margin: 8px 0 4px; }
+.note-content :deep(strong) { font-weight: 600; }
 .note-footer {
   display: flex;
   justify-content: space-between;

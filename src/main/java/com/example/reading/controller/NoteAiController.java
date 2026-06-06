@@ -3,6 +3,7 @@ package com.example.reading.controller;
 import com.example.reading.entity.AiGeneratedContent;
 import com.example.reading.service.AuthContextService;
 import com.example.reading.service.IAiGeneratedContentService;
+import com.example.reading.service.ISysBookService;
 import com.example.reading.service.NoteAiService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +31,19 @@ public class NoteAiController {
     @Autowired
     private IAiGeneratedContentService aiGeneratedContentService;
 
-    @Value("${dify.note.api-url}")
-    private String difyWorkflowUrl;
+    @Autowired
+    private ISysBookService sysBookService;
 
-    @Value("${dify.note.api-key}")
-    private String difyApiKey;
-
+    private final String difyWorkflowUrl;
+    private final String difyApiKey;
     private final WebClient webClient;
 
-    public NoteAiController(WebClient.Builder builder) {
+    public NoteAiController(WebClient.Builder builder,
+                             @Value("${dify.note.api-url}") String url,
+                             @Value("${dify.note.api-key}") String apiKey) {
         this.webClient = builder.build();
+        this.difyWorkflowUrl = com.example.reading.utils.DifyUrlUtils.trimTrailingSlash(url);
+        this.difyApiKey = apiKey;
     }
 
     public static class NoteAiRequest {
@@ -57,14 +61,24 @@ public class NoteAiController {
 
         Map<String, Object> payload = new HashMap<>();
         Map<String, String> inputs = new HashMap<>();
+        inputs.put("task_type", "note");
         inputs.put("action", request.action);
-        
+
         if ("summarize".equals(request.action) || "quiz".equals(request.action)) {
             String allNotes = noteAiService.buildBookNotesContext(currentUserId, bookId);
             inputs.put("notes_context", allNotes);
         } else if ("enhance".equals(request.action)) {
             inputs.put("notes_context", request.singleNoteContent);
         }
+
+        // 获取书籍信息
+        String bookInfo = "未知书籍";
+        try {
+            var book = sysBookService.getById(bookId);
+            if (book != null) bookInfo = book.getTitle() + " - " + (book.getAuthor() != null ? book.getAuthor() : "");
+        } catch (Exception ignored) {}
+        inputs.put("book_info", bookInfo);
+        inputs.put("context", request.title != null ? request.title : "");
 
         payload.put("inputs", inputs);
         payload.put("response_mode", "blocking");
@@ -78,6 +92,18 @@ public class NoteAiController {
                 .bodyToMono(Map.class)
                 .publishOn(reactor.core.scheduler.Schedulers.boundedElastic())
                 .map(response -> {
+                    // 检查 Dify 返回的错误信息（仅有 code 且无 data 时视为错误）
+                    if (response.containsKey("code") && !response.containsKey("data")) {
+                        String difyCode = String.valueOf(response.getOrDefault("code", ""));
+                        String difyMsg = String.valueOf(response.getOrDefault("message", "未知错误"));
+                        if ("not_workflow_app".equals(difyCode)) {
+                            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                    "Dify 应用类型错误：配置的 KEY 对应的不是 Workflow 应用，请在 Dify 后台确认");
+                        }
+                        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                "Dify 错误: [" + difyCode + "] " + difyMsg);
+                    }
+
                     // 解析 Dify Workflow 返回结果
                     Map<String, Object> data = (Map<String, Object>) response.get("data");
                     if (data != null) {
@@ -95,7 +121,7 @@ public class NoteAiController {
                             content.setContent(resultText);
                             content.setCreateTime(java.time.LocalDateTime.now());
                             aiGeneratedContentService.save(content);
-                            
+
                             Map<String, Object> finalRes = new HashMap<>();
                             finalRes.put("id", content.getId());
                             finalRes.put("result", resultText);
