@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 import java.util.HashMap;
 import java.util.Map;
 
-@Service
+@Service("appDifyWorkflowClient")
 public class DifyWorkflowClient {
 
     private final WebClient webClient;

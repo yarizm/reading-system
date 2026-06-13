@@ -38,6 +38,11 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
 
+  # 排除 dify-spring-boot-starter 的 workflow 自动配置，避免与自定义 DifyWorkflowClient bean 名称冲突
+  autoconfigure:
+    exclude:
+      - io.github.guoshiqiufeng.dify.springboot.autoconfigure.DifyWorkflowAutoConfiguration
+
 # 4. MyBatis Plus 配置
 mybatis-plus:
   configuration:
