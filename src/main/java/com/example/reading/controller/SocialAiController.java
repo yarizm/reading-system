@@ -7,6 +7,7 @@ import com.example.reading.service.AuthContextService;
 import com.example.reading.service.DifyWorkflowClient;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.ISysNoteService;
+import com.example.reading.utils.MapParamUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,15 +57,7 @@ public class SocialAiController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "request body is required");
         }
 
-        Object bookIdObj = req.get("bookId");
-        Long bookId = null;
-        if (bookIdObj != null) {
-            try {
-                bookId = Long.valueOf(bookIdObj.toString());
-            } catch (NumberFormatException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bookId must be a number");
-            }
-        }
+        Long bookId = MapParamUtils.asLong(req, "bookId");
         if (bookId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bookId is required");
         }

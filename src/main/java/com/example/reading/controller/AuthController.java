@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.example.reading.utils.MapParamUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -32,8 +33,8 @@ public class AuthController {
 
     @PostMapping("/sendCode")
     public Result<?> sendCode(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = stringParam(params, "target");
-        Integer type = intParam(params, "type");
+        String target = MapParamUtils.asString(params, "target");
+        Integer type = MapParamUtils.asInt(params, "type");
 
         if (StrUtil.isBlank(target) || type == null) {
             return Result.error("400", "参数错误");
@@ -56,7 +57,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public Result<?> register(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = stringParam(params, "target");
+        String target = MapParamUtils.asString(params, "target");
         if (StrUtil.isBlank(target)) {
             return Result.error("400", "Invalid parameters");
         }
@@ -74,10 +75,10 @@ public class AuthController {
         try {
             authService.register(
                     target,
-                    stringParam(params, "code"),
-                    stringParam(params, "password"),
-                    stringParam(params, "nickname"),
-                    intParam(params, "age")
+                    MapParamUtils.asString(params, "code"),
+                    MapParamUtils.asString(params, "password"),
+                    MapParamUtils.asString(params, "nickname"),
+                    MapParamUtils.asInt(params, "age")
             );
             rateLimitService.reset(targetKey);
             return Result.success("注册成功");
@@ -88,8 +89,8 @@ public class AuthController {
 
     @PostMapping("/loginByCode")
     public Result<?> loginByCode(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = stringParam(params, "target");
-        String code = stringParam(params, "code");
+        String target = MapParamUtils.asString(params, "target");
+        String code = MapParamUtils.asString(params, "code");
         if (StrUtil.hasBlank(target, code)) {
             return Result.error("400", "参数不完整");
         }
@@ -112,9 +113,9 @@ public class AuthController {
 
     @PostMapping("/resetPassword")
     public Result<?> resetPassword(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = stringParam(params, "target");
-        String code = stringParam(params, "code");
-        String newPassword = stringParam(params, "newPassword");
+        String target = MapParamUtils.asString(params, "target");
+        String code = MapParamUtils.asString(params, "code");
+        String newPassword = MapParamUtils.asString(params, "newPassword");
         if (StrUtil.hasBlank(target, code, newPassword)) {
             return Result.error("400", "参数不完整");
         }
@@ -139,28 +140,4 @@ public class AuthController {
         return target.substring(0, 2) + "****" + target.substring(target.length() - 2);
     }
 
-    private String stringParam(Map<String, Object> params, String key) {
-        if (params == null) return null;
-        Object value = params.get(key);
-        if (value instanceof CharSequence || value instanceof Number) {
-            return value.toString();
-        }
-        return null;
-    }
-
-    private Integer intParam(Map<String, Object> params, String key) {
-        if (params == null) return null;
-        Object value = params.get(key);
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof CharSequence text) {
-            try {
-                return Integer.valueOf(text.toString());
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-        }
-        return null;
-    }
 }

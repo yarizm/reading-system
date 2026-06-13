@@ -7,6 +7,7 @@ import com.example.reading.service.AuthContextService;
 import com.example.reading.service.INoteTagService;
 import com.example.reading.service.ISysNoteService;
 import com.example.reading.service.ISysTagService;
+import com.example.reading.utils.MapParamUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -95,10 +96,8 @@ public class TagController {
         if (body == null || body.get("noteId") == null || body.get("tagIds") == null) {
             return Result.error("400", "参数不完整");
         }
-        Long noteId;
-        try {
-            noteId = Long.valueOf(body.get("noteId").toString());
-        } catch (NumberFormatException e) {
+        Long noteId = MapParamUtils.asLong(body, "noteId");
+        if (noteId == null) {
             return Result.error("400", "noteId 格式错误");
         }
         SysNote note = sysNoteService.getById(noteId);
@@ -122,10 +121,8 @@ public class TagController {
         if (body == null || body.get("noteId") == null || body.get("tagIds") == null) {
             return Result.error("400", "参数不完整");
         }
-        Long noteId;
-        try {
-            noteId = Long.valueOf(body.get("noteId").toString());
-        } catch (NumberFormatException e) {
+        Long noteId = MapParamUtils.asLong(body, "noteId");
+        if (noteId == null) {
             return Result.error("400", "noteId 格式错误");
         }
         SysNote note = sysNoteService.getById(noteId);

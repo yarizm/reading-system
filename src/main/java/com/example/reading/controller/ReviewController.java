@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.common.Result;
 import com.example.reading.entity.*;
 import com.example.reading.service.*;
+import com.example.reading.utils.MapParamUtils;
 import io.github.guoshiqiufeng.dify.chat.DifyChat;
 import io.github.guoshiqiufeng.dify.chat.dto.request.ChatMessageSendRequest;
 import io.github.guoshiqiufeng.dify.chat.dto.response.ChatMessageSendResponse;
@@ -106,14 +107,12 @@ public class ReviewController {
             return Result.error("400", "参数不完整");
         }
 
-        Long noteId;
-        int score;
-        try {
-            noteId = Long.valueOf(body.get("noteId").toString());
-            score = Integer.parseInt(body.get("score").toString());
-        } catch (NumberFormatException e) {
+        Long noteId = MapParamUtils.asLong(body, "noteId");
+        Integer scoreInt = MapParamUtils.asInt(body, "score");
+        if (noteId == null || scoreInt == null) {
             return Result.error("400", "参数格式错误");
         }
+        int score = scoreInt;
 
         if (score != 0 && score != 3 && score != 5) {
             return Result.error("400", "score 必须为 0、3 或 5");
@@ -134,10 +133,8 @@ public class ReviewController {
         if (userId == null) return Result.error("403", "Forbidden");
         if (body == null || body.get("noteId") == null) return Result.error("400", "noteId 不能为空");
 
-        Long noteId;
-        try {
-            noteId = Long.valueOf(body.get("noteId").toString());
-        } catch (NumberFormatException e) {
+        Long noteId = MapParamUtils.asLong(body, "noteId");
+        if (noteId == null) {
             return Result.error("400", "noteId 格式错误");
         }
 
