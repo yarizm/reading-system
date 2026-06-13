@@ -10,6 +10,7 @@ try {
 
 const DB_NAME = 'ImageCacheDB'
 const STORE_NAME = 'images'
+const FETCH_TIMEOUT_MS = 10000
 
 const initDB = () => {
   return new Promise((resolve, reject) => {
@@ -73,7 +74,15 @@ export const getCachedImage = async (url) => {
         return objectUrl
       }
 
-      const response = await fetch(url)
+      // 10s 超时：避免服务端接受连接后不响应导致 fetch 永久挂起；超时 abort 走 catch 回退到原始 url
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+      let response
+      try {
+        response = await fetch(url, { signal: controller.signal })
+      } finally {
+        clearTimeout(timeoutId)
+      }
       if (!response.ok) throw new Error('Network error')
       const blob = await response.blob()
       

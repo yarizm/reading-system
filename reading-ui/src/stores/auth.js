@@ -23,6 +23,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchAndVerify() {
     try {
       const currentToken = user.value?.token || ''
+      // 故意用裸 axios 而非共享 request 实例：request 的 401 拦截器会触发跳转 /login，
+      // 而初始化校验时 token 失效应自行 logout 而非跳转，故手动注入 header 并自行处理 401。
       const res = await axios.get('/api/sysUser/me', {
         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {}
       })
