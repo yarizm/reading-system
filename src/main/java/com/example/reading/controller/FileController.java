@@ -102,7 +102,14 @@ public class FileController {
         if (!matcher.matches()) {
             return false;
         }
-        SysChapter chapter = chapterMapper.selectById(Long.valueOf(matcher.group(1)));
+        // 文件名里的数字段可能超出 Long 范围（恶意/异常构造），解析失败按无权限处理，避免抛 500
+        Long chapterId;
+        try {
+            chapterId = Long.valueOf(matcher.group(1));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        SysChapter chapter = chapterMapper.selectById(chapterId);
         if (chapter == null) {
             return false;
         }
