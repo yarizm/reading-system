@@ -1,8 +1,8 @@
 <script setup>
+import request from '../utils/request'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -45,7 +45,7 @@ const sendCode = async (type) => {
     return
   }
   try {
-    await axios.post('/api/auth/sendCode', { target, type })
+    await request.post('/api/auth/sendCode', { target, type })
     showSuccessToast('验证码已发送')
     if (type === 1) startCooldown(cooldownRegister)
     if (type === 2) startCooldown(cooldownLogin)
@@ -64,7 +64,7 @@ const handleLogin = async () => {
         showToast('请输入账号和密码')
         return
       }
-      res = await axios.post('/api/sysUser/login', {
+      res = await request.post('/api/sysUser/login', {
         username: form.username,
         password: form.password
       })
@@ -73,7 +73,7 @@ const handleLogin = async () => {
         showToast('请输入手机号或邮箱和验证码')
         return
       }
-      res = await axios.post('/api/auth/loginByCode', {
+      res = await request.post('/api/auth/loginByCode', {
         target: form.target,
         code: form.code
       })
@@ -99,7 +99,7 @@ const handleRegister = async () => {
   }
   loading.value = true
   try {
-    const res = await axios.post('/api/auth/register', regForm)
+    const res = await request.post('/api/auth/register', regForm)
     if (res.data.code === '200') {
       showSuccessToast('注册成功，请登录')
       mode.value = 'login'
@@ -120,7 +120,7 @@ const handleReset = async () => {
   }
   loading.value = true
   try {
-    const res = await axios.post('/api/auth/resetPassword', resetForm)
+    const res = await request.post('/api/auth/resetPassword', resetForm)
     if (res.data.code === '200') {
       showSuccessToast('密码已重置，请重新登录')
       mode.value = 'login'

@@ -32,8 +32,8 @@ public class AuthController {
 
     @PostMapping("/sendCode")
     public Result<?> sendCode(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = (String) params.get("target");
-        Integer type = (Integer) params.get("type");
+        String target = stringParam(params, "target");
+        Integer type = intParam(params, "type");
 
         if (StrUtil.isBlank(target) || type == null) {
             return Result.error("400", "参数错误");
@@ -56,7 +56,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public Result<?> register(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = (String) params.get("target");
+        String target = stringParam(params, "target");
         if (StrUtil.isBlank(target)) {
             return Result.error("400", "Invalid parameters");
         }
@@ -74,10 +74,10 @@ public class AuthController {
         try {
             authService.register(
                     target,
-                    (String) params.get("code"),
-                    (String) params.get("password"),
-                    (String) params.get("nickname"),
-                    (Integer) params.get("age")
+                    stringParam(params, "code"),
+                    stringParam(params, "password"),
+                    stringParam(params, "nickname"),
+                    intParam(params, "age")
             );
             rateLimitService.reset(targetKey);
             return Result.success("注册成功");
@@ -88,14 +88,19 @@ public class AuthController {
 
     @PostMapping("/loginByCode")
     public Result<?> loginByCode(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = (String) params.get("target");
+        String target = stringParam(params, "target");
+        String code = stringParam(params, "code");
+        if (StrUtil.hasBlank(target, code)) {
+            return Result.error("400", "参数不完整");
+        }
+
         String clientIp = IpUtil.getClientIp(request);
         if (!rateLimitService.isAllowed("loginByCode:" + clientIp, 10, 60)) {
             return Result.error("429", "登录尝试过于频繁，请稍后再试");
         }
 
         try {
-            SysUser user = authService.loginByCode(target, (String) params.get("code"));
+            SysUser user = authService.loginByCode(target, code);
             user.setPassword(null);
             user.setToken(authTokenService.createToken(user.getId()));
             rateLimitService.reset("loginByCode:" + clientIp);
@@ -107,14 +112,20 @@ public class AuthController {
 
     @PostMapping("/resetPassword")
     public Result<?> resetPassword(@RequestBody Map<String, Object> params, HttpServletRequest request) {
-        String target = (String) params.get("target");
+        String target = stringParam(params, "target");
+        String code = stringParam(params, "code");
+        String newPassword = stringParam(params, "newPassword");
+        if (StrUtil.hasBlank(target, code, newPassword)) {
+            return Result.error("400", "参数不完整");
+        }
+
         String clientIp = IpUtil.getClientIp(request);
         if (!rateLimitService.isAllowed("resetPwd:" + clientIp, 5, 60)) {
             return Result.error("429", "操作过于频繁，请稍后再试");
         }
 
         try {
-            authService.resetPassword(target, (String) params.get("code"), (String) params.get("newPassword"));
+            authService.resetPassword(target, code, newPassword);
             return Result.success("密码重置成功");
         } catch (Exception e) {
             return Result.error("400", e.getMessage());
@@ -126,5 +137,30 @@ public class AuthController {
             return "****";
         }
         return target.substring(0, 2) + "****" + target.substring(target.length() - 2);
+    }
+
+    private String stringParam(Map<String, Object> params, String key) {
+        if (params == null) return null;
+        Object value = params.get(key);
+        if (value instanceof CharSequence || value instanceof Number) {
+            return value.toString();
+        }
+        return null;
+    }
+
+    private Integer intParam(Map<String, Object> params, String key) {
+        if (params == null) return null;
+        Object value = params.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof CharSequence text) {
+            try {
+                return Integer.valueOf(text.toString());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 }

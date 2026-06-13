@@ -197,6 +197,7 @@ import {
   ChatDotSquare, Close, Star, StarFilled, MagicStick
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import { formatDateTimeMinute as formatTime } from '../utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -421,7 +422,6 @@ const toggleShelf = async () => {
 
 const startReading = () => router.push(`/read/${bookId}`)
 const goBack = () => router.back()
-const formatTime = (str) => str ? str.replace('T', ' ').substring(0, 16) : ''
 const goToUserProfile = (userId) => {
   if (userId) router.push(`/user/${userId}`)
 }

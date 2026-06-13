@@ -14,6 +14,9 @@ export const withFileAccessToken = (url) => {
   if (!url || !url.startsWith('/files/')) {
     return url
   }
+  if (/[?&]token=/.test(url)) {
+    return url
+  }
   const token = getAuthToken()
   if (!token) {
     return url

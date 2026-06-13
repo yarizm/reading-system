@@ -11,6 +11,7 @@ import { useMobileAI } from '../composables/useMobileAI'
 import { useMobileShelf } from '../composables/useMobileShelf'
 import { useMobileShare } from '../composables/useMobileShare'
 import { useMobileComments } from '../composables/useMobileComments'
+import { parseJsonSafely } from '../utils/jsonUtils'
 
 // Components
 import MobileCatalogPopup from '../components/Read/MobileCatalogPopup.vue'
@@ -77,7 +78,8 @@ const activeAiTab = ai.activeAiTab
 
 const loadReadingSettings = () => {
   const saved = localStorage.getItem('mobileReadingConfig')
-  if (saved) Object.assign(readingConfig, JSON.parse(saved))
+  const savedConfig = parseJsonSafely(saved)
+  if (savedConfig) Object.assign(readingConfig, savedConfig)
 }
 
 watch(readingConfig, (newVal) => {

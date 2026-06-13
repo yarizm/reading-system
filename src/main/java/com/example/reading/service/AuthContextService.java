@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthContextService {
 
+    private static final String CURRENT_USER_ID_ATTRIBUTE = AuthContextService.class.getName() + ".CURRENT_USER_ID";
+    private static final Object NO_ACTIVE_USER = new Object();
+
     @Autowired
     private AuthTokenService authTokenService;
 
@@ -30,7 +33,14 @@ public class AuthContextService {
     private ISysBookService sysBookService;
 
     public Long currentUserId(HttpServletRequest request) {
-        return activeUserId(authTokenService.resolveUserId(request));
+        Object cached = request.getAttribute(CURRENT_USER_ID_ATTRIBUTE);
+        if (cached != null) {
+            return cached == NO_ACTIVE_USER ? null : (Long) cached;
+        }
+
+        Long userId = activeUserId(authTokenService.resolveUserId(request));
+        request.setAttribute(CURRENT_USER_ID_ATTRIBUTE, userId == null ? NO_ACTIVE_USER : userId);
+        return userId;
     }
 
     public Long currentUserId(String token) {
@@ -96,12 +106,12 @@ public class AuthContextService {
 
     public boolean canViewBook(SysBook book, Long currentUserId) {
         if (book == null) return false;
-        boolean uploader = currentUserId != null
-                && book.getUploaderId() != null
-                && book.getUploaderId().equals(currentUserId);
-        boolean sharedAccess = !Integer.valueOf(4).equals(book.getStatus())
-                && hasReceivedBookShare(book.getId(), currentUserId);
-        return isPublicBook(book) || uploader || isAdmin(currentUserId) || sharedAccess;
+        if (isPublicBook(book)) return true;
+        if (currentUserId == null) return false;
+        if (book.getUploaderId() != null && book.getUploaderId().equals(currentUserId)) return true;
+        if (isAdmin(currentUserId)) return true;
+        if (Integer.valueOf(4).equals(book.getStatus())) return false;
+        return hasReceivedBookShare(book.getId(), currentUserId);
     }
 
     public boolean canAccessBook(SysBook book, Long currentUserId) {

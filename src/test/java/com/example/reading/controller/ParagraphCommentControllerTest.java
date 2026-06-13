@@ -15,7 +15,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +38,36 @@ class ParagraphCommentControllerTest {
 
     @InjectMocks
     private ParagraphCommentController controller;
+
+    @Test
+    void addRejectsMissingBodyWithoutInsert() {
+        when(authContextService.currentUserId(request)).thenReturn(4L);
+
+        Result<?> result = controller.add(null, request);
+
+        assertThat(result.getCode()).isEqualTo("500");
+        verify(commentMapper, never()).insert(any(SysParagraphComment.class));
+    }
+
+    @Test
+    void updateRejectsMissingBodyWithoutLoadingComment() {
+        when(authContextService.isAdmin(request)).thenReturn(true);
+
+        Result<?> result = controller.update(null, request);
+
+        assertThat(result.getCode()).isEqualTo("500");
+        verify(commentMapper, never()).selectById(any());
+    }
+
+    @Test
+    void toggleLikeRejectsMissingBodyWithoutLoadingComment() {
+        when(authContextService.currentUserId(request)).thenReturn(4L);
+
+        Result<?> result = controller.toggleLike(null, request);
+
+        assertThat(result.getCode()).isEqualTo("403");
+        verify(commentMapper, never()).selectById(any());
+    }
 
     @Test
     void toggleLikeUsesAtomicIncrementAndReturnsCurrentCountWhenLiking() {

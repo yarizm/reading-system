@@ -34,9 +34,13 @@ public interface SysBookMapper extends BaseMapper<SysBook> {
             "LIMIT 10")
     List<SysBook> selectRankBooks();
 
-    /** 随机推荐（仅已公开） */
-    @Select("SELECT * FROM sys_book WHERE (status = 2 OR status IS NULL) ORDER BY RAND() LIMIT 8")
-    List<SysBook> selectRandomBooks();
+    /** 公开书籍总数 */
+    @Select("SELECT COUNT(*) FROM sys_book WHERE (status = 2 OR status IS NULL)")
+    Long countPublicBooks();
+
+    /** 公开书籍分页窗口，用于推荐兜底随机偏移取样 */
+    @Select("SELECT * FROM sys_book WHERE (status = 2 OR status IS NULL) ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}")
+    List<SysBook> selectPublicBooksWindow(@Param("limit") int limit, @Param("offset") long offset);
 
     /** 用户上传的书籍列表 */
     @Select("SELECT * FROM sys_book WHERE uploader_id = #{userId} ORDER BY create_time DESC")

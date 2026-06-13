@@ -1,9 +1,11 @@
 <script setup>
+import request from '../utils/request'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationSocket } from '../composables/useNotificationSocket'
+import { formatDatePart } from '../utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -25,7 +27,21 @@ const myShelf = ref([])
 const selectedBookId = ref(null)
 const shareMessage = ref('')
 
-let ws = null
+const { connect: connectNotificationSocket, close: closeNotificationSocket } = useNotificationSocket({
+  getUser: () => userInfo.value,
+  onMessage: (msg) => {
+    if (msg.type === 'chat') {
+      loadFriendUnreadCounts()
+    } else if (msg.type === 'friend_request') {
+      loadPendingRequests()
+      showToast(`${msg.data?.nickname || '一位用户'} 想添加你为好友`)
+    } else if (msg.type === 'book_share') {
+      loadReceivedShares()
+      showToast('收到新的图书分享')
+    }
+  },
+  onParseError: (error) => console.error(error)
+})
 
 onMounted(() => {
   if (!authStore.isLoggedIn) {
@@ -37,44 +53,17 @@ onMounted(() => {
   loadPendingRequests()
   loadReceivedShares()
   loadFriendUnreadCounts()
-  connectWs()
+  connectNotificationSocket()
 })
 
 onUnmounted(() => {
-  if (ws) ws.close()
+  closeNotificationSocket()
 })
-
-const connectWs = () => {
-  if (!userInfo.value.id) return
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  ws = new WebSocket(`${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`)
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'chat') {
-        loadFriendUnreadCounts()
-      } else if (msg.type === 'friend_request') {
-        loadPendingRequests()
-        showToast(`${msg.data?.nickname || '一位用户'} 想添加你为好友`)
-      } else if (msg.type === 'book_share') {
-        loadReceivedShares()
-        showToast('收到新的图书分享')
-      }
-    } catch (error) {
-      console.error(error)
-    }
-  }
-  ws.onclose = () => {
-    if (userInfo.value.id) {
-      setTimeout(connectWs, 5000)
-    }
-  }
-}
 
 const searchUsers = async () => {
   if (!searchKeyword.value.trim()) return
   searched.value = true
-  const res = await axios.get('/api/friend/search', {
+  const res = await request.get('/api/friend/search', {
     params: {
       keyword: searchKeyword.value,
       excludeUserId: userInfo.value.id
@@ -84,7 +73,7 @@ const searchUsers = async () => {
 }
 
 const sendRequest = async (friendId) => {
-  const res = await axios.post('/api/friend/request', {
+  const res = await request.post('/api/friend/request', {
     userId: userInfo.value.id,
     friendId
   })
@@ -96,23 +85,23 @@ const sendRequest = async (friendId) => {
 }
 
 const loadFriends = async () => {
-  const res = await axios.get(`/api/friend/list/${userInfo.value.id}`)
+  const res = await request.get(`/api/friend/list/${userInfo.value.id}`)
   friends.value = res.data.data || []
 }
 
 const loadPendingRequests = async () => {
-  const res = await axios.get(`/api/friend/pending/${userInfo.value.id}`)
+  const res = await request.get(`/api/friend/pending/${userInfo.value.id}`)
   pendingRequests.value = res.data.data || []
 }
 
 const loadReceivedShares = async () => {
-  const res = await axios.get(`/api/bookShare/received/${userInfo.value.id}`)
+  const res = await request.get(`/api/bookShare/received/${userInfo.value.id}`)
   receivedShares.value = res.data.data || []
 }
 
 const loadFriendUnreadCounts = async () => {
   try {
-    const res = await axios.get(`/api/chat/conversations/${userInfo.value.id}`)
+    const res = await request.get(`/api/chat/conversations/${userInfo.value.id}`)
     const nextMap = {}
     ;(res.data.data || []).forEach((item) => {
       if (item.unreadCount > 0) {
@@ -128,27 +117,27 @@ const loadFriendUnreadCounts = async () => {
 const getUnread = (id) => friendUnreadMap.value[id] || 0
 
 const acceptRequest = async (id) => {
-  await axios.post(`/api/friend/accept/${id}`)
+  await request.post(`/api/friend/accept/${id}`)
   showSuccessToast('已通过好友请求')
   loadPendingRequests()
   loadFriends()
 }
 
 const rejectRequest = async (id) => {
-  await axios.post(`/api/friend/reject/${id}`)
+  await request.post(`/api/friend/reject/${id}`)
   showToast('已拒绝请求')
   loadPendingRequests()
 }
 
 const deleteFriend = async (id) => {
   await showConfirmDialog({ message: '确定删除这位好友吗？' })
-  await axios.delete(`/api/friend/${id}`)
+  await request.delete(`/api/friend/${id}`)
   showSuccessToast('好友已删除')
   loadFriends()
 }
 
 const deleteShare = async (id) => {
-  await axios.delete(`/api/bookShare/${id}`)
+  await request.delete(`/api/bookShare/${id}`)
   showSuccessToast('分享记录已删除')
   loadReceivedShares()
 }
@@ -159,22 +148,19 @@ const goChat = (id) => {
 
 const goToBook = async (share) => {
   if (share.isRead === 0) {
-    await axios.post(`/api/bookShare/read/${share.shareId}`)
+    await request.post(`/api/bookShare/read/${share.shareId}`)
   }
   router.push(`/book/${share.bookId}`)
 }
 
-const formatDate = (dateTime) => {
-  if (!dateTime) return '刚刚'
-  return String(dateTime).split('T')[0]
-}
+const formatDate = (dateTime) => formatDatePart(dateTime, '刚刚')
 
 const openShareDialog = async (friendId) => {
   shareTargetUserId.value = friendId
   selectedBookId.value = null
   shareMessage.value = ''
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     myShelf.value = res.data.data || []
   } catch (error) {
     myShelf.value = []
@@ -183,7 +169,7 @@ const openShareDialog = async (friendId) => {
 }
 
 const confirmShare = async () => {
-  const res = await axios.post('/api/bookShare/send', {
+  const res = await request.post('/api/bookShare/send', {
     senderId: userInfo.value.id,
     receiverId: shareTargetUserId.value,
     bookId: selectedBookId.value,

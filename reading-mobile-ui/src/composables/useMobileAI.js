@@ -2,6 +2,7 @@ import { ref, nextTick } from 'vue'
 import request from '../utils/request'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { getAuthHeaders } from '../utils/authHeaders'
+import { parseSseJsonEvent } from '../utils/sseEvents'
 import { showToast, showFailToast, showSuccessToast } from 'vant'
 
 export function useMobileAI(bookId, userInfo, bookInfo, selectedText) {
@@ -54,7 +55,8 @@ export function useMobileAI(bookId, userInfo, bookInfo, selectedText) {
           bookId: Number(bookId)
         }),
         onmessage(event) {
-          const dataJson = JSON.parse(event.data)
+          const dataJson = parseSseJsonEvent(event, 'AI SSE')
+          if (!dataJson) return
           if (dataJson.event === 'message') {
             const newText = dataJson.answer || ''
             chatList.value[aiMsgIndex].content += newText

@@ -1,18 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { parseJsonSafely } from '../utils/jsonUtils'
 
 export const useAuthStore = defineStore('auth', () => {
-  const safeParseJSON = (str) => {
-    if (!str || str === 'null') return null
-    try {
-      return JSON.parse(str)
-    } catch (e) {
-      localStorage.removeItem('user')
-      return null
-    }
-  }
-  const user = ref(safeParseJSON(localStorage.getItem('user')))
+  const user = ref(parseJsonSafely(localStorage.getItem('user'), null, () => localStorage.removeItem('user')))
 
   const isLoggedIn = computed(() => user.value !== null && !!user.value.token)
   const isAdmin = computed(() => user.value?.role === 1)

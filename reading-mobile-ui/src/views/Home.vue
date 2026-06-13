@@ -1,7 +1,7 @@
 <script setup>
+import request from '../utils/request'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 
 import { useAuthStore } from '../stores/auth'
 
@@ -42,7 +42,7 @@ onMounted(() => {
 
 const loadHotBooks = async () => {
   try {
-    const res = await axios.get('/api/sysBook/hot')
+    const res = await request.get('/api/sysBook/hot')
     hotBooks.value = res.data.data || []
   } catch (e) {
     console.error(e)
@@ -51,7 +51,7 @@ const loadHotBooks = async () => {
 
 const loadRankBooks = async () => {
   try {
-    const res = await axios.get('/api/sysBook/rank')
+    const res = await request.get('/api/sysBook/rank')
     rankBooks.value = (res.data.data || []).slice(0, 8)
   } catch (e) {
     console.error(e)
@@ -61,7 +61,7 @@ const loadRankBooks = async () => {
 const loadRecommendBooks = async (refresh = false) => {
   recommendLoading.value = true
   try {
-    const res = await axios.get('/api/sysBook/recommend', {
+    const res = await request.get('/api/sysBook/recommend', {
       params: { userId: userInfo.value.id, refresh }
     })
     if (res.data.code === '200') {
@@ -80,7 +80,7 @@ const loadBooks = async () => {
   const url = isSearch ? '/api/search' : '/api/sysBook/list'
 
   try {
-    const res = await axios.get(url, {
+    const res = await request.get(url, {
       params: {
         pageNum: pageNum.value,
         pageSize: pageSize.value,

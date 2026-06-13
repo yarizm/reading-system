@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,7 +43,7 @@ public class InsightService {
         stats.put("reading_books", readingCount);
 
         // 获取最近在读的书籍
-        List<String> readingBookTitles = bookshelfList.stream()
+        List<UserBookshelf> recentReadingShelves = bookshelfList.stream()
                 .filter(b -> b.getIsFinished() == null || b.getIsFinished() == 0)
                 .sorted((b1, b2) -> {
                     LocalDateTime t1 = b1.getLastReadTime() != null ? b1.getLastReadTime() : LocalDateTime.MIN;
@@ -49,8 +51,22 @@ public class InsightService {
                     return t2.compareTo(t1);
                 })
                 .limit(3)
+                .toList();
+
+        Set<Long> recentBookIds = recentReadingShelves.stream()
+                .map(UserBookshelf::getBookId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, SysBook> bookMap = new HashMap<>();
+        if (!recentBookIds.isEmpty()) {
+            for (SysBook book : sysBookService.listByIds(recentBookIds)) {
+                bookMap.put(book.getId(), book);
+            }
+        }
+
+        List<String> readingBookTitles = recentReadingShelves.stream()
                 .map(b -> {
-                    SysBook sysBook = sysBookService.getById(b.getBookId());
+                    SysBook sysBook = bookMap.get(b.getBookId());
                     String progressStr = b.getCurrentChapterIndex() != null ? "第" + (b.getCurrentChapterIndex() + 1) + "章" : "未知";
                     return sysBook != null ? sysBook.getTitle() + "(进度:" + progressStr + ")" : "未知书籍";
                 })

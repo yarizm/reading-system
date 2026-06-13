@@ -4,15 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.common.Result;
 import com.example.reading.entity.SysNote;
 import com.example.reading.entity.SysBook;
-import com.example.reading.entity.SysTag;
 import com.example.reading.entity.NoteTag;
 import com.example.reading.service.AuthContextService;
 import com.example.reading.service.ISysNoteService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.INoteTagService;
-import com.example.reading.service.ISysTagService;
 import com.example.reading.service.INoteReviewService;
 import com.example.reading.service.NoteEsService;
+import com.example.reading.service.NoteTagViewService;
+import com.example.reading.utils.PaginationUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +20,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/sysNote")
@@ -40,7 +42,7 @@ public class SysNoteController {
     private INoteTagService noteTagService;
 
     @Autowired
-    private ISysTagService tagService;
+    private NoteTagViewService noteTagViewService;
 
     @Autowired
     private NoteEsService noteEsService;
@@ -51,7 +53,7 @@ public class SysNoteController {
     @PostMapping("/add")
     public Result<?> add(@RequestBody SysNote note, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || note.getBookId() == null) {
+        if (currentUserId == null || note == null || note.getBookId() == null) {
             return Result.error("403", "Forbidden");
         }
         if (!authContextService.canViewBook(note.getBookId(), request)) {
@@ -107,8 +109,8 @@ public class SysNoteController {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
 
-        if (page < 1) page = 1;
-        if (size < 1 || size > 100) size = 20;
+        page = PaginationUtils.pageNum(page);
+        if (size == null || size < 1 || size > 100) size = 20;
 
         // 如果有关键词，走 ES 搜索
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -149,6 +151,24 @@ public class SysNoteController {
         List<SysNote> notes = sysNoteService.list(query);
 
         // 组装返回数据（包含书籍信息和标签）
+        Set<Long> bookIds = new HashSet<>();
+        List<Long> pageNoteIds = new ArrayList<>();
+        for (SysNote note : notes) {
+            pageNoteIds.add(note.getId());
+            if (note.getBookId() != null) {
+                bookIds.add(note.getBookId());
+            }
+        }
+
+        Map<Long, SysBook> bookMap = new HashMap<>();
+        if (!bookIds.isEmpty()) {
+            for (SysBook book : sysBookService.listByIds(bookIds)) {
+                bookMap.put(book.getId(), book);
+            }
+        }
+
+        Map<Long, List<Map<String, Object>>> tagInfoByNoteId = noteTagViewService.listTagInfoByNoteIds(pageNoteIds);
+
         List<Map<String, Object>> records = new ArrayList<>();
         for (SysNote note : notes) {
             Map<String, Object> item = new HashMap<>();
@@ -159,7 +179,7 @@ public class SysNoteController {
             item.put("createTime", note.getCreateTime());
 
             // 书籍信息
-            SysBook book = sysBookService.getById(note.getBookId());
+            SysBook book = bookMap.get(note.getBookId());
             if (book != null) {
                 item.put("bookTitle", book.getTitle());
                 item.put("bookAuthor", book.getAuthor());
@@ -167,19 +187,7 @@ public class SysNoteController {
             }
 
             // 标签信息
-            List<Long> tagIds = noteTagService.getTagIdsByNoteId(note.getId());
-            if (!tagIds.isEmpty()) {
-                List<SysTag> tags = tagService.listByIds(tagIds);
-                item.put("tags", tags.stream().map(t -> {
-                    Map<String, Object> tagMap = new HashMap<>();
-                    tagMap.put("id", t.getId());
-                    tagMap.put("name", t.getName());
-                    tagMap.put("color", t.getColor());
-                    return tagMap;
-                }).toList());
-            } else {
-                item.put("tags", List.of());
-            }
+            item.put("tags", tagInfoByNoteId.getOrDefault(note.getId(), List.of()));
 
             records.add(item);
         }

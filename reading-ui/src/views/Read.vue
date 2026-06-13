@@ -15,6 +15,7 @@ import { useAI } from '../composables/useAI'
 import { useShelf } from '../composables/useShelf'
 import { useShare } from '../composables/useShare'
 import { useComments } from '../composables/useComments'
+import { parseJsonSafely } from '../utils/jsonUtils'
 
 // Components
 import CatalogDrawer from '../components/Read/CatalogDrawer.vue'
@@ -58,8 +59,9 @@ const comments = useComments(bookId, userInfo)
 const loadReadingSettings = () => {
   const saved = localStorage.getItem('readingConfig')
   const userAge = userInfo.value.age || 18
-  if (saved) {
-    Object.assign(readingConfig, JSON.parse(saved))
+  const savedConfig = parseJsonSafely(saved)
+  if (savedConfig) {
+    Object.assign(readingConfig, savedConfig)
   } else {
     if (userAge < 18) {
       readingConfig.theme = 'green'

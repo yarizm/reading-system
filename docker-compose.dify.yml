@@ -1,7 +1,9 @@
 services:
   backend:
     environment:
+      DIFY_BASE_URL: ${DIFY_DOCKER_BASE_URL:-http://docker-api-1:5001/v1}
       DIFY_CHAT_URL: ${DIFY_DOCKER_CHAT_URL:-http://docker-api-1:5001/v1}
+      DIFY_WORKFLOW_URL: ${DIFY_DOCKER_WORKFLOW_URL:-http://docker-api-1:5001/v1}
       DIFY_KB_URL: ${DIFY_DOCKER_KB_URL:-http://docker-api-1:5001/v1}
     networks:
       - default

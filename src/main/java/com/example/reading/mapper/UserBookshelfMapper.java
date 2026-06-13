@@ -24,10 +24,14 @@ public interface UserBookshelfMapper extends BaseMapper<UserBookshelf> {
             " b.title AS bookName, " +
             " b.cover_url AS coverUrl, " +
             " b.author, " +
-            " (SELECT COUNT(*) FROM sys_chapter c WHERE c.book_id = b.id) AS totalChapters, " +
-            " (SELECT title FROM sys_chapter c WHERE c.book_id = b.id AND c.sort = s.current_chapter_index LIMIT 1) AS currentChapterTitle " +
+            " IFNULL(chapter_counts.totalChapters, 0) AS totalChapters, " +
+            " current_chapters.title AS currentChapterTitle " +
             "FROM user_bookshelf s " +
             "LEFT JOIN sys_book b ON s.book_id = b.id " +
+            "LEFT JOIN (SELECT book_id, COUNT(*) AS totalChapters FROM sys_chapter GROUP BY book_id) chapter_counts " +
+            "ON chapter_counts.book_id = b.id " +
+            "LEFT JOIN (SELECT book_id, sort, MIN(title) AS title FROM sys_chapter GROUP BY book_id, sort) current_chapters " +
+            "ON current_chapters.book_id = b.id AND current_chapters.sort = s.current_chapter_index " +
             "WHERE s.user_id = #{userId} " +
             "ORDER BY s.last_read_time DESC")
     List<Map<String, Object>> selectMyShelf(@Param("userId") Long userId);
@@ -41,10 +45,14 @@ public interface UserBookshelfMapper extends BaseMapper<UserBookshelf> {
             " b.title AS bookName, " +
             " b.cover_url AS coverUrl, " +
             " b.author, " +
-            " (SELECT COUNT(*) FROM sys_chapter c WHERE c.book_id = b.id) AS totalChapters, " +
-            " (SELECT title FROM sys_chapter c WHERE c.book_id = b.id AND c.sort = s.current_chapter_index LIMIT 1) AS currentChapterTitle " +
+            " IFNULL(chapter_counts.totalChapters, 0) AS totalChapters, " +
+            " current_chapters.title AS currentChapterTitle " +
             "FROM user_bookshelf s " +
             "JOIN sys_book b ON s.book_id = b.id " +
+            "LEFT JOIN (SELECT book_id, COUNT(*) AS totalChapters FROM sys_chapter GROUP BY book_id) chapter_counts " +
+            "ON chapter_counts.book_id = b.id " +
+            "LEFT JOIN (SELECT book_id, sort, MIN(title) AS title FROM sys_chapter GROUP BY book_id, sort) current_chapters " +
+            "ON current_chapters.book_id = b.id AND current_chapters.sort = s.current_chapter_index " +
             "WHERE s.user_id = #{userId} " +
             "AND (b.status = 2 OR b.status IS NULL) " +
             "ORDER BY s.last_read_time DESC")

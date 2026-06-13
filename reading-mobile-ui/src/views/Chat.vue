@@ -1,9 +1,16 @@
 <script setup>
+import request from '../utils/request'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { formatChatTime as formatTime } from '../utils/dateTime'
+import {
+  formatSharePosition,
+  getAudioShare,
+  getBookShare,
+  getParagraphShare
+} from '../utils/shareMessage'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,10 +18,6 @@ const authStore = useAuthStore()
 const friendId = Number(route.params.friendId)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
-
-const PARAGRAPH_SHARE_PREFIX = '__PARAGRAPH_SHARE__'
-const AUDIO_SHARE_PREFIX = '__AUDIO_SHARE__'
-const BOOK_SHARE_PREFIX = '__BOOK_SHARE__'
 
 const userInfo = computed(() => authStore.user || {})
 const friendInfo = ref({})
@@ -37,7 +40,7 @@ onMounted(async () => {
   }
 
   try {
-    const res = await axios.get(`/api/sysUser/profile/${friendId}`)
+    const res = await request.get(`/api/sysUser/profile/${friendId}`)
     if (res.data.code === '200') {
       friendInfo.value = res.data.data
     }
@@ -70,7 +73,7 @@ onUnmounted(() => {
 
 const loadMessages = async () => {
   try {
-    const res = await axios.get('/api/chat/history', {
+    const res = await request.get('/api/chat/history', {
       params: { userId: userInfo.value.id, friendId }
     })
     const nextMessages = res.data.data || []
@@ -91,7 +94,7 @@ const loadMessages = async () => {
 
 const markAsRead = async () => {
   try {
-    await axios.post('/api/chat/read', null, {
+    await request.post('/api/chat/read', null, {
       params: { userId: userInfo.value.id, senderId: friendId }
     })
   } catch (error) {
@@ -103,7 +106,7 @@ const sendMessage = async () => {
   const text = inputMessage.value.trim()
   if (!text) return
   try {
-    await axios.post('/api/chat/send', {
+    await request.post('/api/chat/send', {
       senderId: userInfo.value.id,
       receiverId: friendId,
       content: text
@@ -125,7 +128,7 @@ const openShareDialog = async () => {
   selectedBookId.value = null
   shareMsg.value = ''
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     myShelf.value = res.data.data || []
   } catch (error) {
     myShelf.value = []
@@ -135,7 +138,7 @@ const openShareDialog = async () => {
 
 const confirmShare = async () => {
   try {
-    await axios.post('/api/bookShare/send', {
+    await request.post('/api/bookShare/send', {
       senderId: userInfo.value.id,
       receiverId: friendId,
       bookId: selectedBookId.value,
@@ -146,34 +149,6 @@ const confirmShare = async () => {
   } catch (error) {
     showFailToast('图书分享失败')
   }
-}
-
-const parseShareContent = (content, prefix) => {
-  if (!content || !content.startsWith(prefix)) return null
-  try {
-    return JSON.parse(content.slice(prefix.length))
-  } catch (error) {
-    return null
-  }
-}
-
-const getParagraphShare = (message) => parseShareContent(message.content, PARAGRAPH_SHARE_PREFIX)
-const getAudioShare = (message) => parseShareContent(message.content, AUDIO_SHARE_PREFIX)
-const getBookShare = (message) => parseShareContent(message.content, BOOK_SHARE_PREFIX)
-
-const formatSharePosition = (share) => {
-  if (!share) return '来自聊天分享'
-  const parts = []
-  if (share.chapterIndex !== null && share.chapterIndex !== undefined) {
-    parts.push(`第 ${share.chapterIndex + 1} 章`)
-  }
-  if (share.paragraphIndex !== null && share.paragraphIndex !== undefined) {
-    parts.push(`第 ${share.paragraphIndex + 1} 段`)
-  }
-  if (parts.length > 0) return parts.join(' · ')
-  if (share.sourceType === 'chapter') return '整章听书'
-  if (share.sourceType === 'paragraph') return '段落朗读'
-  return '朗读音频'
 }
 
 const openSharedParagraph = (message) => {
@@ -205,7 +180,7 @@ const openSharedBook = async (message) => {
   if (!share?.bookId) return
   if (share.shareId && message.senderId !== userInfo.value.id) {
     try {
-      await axios.post(`/api/bookShare/read/${share.shareId}`)
+      await request.post(`/api/bookShare/read/${share.shareId}`)
     } catch (error) {
       console.error(error)
     }
@@ -213,16 +188,6 @@ const openSharedBook = async (message) => {
   router.push(`/book/${share.bookId}`)
 }
 
-const formatTime = (timeStr) => {
-  if (!timeStr) return ''
-  const date = new Date(timeStr)
-  const pad = (value) => String(value).padStart(2, '0')
-  const today = new Date()
-  if (date.toDateString() === today.toDateString()) {
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}`
-  }
-  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
 </script>
 
 <template>

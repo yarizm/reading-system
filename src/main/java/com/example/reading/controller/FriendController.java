@@ -39,7 +39,7 @@ public class FriendController {
     @PostMapping("/request")
     public Result<?> sendRequest(@RequestBody Friendship friendship, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
-        Long friendId = friendship.getFriendId();
+        Long friendId = friendship == null ? null : friendship.getFriendId();
         if (userId == null || friendId == null) {
             return Result.error("403", "Forbidden");
         }

@@ -292,6 +292,7 @@ import {
   ArrowLeft
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import { formatDatePart } from '../utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -385,10 +386,7 @@ const removeFromShelf = async (id) => {
   loadShelf()
 }
 
-const formatTime = (timeStr) => {
-  if (!timeStr) return '刚刚'
-  return timeStr.split('T')[0]
-}
+const formatTime = (timeStr) => formatDatePart(timeStr, '刚刚')
 
 // ===== 书架可见性 =====
 const toggleVisibility = async (val) => {

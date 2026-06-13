@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import request from './utils/request'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showNotify } from 'vant'
-import axios from 'axios'
 
 import { useAuthStore } from './stores/auth'
+import { useNotificationSocket } from './composables/useNotificationSocket'
 import MobileAgentGuide from './components/MobileAgentGuide.vue'
 
 const router = useRouter()
@@ -17,7 +18,21 @@ const hideTabBar = computed(() => route.meta.hideTabBar)
 // Notification badge
 const unreadCount = ref(0)
 const userInfo = computed(() => authStore.user || {})
-let ws = null
+
+const { connect: connectNotificationSocket, close: closeNotificationSocket } = useNotificationSocket({
+  getUser: () => userInfo.value,
+  onMessage: (msg) => {
+    if (msg.type === 'chat') {
+      loadUnread()
+      if (msg.data?.shareType === 'book') return
+      showNotify({ type: 'primary', message: '收到新消息' })
+    } else if (msg.type === 'friend_request') {
+      showNotify({ type: 'primary', message: `${msg.data?.nickname || '某人'} 想加你为好友` })
+    } else if (msg.type === 'book_share') {
+      showNotify({ type: 'primary', message: `收到书籍分享：${msg.data?.bookTitle || ''}` })
+    }
+  }
+})
 
 const tabMap = ['/', '/shelf', '/my-books', '/friends', '/profile']
 
@@ -33,59 +48,23 @@ const onTabChange = (index) => {
 const loadUnread = async () => {
   if (!userInfo.value.id) return
   try {
-    const res = await axios.get(`/api/chat/unread/${userInfo.value.id}`)
+    const res = await request.get(`/api/chat/unread/${userInfo.value.id}`)
     unreadCount.value = res.data.data || 0
   } catch (e) { /* ignore */ }
 }
 
-const connectWs = () => {
-  if (!userInfo.value.id) return
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`
-  ws = new WebSocket(wsUrl)
-
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'chat') {
-        loadUnread()
-        if (msg.data?.shareType === 'book') return
-        showNotify({ type: 'primary', message: '收到新消息' })
-      } else if (msg.type === 'friend_request') {
-        showNotify({ type: 'primary', message: `${msg.data?.nickname || '某人'} 想加你为好友` })
-      } else if (msg.type === 'book_share') {
-        showNotify({ type: 'primary', message: `收到书籍分享：${msg.data?.bookTitle || ''}` })
-      }
-    } catch (e) { console.error('WS parse error', e) }
-  }
-
-  ws.onclose = () => {
-    if (userInfo.value.id && ws) {
-      setTimeout(() => {
-        if (userInfo.value.id) connectWs()
-      }, 5000)
-    }
-  }
-}
-
 watch(() => authStore.user, (newUser) => {
-  if (ws) {
-    const oldWs = ws
-    ws = null
-    oldWs.close()
-  }
+  closeNotificationSocket()
   if (newUser && newUser.id) {
     loadUnread()
-    connectWs()
+    connectNotificationSocket()
   } else {
     unreadCount.value = 0
   }
 }, { deep: true, immediate: true })
 
 onUnmounted(() => {
-  if (ws) {
-    ws.close()
-  }
+  closeNotificationSocket()
 })
 </script>
 

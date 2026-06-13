@@ -16,7 +16,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -42,6 +47,12 @@ public class BooklistController {
     public Result<?> create(@RequestBody Booklist booklist, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
         if (currentUserId == null) return Result.error("403", "Forbidden");
+        if (booklist == null) return Result.error("400", "Invalid parameters");
+        String name = normalizeText(booklist.getName());
+        if (name == null) return Result.error("400", "Booklist name is required");
+        if (name.length() > 255) return Result.error("400", "Booklist name is too long");
+        booklist.setName(name);
+        booklist.setDescription(normalizeText(booklist.getDescription()));
         booklist.setUserId(currentUserId);
         booklist.setShareCode(UUID.randomUUID().toString().replace("-", "").substring(0, 8));
         booklist.setCreateTime(LocalDateTime.now());
@@ -73,6 +84,9 @@ public class BooklistController {
 
     @PostMapping("/addBook")
     public Result<?> addBook(@RequestBody BooklistBook booklistBook, HttpServletRequest request) {
+        if (booklistBook == null || booklistBook.getBooklistId() == null || booklistBook.getBookId() == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         Booklist booklist = booklistMapper.selectById(booklistBook.getBooklistId());
         if (booklist == null) return Result.error("404", "Booklist not found");
         if (!authContextService.isSelf(booklist.getUserId(), request)) return Result.error("403", "Forbidden");
@@ -134,15 +148,36 @@ public class BooklistController {
         bbQuery.eq("booklist_id", booklist.getId());
         List<BooklistBook> booklistBooks = booklistBookMapper.selectList(bbQuery);
 
+        Set<Long> bookIds = new LinkedHashSet<>();
+        for (BooklistBook bb : booklistBooks) {
+            if (bb.getBookId() != null) {
+                bookIds.add(bb.getBookId());
+            }
+        }
+
+        Map<Long, SysBook> bookMap = new HashMap<>();
+        if (!bookIds.isEmpty()) {
+            for (SysBook book : sysBookService.listByIds(bookIds)) {
+                bookMap.put(book.getId(), book);
+            }
+        }
+
+        Set<Long> existingShelfBookIds = new HashSet<>();
+        if (!bookIds.isEmpty()) {
+            QueryWrapper<UserBookshelf> shelfQuery = new QueryWrapper<>();
+            shelfQuery.eq("user_id", currentUserId).in("book_id", bookIds);
+            for (UserBookshelf shelf : shelfMapper.selectList(shelfQuery)) {
+                existingShelfBookIds.add(shelf.getBookId());
+            }
+        }
+
         int added = 0;
         for (BooklistBook bb : booklistBooks) {
-            SysBook book = sysBookService.getById(bb.getBookId());
+            SysBook book = bookMap.get(bb.getBookId());
             if (!authContextService.isPublicBook(book)) {
                 continue;
             }
-            QueryWrapper<UserBookshelf> shelfQuery = new QueryWrapper<>();
-            shelfQuery.eq("user_id", currentUserId).eq("book_id", bb.getBookId());
-            if (shelfMapper.selectCount(shelfQuery) == 0) {
+            if (!existingShelfBookIds.contains(bb.getBookId())) {
                 UserBookshelf shelf = new UserBookshelf();
                 shelf.setUserId(currentUserId);
                 shelf.setBookId(bb.getBookId());
@@ -151,9 +186,16 @@ public class BooklistController {
                 shelf.setIsFinished(0);
                 shelf.setCurrentChapterIndex(0);
                 shelfMapper.insert(shelf);
+                existingShelfBookIds.add(bb.getBookId());
                 added++;
             }
         }
         return Result.success("Imported " + added + " books");
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

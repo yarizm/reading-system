@@ -10,6 +10,7 @@ import com.example.reading.service.ISysTagService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +42,7 @@ public class TagController {
     public Result<?> create(@RequestBody SysTag tag, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
+        if (tag == null) return Result.error("400", "标签名不能为空");
         if (tag.getName() == null || tag.getName().trim().isEmpty()) {
             return Result.error("400", "标签名不能为空");
         }
@@ -57,8 +59,9 @@ public class TagController {
     public Result<?> update(@PathVariable Long id, @RequestBody SysTag tag, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
+        if (tag == null) return Result.error("400", "参数不完整");
         SysTag existing = tagService.getById(id);
-        if (existing == null || !existing.getUserId().equals(userId)) {
+        if (existing == null || !userId.equals(existing.getUserId())) {
             return Result.error("403", "Forbidden");
         }
         if (existing.getIsSystem() == 1 && tag.getName() != null && !tag.getName().equals(existing.getName())) {
@@ -75,7 +78,7 @@ public class TagController {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
         SysTag existing = tagService.getById(id);
-        if (existing == null || !existing.getUserId().equals(userId)) {
+        if (existing == null || !userId.equals(existing.getUserId())) {
             return Result.error("403", "Forbidden");
         }
         if (existing.getIsSystem() == 1) {
@@ -89,7 +92,7 @@ public class TagController {
     public Result<?> bind(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
-        if (body.get("noteId") == null || body.get("tagIds") == null) {
+        if (body == null || body.get("noteId") == null || body.get("tagIds") == null) {
             return Result.error("400", "参数不完整");
         }
         Long noteId;
@@ -99,15 +102,13 @@ public class TagController {
             return Result.error("400", "noteId 格式错误");
         }
         SysNote note = sysNoteService.getById(noteId);
-        if (note == null || !note.getUserId().equals(userId)) {
+        if (note == null || !userId.equals(note.getUserId())) {
             return Result.error("403", "无权操作此笔记");
         }
         List<Long> tagIds;
         try {
-            @SuppressWarnings("unchecked")
-            List<Number> rawList = (List<Number>) body.get("tagIds");
-            tagIds = rawList.stream().map(Number::longValue).toList();
-        } catch (ClassCastException | NullPointerException e) {
+            tagIds = parseLongList(body.get("tagIds"));
+        } catch (IllegalArgumentException e) {
             return Result.error("400", "tagIds 格式错误");
         }
         noteTagService.bindTags(noteId, tagIds);
@@ -118,7 +119,7 @@ public class TagController {
     public Result<?> unbind(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
-        if (body.get("noteId") == null || body.get("tagIds") == null) {
+        if (body == null || body.get("noteId") == null || body.get("tagIds") == null) {
             return Result.error("400", "参数不完整");
         }
         Long noteId;
@@ -128,18 +129,40 @@ public class TagController {
             return Result.error("400", "noteId 格式错误");
         }
         SysNote note = sysNoteService.getById(noteId);
-        if (note == null || !note.getUserId().equals(userId)) {
+        if (note == null || !userId.equals(note.getUserId())) {
             return Result.error("403", "无权操作此笔记");
         }
         List<Long> tagIds;
         try {
-            @SuppressWarnings("unchecked")
-            List<Number> rawList = (List<Number>) body.get("tagIds");
-            tagIds = rawList.stream().map(Number::longValue).toList();
-        } catch (ClassCastException | NullPointerException e) {
+            tagIds = parseLongList(body.get("tagIds"));
+        } catch (IllegalArgumentException e) {
             return Result.error("400", "tagIds 格式错误");
         }
         noteTagService.unbindTags(noteId, tagIds);
         return Result.success();
+    }
+
+    private List<Long> parseLongList(Object value) {
+        if (!(value instanceof List<?> rawList)) {
+            throw new IllegalArgumentException("not a list");
+        }
+
+        List<Long> result = new ArrayList<>(rawList.size());
+        for (Object item : rawList) {
+            if (item instanceof Number number) {
+                result.add(number.longValue());
+                continue;
+            }
+            if (item instanceof String text) {
+                try {
+                    result.add(Long.valueOf(text));
+                    continue;
+                } catch (NumberFormatException ignored) {
+                    // Fall through to the shared format error below.
+                }
+            }
+            throw new IllegalArgumentException("invalid id");
+        }
+        return result;
     }
 }

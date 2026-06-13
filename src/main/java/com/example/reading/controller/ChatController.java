@@ -33,7 +33,7 @@ public class ChatController {
     @PostMapping("/send")
     public Result<?> sendMessage(@RequestBody ChatMessage msg, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || msg.getReceiverId() == null) {
+        if (currentUserId == null || msg == null || msg.getReceiverId() == null) {
             return Result.error("403", "Forbidden");
         }
         if (!authContextService.areFriends(currentUserId, msg.getReceiverId())) {

@@ -142,6 +142,7 @@ import request from '../utils/request'
 import { useRouter } from 'vue-router'
 import { getAuthHeaders } from '../utils/authHeaders'
 import { useAuthStore } from '../stores/auth'
+import { formatDatePart } from '../utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -278,10 +279,7 @@ const changePassword = () => {
   })
 }
 
-const formatTime = (timeStr) => {
-  if(!timeStr) return '未知'
-  return timeStr.split('T')[0]
-}
+const formatTime = (timeStr) => formatDatePart(timeStr, '未知')
 </script>
 
 <style scoped>

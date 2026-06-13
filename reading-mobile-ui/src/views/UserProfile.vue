@@ -1,8 +1,8 @@
 <script setup>
+import request from '../utils/request'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { getCachedImage } from '../utils/imageCache'
 
@@ -24,14 +24,14 @@ watch(() => profile.value.avatar, async (newVal) => {
 onMounted(async () => {
 
   try {
-    const res = await axios.get(`/api/sysUser/profile/${userId}`)
+    const res = await request.get(`/api/sysUser/profile/${userId}`)
     if (res.data.code === '200') profile.value = res.data.data
   } catch (error) {
     console.error(error)
   }
 
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userId}`)
+    const res = await request.get(`/api/bookshelf/list/${userId}`)
     if (res.data.code === '200') shelfBooks.value = res.data.data || []
   } catch (error) {
     console.error(error)
@@ -43,7 +43,7 @@ const addFriend = async () => {
     showToast('请先登录')
     return
   }
-  const res = await axios.post('/api/friend/request', {
+  const res = await request.post('/api/friend/request', {
     userId: currentUser.value.id,
     friendId: userId
   })

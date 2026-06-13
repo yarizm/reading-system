@@ -44,10 +44,33 @@ public class ReviewController {
         if (userId == null) return Result.error("403", "Forbidden");
 
         List<NoteReview> reviews = noteReviewService.getTodayReviews(userId);
+        List<Long> noteIds = reviews.stream().map(NoteReview::getNoteId).toList();
+
+        Map<Long, SysNote> noteMap = new HashMap<>();
+        if (!noteIds.isEmpty()) {
+            for (SysNote note : sysNoteService.listByIds(noteIds)) {
+                noteMap.put(note.getId(), note);
+            }
+        }
+
+        Set<Long> bookIds = new HashSet<>();
+        for (SysNote note : noteMap.values()) {
+            if (note.getBookId() != null) {
+                bookIds.add(note.getBookId());
+            }
+        }
+
+        Map<Long, SysBook> bookMap = new HashMap<>();
+        if (!bookIds.isEmpty()) {
+            for (SysBook book : sysBookService.listByIds(bookIds)) {
+                bookMap.put(book.getId(), book);
+            }
+        }
+
         List<Map<String, Object>> reviewList = new ArrayList<>();
 
         for (NoteReview r : reviews) {
-            SysNote note = sysNoteService.getById(r.getNoteId());
+            SysNote note = noteMap.get(r.getNoteId());
             if (note == null) continue;
 
             Map<String, Object> item = new HashMap<>();
@@ -59,7 +82,7 @@ public class ReviewController {
             noteInfo.put("content", note.getContent());
             noteInfo.put("bookId", note.getBookId());
 
-            SysBook book = sysBookService.getById(note.getBookId());
+            SysBook book = bookMap.get(note.getBookId());
             if (book != null) noteInfo.put("bookTitle", book.getTitle());
 
             item.put("note", noteInfo);
@@ -79,7 +102,7 @@ public class ReviewController {
     public Result<Map<String, Object>> rate(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
-        if (body.get("noteId") == null || body.get("score") == null) {
+        if (body == null || body.get("noteId") == null || body.get("score") == null) {
             return Result.error("400", "参数不完整");
         }
 
@@ -97,7 +120,7 @@ public class ReviewController {
         }
 
         SysNote note = sysNoteService.getById(noteId);
-        if (note == null || !note.getUserId().equals(userId)) {
+        if (!isOwnedNote(note, userId)) {
             return Result.error("403", "Forbidden");
         }
 
@@ -109,7 +132,7 @@ public class ReviewController {
     public Result<String> add(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = authContextService.currentUserId(request);
         if (userId == null) return Result.error("403", "Forbidden");
-        if (body.get("noteId") == null) return Result.error("400", "noteId 不能为空");
+        if (body == null || body.get("noteId") == null) return Result.error("400", "noteId 不能为空");
 
         Long noteId;
         try {
@@ -119,7 +142,7 @@ public class ReviewController {
         }
 
         SysNote note = sysNoteService.getById(noteId);
-        if (note == null || !note.getUserId().equals(userId)) {
+        if (!isOwnedNote(note, userId)) {
             return Result.error("403", "Forbidden");
         }
 
@@ -133,7 +156,7 @@ public class ReviewController {
         if (userId == null) return Result.error("403", "Forbidden");
 
         SysNote note = sysNoteService.getById(noteId);
-        if (note == null || !note.getUserId().equals(userId)) {
+        if (!isOwnedNote(note, userId)) {
             return Result.error("403", "Forbidden");
         }
 
@@ -233,17 +256,32 @@ public class ReviewController {
         query.eq("user_id", userId).eq("content_type", "book_review_summary").orderByDesc("create_time");
         List<AiGeneratedContent> list = aiGeneratedContentService.list(query);
 
+        Set<Long> bookIds = list.stream()
+                .map(AiGeneratedContent::getReferenceId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, SysBook> bookMap = new HashMap<>();
+        if (!bookIds.isEmpty()) {
+            for (SysBook book : sysBookService.listByIds(bookIds)) {
+                bookMap.put(book.getId(), book);
+            }
+        }
+
         List<Map<String, Object>> result = new ArrayList<>();
         for (AiGeneratedContent c : list) {
             Map<String, Object> item = new HashMap<>();
             item.put("id", c.getId());
             item.put("bookId", c.getReferenceId());
-            SysBook b = sysBookService.getById(c.getReferenceId());
+            SysBook b = bookMap.get(c.getReferenceId());
             if (b != null) item.put("bookTitle", b.getTitle());
             item.put("content", c.getContent());
             item.put("createTime", c.getCreateTime());
             result.add(item);
         }
         return Result.success(result);
+    }
+
+    private boolean isOwnedNote(SysNote note, Long userId) {
+        return note != null && userId != null && userId.equals(note.getUserId());
     }
 }

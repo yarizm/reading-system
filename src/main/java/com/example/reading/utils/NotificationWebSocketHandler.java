@@ -10,6 +10,9 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,18 +101,35 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     }
 
     private Long extractUserId(WebSocketSession session) {
-        String query = session.getUri() != null ? session.getUri().getQuery() : null;
-        if (query != null && query.contains("userId=") && query.contains("token=")) {
-            try {
-                String val = query.split("userId=")[1].split("&")[0];
-                Long requestedUserId = Long.parseLong(val);
-                String token = query.split("token=")[1].split("&")[0];
-                Long tokenUserId = authContextService.currentUserId(token);
-                return requestedUserId.equals(tokenUserId) ? requestedUserId : null;
-            } catch (Exception e) {
-                return null;
-            }
+        if (session.getUri() == null) {
+            return null;
         }
-        return null;
+
+        Map<String, String> queryParams = parseQuery(session.getUri().getRawQuery());
+        try {
+            Long requestedUserId = Long.parseLong(queryParams.getOrDefault("userId", ""));
+            Long tokenUserId = authContextService.currentUserId(queryParams.get("token"));
+            return requestedUserId.equals(tokenUserId) ? requestedUserId : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private Map<String, String> parseQuery(String rawQuery) {
+        Map<String, String> params = new HashMap<>();
+        if (rawQuery == null || rawQuery.isBlank()) {
+            return params;
+        }
+
+        for (String pair : rawQuery.split("&")) {
+            int separatorIndex = pair.indexOf('=');
+            if (separatorIndex <= 0) {
+                continue;
+            }
+            String key = URLDecoder.decode(pair.substring(0, separatorIndex), StandardCharsets.UTF_8);
+            String value = URLDecoder.decode(pair.substring(separatorIndex + 1), StandardCharsets.UTF_8);
+            params.putIfAbsent(key, value);
+        }
+        return params;
     }
 }

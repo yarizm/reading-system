@@ -136,6 +136,13 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Share } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
+import { formatChatTime as formatTime } from '../utils/dateTime'
+import {
+  formatSharePosition,
+  getAudioShare,
+  getBookShare,
+  getParagraphShare
+} from '../utils/shareMessage'
 
 const route = useRoute()
 const router = useRouter()
@@ -143,10 +150,6 @@ const authStore = useAuthStore()
 const friendId = Number(route.params.friendId)
 const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const defaultCover = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
-
-const PARAGRAPH_SHARE_PREFIX = '__PARAGRAPH_SHARE__'
-const AUDIO_SHARE_PREFIX = '__AUDIO_SHARE__'
-const BOOK_SHARE_PREFIX = '__BOOK_SHARE__'
 
 const userInfo = ref({})
 const friendInfo = ref({})
@@ -269,34 +272,6 @@ const confirmShare = async () => {
   }
 }
 
-const parseShareContent = (content, prefix) => {
-  if (!content || !content.startsWith(prefix)) return null
-  try {
-    return JSON.parse(content.slice(prefix.length))
-  } catch (error) {
-    return null
-  }
-}
-
-const getParagraphShare = (msg) => parseShareContent(msg.content, PARAGRAPH_SHARE_PREFIX)
-const getAudioShare = (msg) => parseShareContent(msg.content, AUDIO_SHARE_PREFIX)
-const getBookShare = (msg) => parseShareContent(msg.content, BOOK_SHARE_PREFIX)
-
-const formatSharePosition = (share) => {
-  if (!share) return '来自聊天分享'
-  const parts = []
-  if (share.chapterIndex !== null && share.chapterIndex !== undefined) {
-    parts.push(`第 ${share.chapterIndex + 1} 章`)
-  }
-  if (share.paragraphIndex !== null && share.paragraphIndex !== undefined) {
-    parts.push(`第 ${share.paragraphIndex + 1} 段`)
-  }
-  if (parts.length > 0) return parts.join(' · ')
-  if (share.sourceType === 'chapter') return '整章听书'
-  if (share.sourceType === 'paragraph') return '段落朗读'
-  return '朗读音频'
-}
-
 const openSharedParagraph = (msg) => {
   const share = getParagraphShare(msg)
   if (!share?.bookId) return
@@ -334,16 +309,6 @@ const openSharedBook = async (msg) => {
   router.push(`/book/${share.bookId}`)
 }
 
-const formatTime = (timeStr) => {
-  if (!timeStr) return ''
-  const d = new Date(timeStr)
-  const pad = (num) => String(num).padStart(2, '0')
-  const today = new Date()
-  if (d.toDateString() === today.toDateString()) {
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 </script>
 
 <style scoped>

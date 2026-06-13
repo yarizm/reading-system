@@ -201,6 +201,7 @@ import {
 } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationSocket } from '../composables/useNotificationSocket'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -232,7 +233,19 @@ const notifications = ref([])
 const showNotifyPanel = ref(false)
 const isBlinking = ref(false)
 let blinkTimer = null
-let ws = null
+
+const { connect: connectNotificationSocket, close: closeNotificationSocket } = useNotificationSocket({
+  getUser: () => userInfo.value,
+  onMessage: (msg) => {
+    if (msg.type === 'chat' && msg.data?.shareType === 'book') {
+      loadUnreadCount()
+      return
+    }
+    notifications.value.unshift(msg)
+    triggerBlink()
+    loadUnreadCount()
+  }
+})
 
 onMounted(() => {
   if (authStore.user) {
@@ -243,44 +256,13 @@ onMounted(() => {
   loadRecommendBooks()
   loadBooks()
   loadUnreadCount()
-  connectWebSocket()
+  connectNotificationSocket()
 })
 
 onUnmounted(() => {
-  if (ws) ws.close()
+  closeNotificationSocket()
   if (blinkTimer) clearTimeout(blinkTimer)
 })
-
-const connectWebSocket = () => {
-  if (!userInfo.value.id) return
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`
-  ws = new WebSocket(wsUrl)
-
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'chat' && msg.data?.shareType === 'book') {
-        loadUnreadCount()
-        return
-      }
-      notifications.value.unshift(msg)
-      // 触发闪烁动画
-      triggerBlink()
-      // 刷新未读数
-      loadUnreadCount()
-    } catch (e) {
-      console.error('WS parse error', e)
-    }
-  }
-
-  ws.onclose = () => {
-    // 自动重连（5秒后）
-    if (userInfo.value.id) {
-      setTimeout(connectWebSocket, 5000)
-    }
-  }
-}
 
 const triggerBlink = () => {
   isBlinking.value = true
@@ -442,7 +424,7 @@ const handleUserCommand = (cmd) => {
     userInfo.value = {}
     unreadCount.value = 0
     notifications.value = []
-    if (ws) ws.close()
+    closeNotificationSocket()
     ElMessage.success('已退出登录')
     loadRecommendBooks()
   } else if (cmd === 'profile') {

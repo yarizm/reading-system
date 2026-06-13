@@ -63,6 +63,9 @@ public class UserBookshelfController {
     /** 加入书架（自动去重） */
     @PostMapping("/add")
     public Result<?> add(@RequestBody UserBookshelf shelf, HttpServletRequest request) {
+        if (shelf == null || shelf.getUserId() == null || shelf.getBookId() == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         if (!isSelf(shelf.getUserId(), request)) {
             return Result.error("403", "Forbidden");
         }
@@ -80,6 +83,7 @@ public class UserBookshelfController {
         shelf.setLastReadTime(LocalDateTime.now());
         shelf.setProgressIndex(0);
         shelf.setIsFinished(0);
+        shelf.setCurrentChapterIndex(0);
         shelfMapper.insert(shelf);
         return Result.success();
     }
@@ -127,6 +131,9 @@ public class UserBookshelfController {
     /** 更新阅读进度（段落行数 + 章节索引） */
     @PostMapping("/updateProgress")
     public Result<?> updateProgress(@RequestBody UserBookshelf shelf, HttpServletRequest request) {
+        if (shelf == null || shelf.getUserId() == null || shelf.getBookId() == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         if (!isSelf(shelf.getUserId(), request)) {
             return Result.error("403", "Forbidden");
         }
@@ -135,7 +142,9 @@ public class UserBookshelfController {
 
         UserBookshelf exist = shelfMapper.selectOne(query);
         if (exist != null) {
-            exist.setProgressIndex(shelf.getProgressIndex());
+            if (shelf.getProgressIndex() != null) {
+                exist.setProgressIndex(shelf.getProgressIndex());
+            }
             if (shelf.getCurrentChapterIndex() != null) {
                 exist.setCurrentChapterIndex(shelf.getCurrentChapterIndex());
             }

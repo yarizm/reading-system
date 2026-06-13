@@ -503,11 +503,16 @@ public class BookRecommendationServiceImpl implements IBookRecommendationService
     }
 
     private List<SysBook> randomFallback() {
-        List<SysBook> books = new ArrayList<>(sysBookMapper.selectRandomBooks());
-        if (books.size() > HOME_RECOMMEND_LIMIT) {
-            return books.subList(0, HOME_RECOMMEND_LIMIT);
+        Long total = sysBookMapper.countPublicBooks();
+        if (total == null || total <= 0) {
+            return Collections.emptyList();
         }
-        return books;
+        int limit = (int) Math.min(HOME_RECOMMEND_LIMIT, total);
+        long maxOffset = Math.max(0L, total - limit);
+        long offset = maxOffset == 0
+                ? 0
+                : ThreadLocalRandom.current().nextLong(maxOffset + 1);
+        return sysBookMapper.selectPublicBooksWindow(limit, offset);
     }
 
     private record CandidateScore(Long bookId, double weight, int supporterCount) {

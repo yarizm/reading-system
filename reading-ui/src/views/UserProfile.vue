@@ -81,6 +81,7 @@ import { useRoute } from 'vue-router'
 import request from '../utils/request'
 import { WarningFilled, CollectionTag, Calendar, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import { formatDatePart } from '../utils/dateTime'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -111,10 +112,7 @@ onMounted(async () => {
   }
 })
 
-const formatDate = (timeStr) => {
-  if (!timeStr) return '未知'
-  return String(timeStr).split('T')[0]
-}
+const formatDate = (timeStr) => formatDatePart(timeStr, '未知')
 </script>
 
 <style scoped>

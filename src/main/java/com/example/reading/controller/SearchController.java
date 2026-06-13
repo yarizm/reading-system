@@ -3,6 +3,7 @@ package com.example.reading.controller;
 import com.example.reading.common.Result;
 import com.example.reading.service.AuthContextService;
 import com.example.reading.service.BookSearchService;
+import com.example.reading.utils.PaginationUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -67,7 +68,7 @@ public class SearchController {
             query.eq("category", category);
         }
         
-        Page<SysBook> page = new Page<>(pageNum, pageSize);
+        Page<SysBook> page = new Page<>(PaginationUtils.pageNum(pageNum), PaginationUtils.pageSize(pageSize));
         sysBookMapper.selectPage(page, query);
         
         Map<String, Object> result = new HashMap<>();

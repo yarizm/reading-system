@@ -1,8 +1,8 @@
 <script setup>
+import request from '../utils/request'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { getCachedImage } from '../utils/imageCache'
 
@@ -44,7 +44,7 @@ const handleAvatarUpload = async (file) => {
   const formData = new FormData()
   formData.append('file', file.file)
   try {
-    const res = await axios.post('/api/sysBook/upload', formData)
+    const res = await request.post('/api/sysBook/upload', formData)
     form.avatar = res.data.data
     showSuccessToast('头像上传成功')
   } catch (error) {
@@ -54,7 +54,7 @@ const handleAvatarUpload = async (file) => {
 
 const updateProfile = async () => {
   try {
-    const res = await axios.post('/api/sysUser/update', form)
+    const res = await request.post('/api/sysUser/update', form)
     if (res.data.code === '200') {
       const nextUser = res.data.data
       authStore.login(nextUser)
@@ -82,7 +82,7 @@ const changePassword = async () => {
     return
   }
   try {
-    await axios.post('/api/sysUser/password', {
+    await request.post('/api/sysUser/password', {
       id: userInfo.value.id,
       oldPassword: pwdForm.oldPassword,
       password: pwdForm.password

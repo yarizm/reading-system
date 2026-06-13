@@ -93,6 +93,7 @@ import { ref, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
 import { renderMarkdown } from '../utils/markdown'
 import request from '../utils/request'
+import { formatDateTimeMinute as formatTime } from '../utils/dateTime'
 
 const tagList = ref([])
 const noteList = ref([])
@@ -101,13 +102,6 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = 20
 const total = ref(0)
-
-
-
-const formatTime = (time) => {
-  if (!time) return ''
-  return time.replace('T', ' ').substring(0, 16)
-}
 
 const loadTags = async () => {
   try {

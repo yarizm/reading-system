@@ -1,7 +1,5 @@
 package com.example.reading.controller;
 
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.reading.common.Result;
@@ -14,17 +12,16 @@ import com.example.reading.mapper.BookReviewRequestMapper;
 import com.example.reading.dto.BookEditDTO;
 import com.example.reading.dto.ReviewActionDTO;
 import com.example.reading.service.AuthContextService;
-import com.example.reading.service.DifyKnowledgeBaseService;
+import com.example.reading.service.BookFileStorageService;
+import com.example.reading.service.BookIndexSyncService;
 import com.example.reading.service.IBookRecommendationService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.ISysUserService;
+import com.example.reading.utils.PaginationUtils;
 import com.google.gson.Gson;
 import com.example.reading.utils.ChapterParser;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,13 +39,8 @@ import java.util.*;
 @RequestMapping("/sysBook")
 public class SysBookController {
 
-    private static final Logger log = LoggerFactory.getLogger(SysBookController.class);
-
     @Autowired
     private ISysBookService sysBookService;
-
-    @Autowired(required = false)
-    private com.example.reading.service.BookSearchService bookSearchService;
 
     @Autowired
     private com.example.reading.mapper.SysCommentMapper commentMapper;
@@ -72,15 +64,15 @@ public class SysBookController {
     private BookReviewRequestMapper reviewRequestMapper;
 
     @Autowired
-    private DifyKnowledgeBaseService difyKnowledgeBaseService;
+    private BookIndexSyncService bookIndexSyncService;
 
     private final Gson gson = new Gson();
 
     @Autowired
     private AuthContextService authContextService;
 
-    @Value("${file.upload-path}")
-    private String uploadPath;
+    @Autowired
+    private BookFileStorageService bookFileStorageService;
 
     private boolean isUploader(SysBook book, HttpServletRequest request) {
         Long uid = authContextService.currentUserId(request);
@@ -101,28 +93,6 @@ public class SysBookController {
         return books;
     }
 
-    private void trySyncToEs(Long bookId) {
-        if (bookSearchService == null) return;
-        try { bookSearchService.syncOneBookToEs(bookId); }
-        catch (Exception e) { log.error("Failed to sync book to ES. bookId={}", bookId, e); }
-    }
-
-    private void tryDeleteFromEs(Long bookId) {
-        if (bookSearchService == null) return;
-        try { bookSearchService.deleteFromEs(bookId); }
-        catch (Exception e) { log.error("Failed to delete book from ES. bookId={}", bookId, e); }
-    }
-
-    private void trySyncToKb(Long bookId) {
-        try { difyKnowledgeBaseService.syncOneBookToKb(bookId); }
-        catch (Exception e) { log.error("Failed to sync book to KB. bookId={}", bookId, e); }
-    }
-
-    private void tryDeleteFromKb(Long bookId) {
-        try { difyKnowledgeBaseService.deleteFromKb(bookId); }
-        catch (Exception e) { log.error("Failed to delete book from KB. bookId={}", bookId, e); }
-    }
-
     // ===================== 通用功能 =====================
 
     /** 通用文件上传（封面图 / 电子书 / 头像等） */
@@ -135,21 +105,11 @@ public class SysBookController {
         if (file.isEmpty()) {
             return Result.error("500", "上传文件不能为空");
         }
-        String originalFilename = file.getOriginalFilename();
-        String suffix = FileUtil.getSuffix(originalFilename);
-        if (suffix == null || !Set.of("jpg", "jpeg", "png", "webp", "gif", "txt").contains(suffix.toLowerCase())) {
+        try {
+            return Result.success(bookFileStorageService.storeUpload(file));
+        } catch (BookFileStorageService.UnsupportedFileTypeException e) {
             return Result.error("400", "Unsupported file type");
         }
-        String fileName = IdUtil.fastSimpleUUID() + "." + suffix;
-
-        File dir = new File(uploadPath);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-        file.transferTo(new File(dir, fileName));
-
-        String fileUrl = "/files/" + fileName;
-        return Result.success(fileUrl);
     }
 
     // ===================== 管理员书籍管理 =====================
@@ -161,14 +121,13 @@ public class SysBookController {
         if (!authContextService.isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
-        if (sysBook.getTitle() == null) {
+        if (sysBook == null || sysBook.getTitle() == null) {
             return Result.error("500", "书名不能为空");
         }
         sysBook.setStatus(2);
         sysBook.setCreateTime(LocalDateTime.now());
         sysBookService.save(sysBook);
-        trySyncToEs(sysBook.getId());
-        trySyncToKb(sysBook.getId());
+        bookIndexSyncService.syncBook(sysBook.getId());
         return Result.success();
     }
 
@@ -179,9 +138,11 @@ public class SysBookController {
         if (!authContextService.isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
+        if (sysBook == null || sysBook.getId() == null) {
+            return Result.error("400", "Book id is required");
+        }
         sysBookService.updateById(sysBook);
-        trySyncToEs(sysBook.getId());
-        trySyncToKb(sysBook.getId());
+        bookIndexSyncService.syncBook(sysBook.getId());
         return Result.success();
     }
 
@@ -193,8 +154,7 @@ public class SysBookController {
             return Result.error("403", "Forbidden");
         }
         sysBookService.removeById(id);
-        tryDeleteFromEs(id);
-        tryDeleteFromKb(id);
+        bookIndexSyncService.deleteBook(id);
         return Result.success();
     }
 
@@ -204,7 +164,7 @@ public class SysBookController {
     @PostMapping("/userUpload")
     public Result<?> userUpload(@RequestBody SysBook sysBook, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || !currentUserId.equals(sysBook.getUploaderId())) {
+        if (currentUserId == null || sysBook == null || !currentUserId.equals(sysBook.getUploaderId())) {
             return Result.error("403", "Forbidden");
         }
         if (sysBook.getTitle() == null || sysBook.getUploaderId() == null) {
@@ -280,7 +240,7 @@ public class SysBookController {
     /** 用户编辑私有/驳回书籍（直接更新 sys_book，status 保持原状态） */
     @PutMapping("/userEdit")
     public Result<?> userEdit(@RequestBody BookEditDTO dto, HttpServletRequest request) {
-        if (dto.getId() == null) return Result.error("400", "书籍ID不能为空");
+        if (dto == null || dto.getId() == null) return Result.error("400", "书籍ID不能为空");
         SysBook existing = sysBookService.getById(dto.getId());
         if (existing == null) return Result.error("404", "书籍不存在");
         if (!isUploader(existing, request)) {
@@ -305,7 +265,7 @@ public class SysBookController {
     @Transactional
     public Result<?> applyEdit(@RequestBody SysBook sysBook,
                                             HttpServletRequest request) {
-        if (sysBook.getId() == null) return Result.error("400", "书籍ID不能为空");
+        if (sysBook == null || sysBook.getId() == null) return Result.error("400", "书籍ID不能为空");
         SysBook existing = sysBookService.getById(sysBook.getId());
         if (existing == null) return Result.error("404", "书籍不存在");
         if (!isUploader(existing, request)) {
@@ -400,6 +360,9 @@ public class SysBookController {
         if (!authContextService.isAdmin(httpRequest)) {
             return Result.error("403", "无权审核请求");
         }
+        if (dto == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         String action = dto.getAction();
         String rejectReason = dto.getRejectReason();
         BookReviewRequest request = reviewRequestMapper.selectById(id);
@@ -414,8 +377,7 @@ public class SysBookController {
                 case "new" -> {
                     book.setStatus(2);
                     sysBookService.updateById(book);
-                    trySyncToEs(book.getId());
-                    trySyncToKb(book.getId());
+                    bookIndexSyncService.syncBook(book.getId());
                 }
                 case "edit" -> {
                     SysBook changes = gson.fromJson(request.getNewBookData(), SysBook.class);
@@ -427,14 +389,12 @@ public class SysBookController {
                     if (changes.getCoverUrl() != null) book.setCoverUrl(changes.getCoverUrl());
                     if (changes.getFilePath() != null) book.setFilePath(changes.getFilePath());
                     sysBookService.updateById(book);
-                    trySyncToEs(book.getId());
-                    trySyncToKb(book.getId());
+                    bookIndexSyncService.syncBook(book.getId());
                 }
                 case "delist" -> {
                     book.setStatus(4);
                     sysBookService.updateById(book);
-                    tryDeleteFromEs(book.getId());
-                    tryDeleteFromKb(book.getId());
+                    bookIndexSyncService.deleteBook(book.getId());
                 }
                 default -> {
                     return Result.error("400", "不支持的审核请求类型");
@@ -501,7 +461,7 @@ public class SysBookController {
         if (adminView && !authContextService.isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
-        Page<SysBook> page = new Page<>(pageNum, pageSize);
+        Page<SysBook> page = new Page<>(PaginationUtils.pageNum(pageNum), PaginationUtils.pageSize(pageSize));
         QueryWrapper<SysBook> query = new QueryWrapper<>();
 
         // 如果不是管理员，则只返回已公开的书籍（status=2 或 status 为 NULL 的历史数据）
@@ -521,12 +481,22 @@ public class SysBookController {
         
         // 若为管理员，获取上传者昵称以供展示
         if (adminView) {
+            Set<Long> uploaderIds = new HashSet<>();
             for (SysBook book : resultPage.getRecords()) {
                 if (book.getUploaderId() != null) {
-                    SysUser uploader = sysUserService.getById(book.getUploaderId());
-                    if (uploader != null) {
-                        book.setUploaderNickname(uploader.getNickname());
-                    }
+                    uploaderIds.add(book.getUploaderId());
+                }
+            }
+            Map<Long, SysUser> uploaderMap = new HashMap<>();
+            if (!uploaderIds.isEmpty()) {
+                for (SysUser uploader : sysUserService.listByIds(uploaderIds)) {
+                    uploaderMap.put(uploader.getId(), uploader);
+                }
+            }
+            for (SysBook book : resultPage.getRecords()) {
+                SysUser uploader = uploaderMap.get(book.getUploaderId());
+                if (uploader != null) {
+                    book.setUploaderNickname(uploader.getNickname());
                 }
             }
         }
@@ -562,12 +532,8 @@ public class SysBookController {
             return Result.error("400", "书籍文件路径为空");
         }
 
-        String fileName = book.getFilePath().substring(book.getFilePath().lastIndexOf("/") + 1);
-        String finalPath = uploadPath.endsWith("/") || uploadPath.endsWith("\\")
-                ? uploadPath + fileName
-                : uploadPath + File.separator + fileName;
-
-        File bookFile = new File(finalPath);
+        File bookFile = bookFileStorageService.resolveStoredFile(book.getFilePath());
+        String finalPath = bookFile.getPath();
         if (!bookFile.exists()) {
             return Result.error("500", "磁盘上找不到文件: " + finalPath);
         }
@@ -577,8 +543,7 @@ public class SysBookController {
             chapterMapper.insert(chapter);
         }
 
-        trySyncToEs(bookId);
-        trySyncToKb(bookId);
+        bookIndexSyncService.syncBook(bookId);
         return Result.success("成功解析出 " + chapters.size() + " 个章节");
     }
 

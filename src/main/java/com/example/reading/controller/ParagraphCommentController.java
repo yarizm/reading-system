@@ -58,7 +58,7 @@ public class ParagraphCommentController {
     @PostMapping("/like")
     @Transactional
     public Result<?> toggleLike(@RequestBody Map<String, Long> params, HttpServletRequest request) {
-        Long commentId = params.get("commentId");
+        Long commentId = params == null ? null : params.get("commentId");
         Long userId = authContextService.currentUserId(request);
         if (commentId == null || userId == null) {
             return Result.error("403", "Forbidden");
@@ -111,7 +111,7 @@ public class ParagraphCommentController {
     @PostMapping("/add")
     public Result<?> add(@RequestBody SysParagraphComment comment, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || comment.getBookId() == null || comment.getContent() == null) {
+        if (currentUserId == null || comment == null || comment.getBookId() == null || comment.getContent() == null) {
             return Result.error("500", "Invalid parameters");
         }
         if (!authContextService.canViewBook(comment.getBookId(), request)) {
@@ -136,7 +136,7 @@ public class ParagraphCommentController {
         if (!authContextService.isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
-        if (comment.getId() == null || comment.getContent() == null) {
+        if (comment == null || comment.getId() == null || comment.getContent() == null) {
             return Result.error("500", "Invalid parameters");
         }
         SysParagraphComment exist = commentMapper.selectById(comment.getId());

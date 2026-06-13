@@ -4,14 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.reading.entity.SysBook;
 import com.example.reading.entity.SysUser;
 import com.example.reading.mapper.BookShareMapper;
+import com.example.reading.mapper.FriendshipMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,10 +25,45 @@ class AuthContextServiceTest {
     private ISysUserService sysUserService;
 
     @Mock
+    private AuthTokenService authTokenService;
+
+    @Mock
+    private FriendshipMapper friendshipMapper;
+
+    @Mock
     private BookShareMapper bookShareMapper;
 
     @InjectMocks
     private AuthContextService authContextService;
+
+    @Test
+    void currentUserIdCachesActiveUserWithinRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        SysUser user = new SysUser();
+        user.setId(42L);
+
+        when(authTokenService.resolveUserId(request)).thenReturn(42L);
+        when(sysUserService.getById(42L)).thenReturn(user);
+
+        assertThat(authContextService.currentUserId(request)).isEqualTo(42L);
+        assertThat(authContextService.currentUserId(request)).isEqualTo(42L);
+
+        verify(authTokenService, times(1)).resolveUserId(request);
+        verify(sysUserService, times(1)).getById(42L);
+    }
+
+    @Test
+    void currentUserIdCachesMissingActiveUserWithinRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        when(authTokenService.resolveUserId(request)).thenReturn(null);
+
+        assertThat(authContextService.currentUserId(request)).isNull();
+        assertThat(authContextService.currentUserId(request)).isNull();
+
+        verify(authTokenService, times(1)).resolveUserId(request);
+        verify(sysUserService, times(0)).getById(any());
+    }
 
     @Test
     void isAdminOnlyAllowsRoleOneUsers() {
@@ -75,6 +114,17 @@ class AuthContextServiceTest {
         when(bookShareMapper.selectCount(any(QueryWrapper.class))).thenReturn(1L);
 
         assertThat(authContextService.canViewBook(privateBook, 101L)).isTrue();
+    }
+
+    @Test
+    void canViewBookSkipsShareLookupForPublicBooks() {
+        SysBook publicBook = new SysBook();
+        publicBook.setId(40L);
+        publicBook.setStatus(2);
+
+        assertThat(authContextService.canViewBook(publicBook, 101L)).isTrue();
+
+        verify(bookShareMapper, times(0)).selectCount(any(QueryWrapper.class));
     }
 
     @Test

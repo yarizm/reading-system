@@ -10,7 +10,7 @@ import com.example.reading.service.IBookShareService;
 import com.example.reading.service.IChatMessageService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.utils.NotificationWebSocketHandler;
-import com.google.gson.Gson;
+import com.example.reading.utils.ShareMessageBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +23,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/bookShare")
 public class BookShareController {
-
-    private static final String BOOK_SHARE_PREFIX = "__BOOK_SHARE__";
-    private final Gson gson = new Gson();
 
     @Autowired
     private IBookShareService bookShareService;
@@ -49,7 +46,7 @@ public class BookShareController {
     @Transactional
     public Result<?> shareBook(@RequestBody BookShare share, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || share.getReceiverId() == null || share.getBookId() == null) {
+        if (currentUserId == null || share == null || share.getReceiverId() == null || share.getBookId() == null) {
             return Result.error("403", "Forbidden");
         }
         if (!authContextService.areFriends(currentUserId, share.getReceiverId())) {
@@ -69,7 +66,7 @@ public class BookShareController {
         ChatMessage chatMessage = new ChatMessage();
         chatMessage.setSenderId(currentUserId);
         chatMessage.setReceiverId(share.getReceiverId());
-        chatMessage.setContent(buildChatShareContent(share, book));
+        chatMessage.setContent(ShareMessageBuilder.buildBookShareContent(share, book));
         chatMessage.setIsRead(0);
         chatMessage.setCreateTime(LocalDateTime.now());
         chatMessageService.save(chatMessage);
@@ -84,17 +81,6 @@ public class BookShareController {
         notificationHandler.sendNotification(share.getReceiverId(), "chat", data);
         notificationHandler.sendNotification(share.getReceiverId(), "book_share", data);
         return Result.success();
-    }
-
-    private String buildChatShareContent(BookShare share, SysBook book) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("shareId", share.getId());
-        payload.put("bookId", share.getBookId());
-        payload.put("bookTitle", book == null ? "" : book.getTitle());
-        payload.put("bookAuthor", book == null ? "" : book.getAuthor());
-        payload.put("coverUrl", book == null ? "" : book.getCoverUrl());
-        payload.put("message", share.getMessage() == null ? "" : share.getMessage().trim());
-        return BOOK_SHARE_PREFIX + gson.toJson(payload);
     }
 
     @GetMapping("/received/{userId}")

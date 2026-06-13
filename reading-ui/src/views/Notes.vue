@@ -156,6 +156,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { renderMarkdown } from '../utils/markdown'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
+import { formatDateTimeMinute as formatTime } from '../utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -173,11 +174,6 @@ const total = ref(0)
 const showRelations = ref(false)
 const relationList = ref([])
 const reviewedNoteIds = ref(new Set())
-
-const formatTime = (time) => {
-  if (!time) return ''
-  return time.replace('T', ' ').substring(0, 16)
-}
 
 const loadTags = async () => {
   try {

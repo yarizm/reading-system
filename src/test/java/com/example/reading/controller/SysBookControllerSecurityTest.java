@@ -9,21 +9,22 @@ import com.example.reading.mapper.SysChapterMapper;
 import com.example.reading.mapper.SysCommentMapper;
 import com.example.reading.mapper.UserBookshelfMapper;
 import com.example.reading.service.AuthContextService;
-import com.example.reading.service.DifyKnowledgeBaseService;
+import com.example.reading.service.BookFileStorageService;
+import com.example.reading.service.BookIndexSyncService;
 import com.example.reading.service.IBookRecommendationService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,10 +55,13 @@ class SysBookControllerSecurityTest {
     private BookReviewRequestMapper reviewRequestMapper;
 
     @Mock
-    private DifyKnowledgeBaseService difyKnowledgeBaseService;
+    private BookIndexSyncService bookIndexSyncService;
 
     @Mock
     private AuthContextService authContextService;
+
+    @Mock
+    private BookFileStorageService bookFileStorageService;
 
     @Mock
     private HttpServletRequest request;
@@ -65,9 +69,62 @@ class SysBookControllerSecurityTest {
     @InjectMocks
     private SysBookController controller;
 
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(controller, "uploadPath", "C:/tmp/reading-test-files/");
+    @Test
+    void addRejectsMissingBodyWithoutSavingBook() {
+        when(authContextService.isAdmin(request)).thenReturn(true);
+
+        Result<?> result = controller.add(null, request);
+
+        assertThat(result.getCode()).isEqualTo("500");
+        verify(sysBookService, never()).save(any(SysBook.class));
+        verify(bookIndexSyncService, never()).syncBook(any());
+    }
+
+    @Test
+    void updateRejectsMissingBodyWithoutSyncingIndex() {
+        when(authContextService.isAdmin(request)).thenReturn(true);
+
+        Result<?> result = controller.update(null, request);
+
+        assertThat(result.getCode()).isEqualTo("400");
+        verify(sysBookService, never()).updateById(any(SysBook.class));
+        verify(bookIndexSyncService, never()).syncBook(any());
+    }
+
+    @Test
+    void userUploadRejectsMissingBodyWithoutSavingBook() {
+        when(authContextService.currentUserId(request)).thenReturn(100L);
+
+        Result<?> result = controller.userUpload(null, request);
+
+        assertThat(result.getCode()).isEqualTo("403");
+        verify(sysBookService, never()).save(any(SysBook.class));
+    }
+
+    @Test
+    void userEditRejectsMissingBodyWithoutLoadingBook() {
+        Result<?> result = controller.userEdit(null, request);
+
+        assertThat(result.getCode()).isEqualTo("400");
+        verify(sysBookService, never()).getById(any());
+    }
+
+    @Test
+    void applyEditRejectsMissingBodyWithoutLoadingBook() {
+        Result<?> result = controller.applyEdit(null, request);
+
+        assertThat(result.getCode()).isEqualTo("400");
+        verify(sysBookService, never()).getById(any());
+    }
+
+    @Test
+    void reviewRequestRejectsMissingBodyWithoutLoadingRequest() {
+        when(authContextService.isAdmin(request)).thenReturn(true);
+
+        Result<?> result = controller.reviewRequest(5L, null, request);
+
+        assertThat(result.getCode()).isEqualTo("400");
+        verify(reviewRequestMapper, never()).selectById(any());
     }
 
     @Test

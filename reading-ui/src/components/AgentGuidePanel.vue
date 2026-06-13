@@ -22,7 +22,7 @@
         <div v-for="(msg, index) in chatList" :key="index" class="chat-row" :class="msg.role === 'user' ? 'row-right' : 'row-left'">
           <div class="bubble-wrapper">
             <!-- 渲染普通 markdown -->
-            <div class="bubble-content markdown-body" v-html="renderMarkdown(msg.content.replace(/\[ACTION:.*?\]/g, ''))"></div>
+            <div class="bubble-content markdown-body" v-html="renderMarkdown(stripGuideActions(msg.content))"></div>
             
             <!-- 渲染 action 按钮 -->
             <div class="action-cards" v-if="msg.actions && msg.actions.length > 0">
@@ -67,6 +67,8 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { getAuthHeaders } from '../utils/authHeaders'
+import { parseGuideActions, stripGuideActions } from '../utils/guideActions'
+import { parseSseJsonEvent } from '../utils/sseEvents'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -99,21 +101,6 @@ const scrollToBottom = () => {
       chatBox.value.scrollTop = chatBox.value.scrollHeight
     }
   })
-}
-
-// 解析文本中的 [ACTION:type:payload:label]
-const parseActions = (text) => {
-  const actions = []
-  const regex = /\[ACTION:([^:]+):([^:]+):([^\]]+)\]/g
-  let match
-  while ((match = regex.exec(text)) !== null) {
-    actions.push({
-      type: match[1],
-      payload: match[2],
-      label: match[3]
-    })
-  }
-  return actions
 }
 
 const executeAction = (action) => {
@@ -156,17 +143,12 @@ const sendChat = async (textOverride = null) => {
         conversationId: currentConversationId.value
       }),
       onmessage(event) {
-        let dataJson
-        try {
-          dataJson = JSON.parse(event.data)
-        } catch (e) {
-          console.warn('Guide SSE parse error:', e, event.data)
-          return
-        }
+        const dataJson = parseSseJsonEvent(event, 'Guide SSE')
+        if (!dataJson) return
         if (dataJson.event === 'message') {
           const newText = dataJson.answer || ''
           chatList.value[aiMsgIndex].content += newText
-          chatList.value[aiMsgIndex].actions = parseActions(chatList.value[aiMsgIndex].content)
+          chatList.value[aiMsgIndex].actions = parseGuideActions(chatList.value[aiMsgIndex].content)
           scrollToBottom()
           if (dataJson.conversation_id) {
             currentConversationId.value = dataJson.conversation_id

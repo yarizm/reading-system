@@ -1,6 +1,7 @@
 package com.example.reading.service;
 
 import com.example.reading.entity.*;
+import com.example.reading.utils.PaginationUtils;
 import com.example.reading.repository.EsNoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +39,9 @@ public class NoteEsService {
 
     @Autowired
     private ISysTagService tagService;
+
+    @Autowired
+    private NoteTagViewService noteTagViewService;
 
     @Value("${app.elasticsearch.enabled:false}")
     private boolean esEnabled;
@@ -87,6 +91,8 @@ public class NoteEsService {
         if (!esEnabled || elasticsearchOperations == null) return null;
 
         try {
+            int safePage = PaginationUtils.pageNum(page);
+            int safeSize = PaginationUtils.pageSize(size);
             Criteria criteria = Criteria.where("userId").is(userId);
 
             if (keyword != null && !keyword.trim().isEmpty()) {
@@ -103,28 +109,13 @@ public class NoteEsService {
             }
 
             CriteriaQuery query = new CriteriaQuery(criteria);
-            query.setPageable(PageRequest.of(page - 1, size));
+            query.setPageable(PageRequest.of(safePage - 1, safeSize));
 
             SearchHits<EsNoteDoc> hits = elasticsearchOperations.search(query, EsNoteDoc.class);
 
             // 批量获取标签（2 次查询代替 N*2 次）
             List<Long> noteIds = hits.stream().map(h -> h.getContent().getId()).toList();
-            Map<Long, List<Long>> noteTagMap = new HashMap<>();
-            Set<Long> allTagIds = new HashSet<>();
-            if (!noteIds.isEmpty()) {
-                com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<NoteTag> tagQuery =
-                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
-                tagQuery.in("note_id", noteIds);
-                List<NoteTag> allNoteTags = noteTagService.list(tagQuery);
-                for (NoteTag nt : allNoteTags) {
-                    noteTagMap.computeIfAbsent(nt.getNoteId(), k -> new ArrayList<>()).add(nt.getTagId());
-                    allTagIds.add(nt.getTagId());
-                }
-            }
-            Map<Long, SysTag> tagInfoMap = new HashMap<>();
-            if (!allTagIds.isEmpty()) {
-                tagService.listByIds(allTagIds).forEach(t -> tagInfoMap.put(t.getId(), t));
-            }
+            Map<Long, List<Map<String, Object>>> tagInfoByNoteId = noteTagViewService.listTagInfoByNoteIds(noteIds);
 
             List<Map<String, Object>> records = new ArrayList<>();
             for (SearchHit<EsNoteDoc> hit : hits) {
@@ -137,17 +128,7 @@ public class NoteEsService {
                 item.put("createTime", doc.getCreateTime());
                 item.put("bookTitle", doc.getBookTitle());
 
-                List<Long> tagIds = noteTagMap.getOrDefault(doc.getId(), List.of());
-                item.put("tags", tagIds.stream()
-                        .map(tagInfoMap::get)
-                        .filter(Objects::nonNull)
-                        .map(t -> {
-                            Map<String, Object> tagMap = new HashMap<>();
-                            tagMap.put("id", t.getId());
-                            tagMap.put("name", t.getName());
-                            tagMap.put("color", t.getColor());
-                            return tagMap;
-                        }).toList());
+                item.put("tags", tagInfoByNoteId.getOrDefault(doc.getId(), List.of()));
                 records.add(item);
             }
 

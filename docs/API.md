@@ -118,8 +118,8 @@
 | 方法 | 路径 | 说明 | 鉴权 |
 |------|------|------|------|
 | POST | `/booklist/create` | 创建书单 | Token |
-| GET | `/booklist/list/{userId}` | 用户书单 | 无 |
-| GET | `/booklist/detail/{id}` | 书单详情 | 无 |
+| GET | `/booklist/list/{userId}` | 用户书单 | Token |
+| GET | `/booklist/detail/{id}` | 书单详情 | 作者 |
 | DELETE | `/booklist/delete/{id}` | 删除书单 | 作者 |
 | POST | `/booklist/addBook` | 加入书单 | Token |
 | DELETE | `/booklist/removeBook` | 移出书单 | Token |
@@ -132,6 +132,14 @@
 | POST | `/sysNote/add` | 添加笔记 | Token |
 | GET | `/sysNote/list/{bookId}` | 笔记列表 | Token |
 | DELETE | `/sysNote/{id}` | 删除笔记 | 作者 |
+
+## 笔记导入: `/import`
+| 方法 | 路径 | 说明 | 鉴权 |
+|------|------|------|------|
+| POST | `/import/upload?format=weread` | 导入 WeRead 格式笔记 | Token |
+| POST | `/import/upload?format=csv` | 导入 CSV 格式笔记 | Token |
+| POST | `/import/upload?format=kindle` | 导入 Kindle 标注 | Token |
+| POST | `/import/upload?format=json` | 导入 JSON 格式笔记 | Token |
 
 ## 鉴权方式
 

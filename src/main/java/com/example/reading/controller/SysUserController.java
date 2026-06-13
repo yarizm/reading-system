@@ -13,6 +13,7 @@ import com.example.reading.service.AuthContextService;
 import com.example.reading.service.AuthTokenService;
 import com.example.reading.service.ISysUserService;
 import com.example.reading.service.RateLimitService;
+import com.example.reading.utils.PaginationUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -72,6 +73,9 @@ public class SysUserController {
         if (!rateLimitService.isAllowed("login:" + clientIp, 10, 60)) {
             return Result.error("429", "登录尝试过于频繁，请60秒后再试");
         }
+        if (userDto == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         try {
             SysUser user = sysUserService.login(userDto);
             user.setToken(authTokenService.createToken(user.getId()));
@@ -87,6 +91,9 @@ public class SysUserController {
         Long currentUserId = currentUserId(request);
         if (currentUserId == null) {
             return Result.error("403", "Forbidden");
+        }
+        if (user == null) {
+            return Result.error("400", "Invalid parameters");
         }
         SysUser existing = sysUserService.getById(currentUserId);
         if (existing == null) {
@@ -117,7 +124,7 @@ public class SysUserController {
         if (!isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
-        if (user.getId() == null) {
+        if (user == null || user.getId() == null) {
             return Result.error("500", "用户ID不能为空");
         }
         
@@ -154,6 +161,9 @@ public class SysUserController {
         if (currentUserId == null) {
             return Result.error("403", "Forbidden");
         }
+        if (user == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         if (StrUtil.isBlank(user.getOldPassword())) {
             return Result.error("500", "旧密码不能为空");
         }
@@ -183,7 +193,7 @@ public class SysUserController {
         if (!isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
-        Page<SysUser> page = new Page<>(pageNum, pageSize);
+        Page<SysUser> page = new Page<>(PaginationUtils.pageNum(pageNum), PaginationUtils.pageSize(pageSize));
         QueryWrapper<SysUser> query = new QueryWrapper<>();
         if (!username.isEmpty()) {
             query.like("username", username).or().like("nickname", username);

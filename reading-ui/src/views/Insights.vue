@@ -50,8 +50,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
-import { getAuthHeaders } from '../utils/authHeaders'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { marked } from 'marked'
@@ -78,7 +76,7 @@ const parsedReport = computed(() => DOMPurify.sanitize(marked.parse(reportConten
 
 const fetchLatestInsight = async () => {
   try {
-    const res = await axios.get('/api/insight/latest', { headers: getAuthHeaders() })
+    const res = await request.get('/api/insight/latest')
     if (res.data && res.data.hasReport) {
       hasReport.value = true
       reportContent.value = res.data.report
@@ -94,7 +92,7 @@ const fetchLatestInsight = async () => {
 const generateInsight = async () => {
   isGenerating.value = true
   try {
-    const res = await axios.post('/api/insight/generate', {}, { headers: getAuthHeaders() })
+    const res = await request.post('/api/insight/generate', {})
     if (res.data && res.data.report) {
       hasReport.value = true
       reportContent.value = res.data.report

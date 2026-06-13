@@ -60,7 +60,7 @@ public class SysCommentController {
     @PostMapping("/add")
     public Result<?> add(@RequestBody SysComment comment, HttpServletRequest request) {
         Long currentUserId = authContextService.currentUserId(request);
-        if (currentUserId == null || comment.getBookId() == null) {
+        if (currentUserId == null || comment == null || comment.getBookId() == null) {
             return Result.error("500", "Invalid parameters");
         }
         if (!authContextService.canViewBook(comment.getBookId(), request)) {
@@ -87,7 +87,7 @@ public class SysCommentController {
     @PostMapping("/like")
     @Transactional
     public Result<?> toggleLike(@RequestBody Map<String, Long> params, HttpServletRequest request) {
-        Long commentId = params.get("commentId");
+        Long commentId = params == null ? null : params.get("commentId");
         Long userId = authContextService.currentUserId(request);
         if (commentId == null || userId == null) {
             return Result.error("403", "Forbidden");
@@ -149,7 +149,7 @@ public class SysCommentController {
         if (!authContextService.isAdmin(request)) {
             return Result.error("403", "Forbidden");
         }
-        if (comment.getId() == null || comment.getContent() == null) {
+        if (comment == null || comment.getId() == null || comment.getContent() == null) {
             return Result.error("500", "Invalid parameters");
         }
         SysComment exist = commentMapper.selectById(comment.getId());

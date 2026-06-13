@@ -31,6 +31,9 @@ public class AiController {
     }
 
     private boolean canGenerateForAudioRequest(AudioGenerateRequest request, HttpServletRequest httpRequest) {
+        if (request == null) {
+            return false;
+        }
         Long bookId = request.getBookId();
         if (request.getChapterId() != null) {
             SysChapter chapter = chapterMapper.selectById(request.getChapterId());
@@ -52,6 +55,9 @@ public class AiController {
         if (!authContextService.isAuthenticated(httpRequest)) {
             return Result.error("403", "Forbidden");
         }
+        if (request == null) {
+            return Result.error("400", "Invalid parameters");
+        }
         if (!authContextService.canViewBook(request.getBookId(), httpRequest)) {
             return Result.error("403", "Forbidden");
         }
@@ -63,6 +69,9 @@ public class AiController {
                                                        HttpServletRequest httpRequest) {
         if (!authContextService.isAuthenticated(httpRequest)) {
             return Result.error("403", "Forbidden");
+        }
+        if (request == null) {
+            return Result.error("400", "Invalid parameters");
         }
         if (!canGenerateForAudioRequest(request, httpRequest)) {
             return Result.error("403", "Forbidden");

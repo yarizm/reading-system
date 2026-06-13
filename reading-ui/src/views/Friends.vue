@@ -160,6 +160,8 @@ import { ElMessage } from 'element-plus'
 import { Search, ArrowLeft, Plus, ChatDotRound, Share, Delete, Select } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationSocket } from '../composables/useNotificationSocket'
+import { formatDatePart } from '../utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -191,7 +193,20 @@ const myShelf = ref([])
 const selectedBookId = ref(null)
 const shareMessage = ref('')
 
-let ws = null
+const { connect: connectNotificationSocket, close: closeNotificationSocket } = useNotificationSocket({
+  getUser: () => userInfo.value,
+  onMessage: (msg) => {
+    if (msg.type === 'chat') {
+      loadFriendUnreadCounts()
+    } else if (msg.type === 'friend_request') {
+      loadPendingRequests()
+      ElMessage.info(`${msg.data?.nickname || '某人'} 想加你为好友`)
+    } else if (msg.type === 'book_share') {
+      loadReceivedShares()
+      ElMessage.info(`收到一本书籍分享：${msg.data?.bookTitle || ''}`)
+    }
+  }
+})
 
 onMounted(() => {
   if (!authStore.user) {
@@ -204,45 +219,12 @@ onMounted(() => {
   loadPendingRequests()
   loadReceivedShares()
   loadFriendUnreadCounts()
-  connectWebSocket()
+  connectNotificationSocket()
 })
 
 onUnmounted(() => {
-  if (ws) ws.close()
+  closeNotificationSocket()
 })
-
-const connectWebSocket = () => {
-  if (!userInfo.value.id) return
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${protocol}//${location.host}/ws/notification?userId=${userInfo.value.id}&token=${encodeURIComponent(userInfo.value.token || '')}`
-  ws = new WebSocket(wsUrl)
-
-  ws.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data)
-      if (msg.type === 'chat') {
-        // 收到新消息，刷新好友未读计数
-        loadFriendUnreadCounts()
-      } else if (msg.type === 'friend_request') {
-        // 收到好友请求，刷新待处理列表
-        loadPendingRequests()
-        ElMessage.info(`${msg.data?.nickname || '某人'} 想加你为好友`)
-      } else if (msg.type === 'book_share') {
-        // 收到书籍分享，刷新分享列表
-        loadReceivedShares()
-        ElMessage.info(`收到一本书籍分享：${msg.data?.bookTitle || ''}`)
-      }
-    } catch (e) {
-      console.error('WS parse error', e)
-    }
-  }
-
-  ws.onclose = () => {
-    if (userInfo.value.id) {
-      setTimeout(connectWebSocket, 5000)
-    }
-  }
-}
 
 const searchUsers = async () => {
   if (!searchKeyword.value.trim()) return
@@ -375,10 +357,7 @@ const confirmShare = async () => {
   }
 }
 
-const formatDate = (timeStr) => {
-  if (!timeStr) return '未知'
-  return String(timeStr).split('T')[0]
-}
+const formatDate = (timeStr) => formatDatePart(timeStr, '未知')
 </script>
 
 <style scoped>

@@ -2,12 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import request from '../utils/request'
 
 import { useAuthStore } from '../stores/auth'
-import { getAuthHeaders } from '../utils/authHeaders'
 import CachedImage from '../components/CachedImage.vue'
+import { formatDateTimeMinute as formatTime } from '../utils/dateTime'
 
 import { LruCache } from '../utils/lruCache'
 
@@ -64,7 +63,7 @@ const loadBookDetail = async () => {
     return
   }
   try {
-    const res = await axios.get(`/api/sysBook/${bookId}`)
+    const res = await request.get(`/api/sysBook/${bookId}`)
     if (res.data.code === '200') {
       bookInfo.value = res.data.data
       bookCache.set(bookId, res.data.data)
@@ -83,7 +82,7 @@ const loadComments = async () => {
     commentList.value = commentsCache.get(bookId)
     return
   }
-  const res = await axios.get(`/api/comment/list/${bookId}`, {
+  const res = await request.get(`/api/comment/list/${bookId}`, {
     params: { userId: userInfo.value.id }
   })
   if (res.data.code === '200') {
@@ -98,7 +97,7 @@ const checkShelf = async () => {
     inShelf.value = shelfCache.get(bookId)
     return
   }
-  const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+  const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
   if (res.data.code === '200') {
     const shelfBooks = res.data.data || []
     const isInShelf = shelfBooks.some((book) => String(book.bookId) === String(bookId))
@@ -138,14 +137,14 @@ const toggleShelf = async () => {
   }
   if (inShelf.value) {
     await showConfirmDialog({ title: '提示', message: '确定将这本书移出书架吗？' })
-    await axios.delete('/api/bookshelf/removeByBook', {
+    await request.delete('/api/bookshelf/removeByBook', {
       params: { userId: userInfo.value.id, bookId }
     })
     inShelf.value = false
     shelfCache.set(bookId, false)
     showSuccessToast('已移出书架')
   } else {
-    await axios.post('/api/bookshelf/add', {
+    await request.post('/api/bookshelf/add', {
       userId: userInfo.value.id,
       bookId
     })
@@ -193,7 +192,7 @@ const submitComment = async () => {
   submitting.value = true
   try {
     const isReply = !!replyTarget.value
-    await axios.post('/api/comment/add', {
+    await request.post('/api/comment/add', {
       bookId,
       userId: userInfo.value.id,
       content: myComment.value,
@@ -220,7 +219,7 @@ const generateAiReviewDraft = async () => {
   }
   generatingDraft.value = true
   try {
-    const res = await axios.post('/api/social/ai/draft-review', { bookId: bookId }, { headers: getAuthHeaders() })
+    const res = await request.post('/api/social/ai/draft-review', { bookId: bookId })
     if (res.data && res.data.result) {
       myComment.value = res.data.result
       showSuccessToast('已生成 AI 书评草稿，请修改完善')
@@ -239,7 +238,7 @@ const toggleLike = async (item) => {
     showToast('请先登录')
     return
   }
-  const res = await axios.post('/api/comment/like', {
+  const res = await request.post('/api/comment/like', {
     commentId: item.id,
     userId: userInfo.value.id
   })
@@ -251,14 +250,9 @@ const toggleLike = async (item) => {
 
 const deleteComment = async (id) => {
   await showConfirmDialog({ title: '提示', message: '确定删除这条评论吗？' })
-  await axios.delete(`/api/comment/${id}`)
+  await request.delete(`/api/comment/${id}`)
   showSuccessToast('评论已删除')
   loadComments()
-}
-
-const formatTime = (time) => {
-  if (!time) return ''
-  return String(time).replace('T', ' ').substring(0, 16)
 }
 
 const shareBook = async () => {

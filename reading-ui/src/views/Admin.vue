@@ -326,6 +326,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' // 引入路由
 import request from '../utils/request'
 import { getAuthHeaders } from '../utils/authHeaders'
+import { parseJsonSafely } from '../utils/jsonUtils'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {ArrowLeft, Plus, User, CircleCheck, CircleClose} from '@element-plus/icons-vue' // 引入图标
 import { useAuthStore } from '../stores/auth'
@@ -556,8 +557,7 @@ const saveParagraphComment = async (c) => {
 const deleteParagraphComment = async (id) => {
   try {
     await ElMessageBox.confirm('确定删除该条评论吗？', '提示', { type: 'warning' })
-    const userStr = localStorage.getItem('user')
-    const uid = userStr ? JSON.parse(userStr).id : 0
+    const uid = authStore.user?.id || 0
     const res = await request.delete(`/api/paragraphComment/${id}?userId=${uid}`)
     if (res.data.code === '200') {
         ElMessage.success('删除成功')
@@ -605,12 +605,9 @@ const openReviewDetail = (row) => {
   currentReview.value = row
   editDiffRows.value = []
   if (row.requestType === 'edit' && row.newBookData) {
-    let newData = {}
-    try {
-      newData = JSON.parse(row.newBookData)
-    } catch (e) {
-      console.error('Failed to parse newBookData:', e)
-    }
+    const newData = parseJsonSafely(row.newBookData, {}, (error) => {
+      console.error('Failed to parse newBookData:', error)
+    })
     // 将 SQL JOIN 的下划线字段映射到驼峰
     const oldBook = {
       title: row.bookTitle,

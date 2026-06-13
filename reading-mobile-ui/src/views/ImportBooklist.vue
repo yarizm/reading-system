@@ -1,8 +1,8 @@
 <script setup>
+import request from '../utils/request'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
@@ -17,7 +17,7 @@ const importing = ref(false)
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`/api/booklist/share/${shareCode}`)
+    const res = await request.get(`/api/booklist/share/${shareCode}`)
     if (res.data.code === '200') {
       booklistInfo.value = res.data.data
     } else {
@@ -35,7 +35,7 @@ const importBooklist = async () => {
   }
   importing.value = true
   try {
-    const res = await axios.post(`/api/booklist/import/${shareCode}`, {
+    const res = await request.post(`/api/booklist/import/${shareCode}`, {
       userId: userInfo.value.id
     })
     if (res.data.code === '200') {

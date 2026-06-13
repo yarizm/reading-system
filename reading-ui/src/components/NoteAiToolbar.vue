@@ -24,11 +24,10 @@
 </template>
 
 <script setup>
+import request from '../utils/request'
 import { ref, computed } from 'vue'
 import { Document, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
-import { getAuthHeaders } from '../utils/authHeaders'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -52,11 +51,9 @@ const runAiAction = async (action, title) => {
   if (action === 'quiz') isQuizzing.value = true
 
   try {
-    const res = await axios.post(`/api/note/ai/run/${props.bookId}`, {
+    const res = await request.post(`/api/note/ai/run/${props.bookId}`, {
       action,
       title
-    }, {
-      headers: getAuthHeaders()
     })
 
     if (res.data && res.data.result) {

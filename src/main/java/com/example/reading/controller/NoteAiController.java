@@ -2,6 +2,7 @@ package com.example.reading.controller;
 
 import com.example.reading.entity.AiGeneratedContent;
 import com.example.reading.service.AuthContextService;
+import com.example.reading.service.DifyWorkflowClient;
 import com.example.reading.service.IAiGeneratedContentService;
 import com.example.reading.service.ISysBookService;
 import com.example.reading.service.NoteAiService;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
@@ -34,15 +34,15 @@ public class NoteAiController {
     @Autowired
     private ISysBookService sysBookService;
 
+    private final DifyWorkflowClient difyWorkflowClient;
     private final String difyWorkflowUrl;
     private final String difyApiKey;
-    private final WebClient webClient;
 
-    public NoteAiController(WebClient.Builder builder,
+    public NoteAiController(DifyWorkflowClient difyWorkflowClient,
                              @Value("${dify.note.api-url}") String url,
                              @Value("${dify.note.api-key}") String apiKey) {
-        this.webClient = builder.build();
-        this.difyWorkflowUrl = com.example.reading.utils.DifyUrlUtils.trimTrailingSlash(url);
+        this.difyWorkflowClient = difyWorkflowClient;
+        this.difyWorkflowUrl = url;
         this.difyApiKey = apiKey;
     }
 
@@ -58,8 +58,17 @@ public class NoteAiController {
         if (currentUserId == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
+        if (request == null || request.action == null || request.action.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "action is required");
+        }
+        if (!isSupportedAction(request.action)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "unsupported action");
+        }
+        if ("enhance".equals(request.action)
+                && (request.singleNoteContent == null || request.singleNoteContent.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "singleNoteContent is required");
+        }
 
-        Map<String, Object> payload = new HashMap<>();
         Map<String, String> inputs = new HashMap<>();
         inputs.put("task_type", "note");
         inputs.put("action", request.action);
@@ -80,53 +89,26 @@ public class NoteAiController {
         inputs.put("book_info", bookInfo);
         inputs.put("context", request.title != null ? request.title : "");
 
-        payload.put("inputs", inputs);
-        payload.put("response_mode", "blocking");
-        payload.put("user", "user-" + currentUserId);
+        return difyWorkflowClient.runBlocking(difyWorkflowUrl, difyApiKey, inputs, "user-" + currentUserId)
+                .map(outputs -> {
+                    Object result = outputs.get("result");
+                    if (result != null) {
+                        String resultText = String.valueOf(result);
 
-        return webClient.post()
-                .uri(difyWorkflowUrl + "/workflows/run")
-                .header("Authorization", "Bearer " + difyApiKey)
-                .bodyValue(payload)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .publishOn(reactor.core.scheduler.Schedulers.boundedElastic())
-                .map(response -> {
-                    // 检查 Dify 返回的错误信息（仅有 code 且无 data 时视为错误）
-                    if (response.containsKey("code") && !response.containsKey("data")) {
-                        String difyCode = String.valueOf(response.getOrDefault("code", ""));
-                        String difyMsg = String.valueOf(response.getOrDefault("message", "未知错误"));
-                        if ("not_workflow_app".equals(difyCode)) {
-                            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                    "Dify 应用类型错误：配置的 KEY 对应的不是 Workflow 应用，请在 Dify 后台确认");
-                        }
-                        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                "Dify 错误: [" + difyCode + "] " + difyMsg);
-                    }
+                        AiGeneratedContent content = new AiGeneratedContent();
+                        content.setUserId(currentUserId);
+                        content.setContentType("note_" + request.action);
+                        content.setReferenceType("book");
+                        content.setReferenceId(bookId);
+                        content.setTitle(request.title != null ? request.title : "AI Generated " + request.action);
+                        content.setContent(resultText);
+                        content.setCreateTime(java.time.LocalDateTime.now());
+                        aiGeneratedContentService.save(content);
 
-                    // 解析 Dify Workflow 返回结果
-                    Map<String, Object> data = (Map<String, Object>) response.get("data");
-                    if (data != null) {
-                        Map<String, Object> outputs = (Map<String, Object>) data.get("outputs");
-                        if (outputs != null && outputs.containsKey("result")) {
-                            String resultText = (String) outputs.get("result");
-
-                            // 保存到数据库
-                            AiGeneratedContent content = new AiGeneratedContent();
-                            content.setUserId(currentUserId);
-                            content.setContentType("note_" + request.action);
-                            content.setReferenceType("book");
-                            content.setReferenceId(bookId);
-                            content.setTitle(request.title != null ? request.title : "AI Generated " + request.action);
-                            content.setContent(resultText);
-                            content.setCreateTime(java.time.LocalDateTime.now());
-                            aiGeneratedContentService.save(content);
-
-                            Map<String, Object> finalRes = new HashMap<>();
-                            finalRes.put("id", content.getId());
-                            finalRes.put("result", resultText);
-                            return finalRes;
-                        }
+                        Map<String, Object> finalRes = new HashMap<>();
+                        finalRes.put("id", content.getId());
+                        finalRes.put("result", resultText);
+                        return finalRes;
                     }
                     throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Dify 返回格式不正确");
                 });
@@ -140,7 +122,7 @@ public class NoteAiController {
         }
         
         AiGeneratedContent content = aiGeneratedContentService.getById(id);
-        if (content == null || !content.getUserId().equals(currentUserId)) {
+        if (content == null || !currentUserId.equals(content.getUserId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "内容不存在或无权限访问");
         }
         
@@ -151,5 +133,9 @@ public class NoteAiController {
         res.put("contentType", content.getContentType());
         res.put("createTime", content.getCreateTime());
         return res;
+    }
+
+    private boolean isSupportedAction(String action) {
+        return "enhance".equals(action) || "summarize".equals(action) || "quiz".equals(action);
     }
 }

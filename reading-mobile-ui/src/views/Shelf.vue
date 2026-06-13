@@ -1,10 +1,11 @@
 <script setup>
+import request from '../utils/request'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showSuccessToast, showToast } from 'vant'
-import axios from 'axios'
 
 import { useAuthStore } from '../stores/auth'
+import { formatDatePart } from '../utils/dateTime'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -36,7 +37,7 @@ onMounted(() => {
 const loadShelf = async () => {
   loading.value = true
   try {
-    const res = await axios.get(`/api/bookshelf/list/${userInfo.value.id}`)
+    const res = await request.get(`/api/bookshelf/list/${userInfo.value.id}`)
     if (res.data.code === '200') {
       shelfList.value = res.data.data || []
     }
@@ -46,7 +47,7 @@ const loadShelf = async () => {
 }
 
 const loadBooklists = async () => {
-  const res = await axios.get(`/api/booklist/list/${userInfo.value.id}`)
+  const res = await request.get(`/api/booklist/list/${userInfo.value.id}`)
   if (res.data.code === '200') {
     booklists.value = res.data.data || []
   }
@@ -58,7 +59,7 @@ const continueRead = (bookId) => {
 
 const removeFromShelf = async (id) => {
   await showConfirmDialog({ message: '确定将这本书移出书架吗？' })
-  await axios.delete(`/api/bookshelf/remove/${id}`)
+  await request.delete(`/api/bookshelf/remove/${id}`)
   showSuccessToast('已移出书架')
   loadShelf()
 }
@@ -70,10 +71,7 @@ const calcPercent = (item) => {
   return Math.min(100, Math.round(((current + 1) / total) * 100))
 }
 
-const formatTime = (time) => {
-  if (!time) return '刚刚更新'
-  return String(time).split('T')[0]
-}
+const formatTime = (time) => formatDatePart(time, '刚刚更新')
 
 const formatProgress = (item) => {
   const chapterIndex = Number(item.currentChapterIndex || 0) + 1
@@ -83,7 +81,7 @@ const formatProgress = (item) => {
 }
 
 const toggleVisibility = async (value) => {
-  await axios.post('/api/sysUser/update', {
+  await request.post('/api/sysUser/update', {
     id: userInfo.value.id,
     shelfVisible: value
   })
@@ -94,7 +92,7 @@ const toggleVisibility = async (value) => {
 
 const createBooklist = async () => {
   if (!newBooklist.value.name.trim()) return
-  const res = await axios.post('/api/booklist/create', {
+  const res = await request.post('/api/booklist/create', {
     userId: userInfo.value.id,
     name: newBooklist.value.name.trim(),
     description: newBooklist.value.description.trim()
@@ -109,13 +107,13 @@ const createBooklist = async () => {
 
 const deleteBooklist = async (id) => {
   await showConfirmDialog({ message: '确定删除这个书单吗？' })
-  await axios.delete(`/api/booklist/delete/${id}`)
+  await request.delete(`/api/booklist/delete/${id}`)
   showSuccessToast('书单已删除')
   loadBooklists()
 }
 
 const viewDetail = async (id) => {
-  const res = await axios.get(`/api/booklist/detail/${id}`)
+  const res = await request.get(`/api/booklist/detail/${id}`)
   if (res.data.code === '200') {
     detailBooklist.value = res.data.data
     showDetailPopup.value = true
@@ -123,7 +121,7 @@ const viewDetail = async (id) => {
 }
 
 const removeBookFromList = async (booklistId, bookId) => {
-  await axios.delete(`/api/booklist/removeBook?booklistId=${booklistId}&bookId=${bookId}`)
+  await request.delete(`/api/booklist/removeBook?booklistId=${booklistId}&bookId=${bookId}`)
   showSuccessToast('已从书单移除')
   viewDetail(booklistId)
   loadBooklists()
