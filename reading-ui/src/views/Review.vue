@@ -29,13 +29,13 @@
         </div>
 
         <div class="card-wrapper" @click="flipped = !flipped">
-          <div class="review-card" :class="{ 'is-flipped': flipped }">
-            <div class="card-front">
+          <div class="review-card" ref="cardRef" :class="{ 'is-flipped': flipped }">
+            <div class="card-front" ref="frontRef">
               <div class="card-book">{{ currentNote.bookTitle }}</div>
               <div class="card-quote">"{{ currentNote.selectedText || '无选文' }}"</div>
               <div class="card-hint">点击翻转查看笔记</div>
             </div>
-            <div class="card-back">
+            <div class="card-back" ref="backRef">
               <div class="card-book">📝 我的笔记</div>
               <div class="card-content">{{ currentNote.content }}</div>
             </div>
@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -71,24 +71,45 @@ const loading = ref(true)
 const reviewList = ref([])
 const currentIndex = ref(0)
 const flipped = ref(false)
+const cardRef = ref(null)
+const frontRef = ref(null)
+const backRef = ref(null)
 
 const currentNote = computed(() => reviewList.value[currentIndex.value]?.note || {})
 const progressPercent = computed(() => reviewList.value.length ? Math.round((currentIndex.value / reviewList.value.length) * 100) : 0)
+
+const updateCardHeight = () => {
+  const activeFace = flipped.value ? backRef.value : frontRef.value
+  if (activeFace && cardRef.value) {
+    cardRef.value.style.height = activeFace.scrollHeight + 'px'
+  }
+}
+
+watch([flipped, currentIndex], () => nextTick(updateCardHeight))
 
 const loadToday = async () => {
   try {
     const res = await request.get('/api/review/today')
     if (res.data.code === '200') reviewList.value = res.data.data?.reviews || []
   } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  finally {
+    loading.value = false
+    await nextTick()
+    updateCardHeight()
+  }
 }
 
 const rate = async (score) => {
   try {
     await request.post('/api/review/rate', { noteId: currentNote.value.id, score })
     flipped.value = false
-    if (currentIndex.value < reviewList.value.length - 1) currentIndex.value++
-    else reviewList.value = []
+    if (currentIndex.value < reviewList.value.length - 1) {
+      currentIndex.value++
+      await nextTick()
+      cardRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      reviewList.value = []
+    }
   } catch (e) { ElMessage.error('提交失败') }
 }
 
@@ -108,8 +129,8 @@ onMounted(() => loadToday())
 .card-wrapper { perspective: 1000px; cursor: pointer; margin-bottom: 30px; }
 .review-card { position: relative; width: 100%; min-height: 300px; transition: transform 0.6s; transform-style: preserve-3d; }
 .review-card.is-flipped { transform: rotateY(180deg); }
-.card-front, .card-back { position: absolute; width: 100%; min-height: 300px; backface-visibility: hidden; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: center; }
-.card-front { background: #fff; }
+.card-front, .card-back { position: absolute; top: 0; left: 0; width: 100%; min-height: 300px; backface-visibility: hidden; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: center; }
+.card-front { background: #fff; z-index: 2; }
 .card-back { background: #f8f9ff; transform: rotateY(180deg); }
 .card-book { font-size: 14px; color: #409eff; margin-bottom: 20px; }
 .card-quote { font-size: 18px; color: #333; line-height: 1.8; font-style: italic; text-align: center; }
