@@ -16,7 +16,8 @@ public class AsyncConfig {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(5);
-        executor.setQueueCapacity(50);
+        executor.setQueueCapacity(10); // 有意压低：配合 CallerRunsPolicy 实现背压
+        executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
         executor.setThreadNamePrefix("kb-sync-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.initialize();
