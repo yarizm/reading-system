@@ -14,10 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.SearchHitsImpl;
-import org.springframework.data.elasticsearch.core.TotalHitsRelation;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 
 import java.util.List;
@@ -29,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class BookSearchServiceTest {
@@ -88,29 +85,14 @@ class BookSearchServiceTest {
         doc.setCategory("Novel");
         doc.setCoverUrl("/files/cover.jpg");
 
-        SearchHit<EsBookDoc> hit = new SearchHit<>(
-                "es_book",
-                "10",
-                null,
-                1.5f,
-                new Object[0],
-                Map.of(),
-                Map.of(),
-                null,
-                null,
-                List.of(),
-                doc
-        );
-        SearchHits<EsBookDoc> hits = new SearchHitsImpl<>(
-                1,
-                TotalHitsRelation.EQUAL_TO,
-                1.5f,
-                null,
-                null,
-                List.of(hit),
-                null,
-                null
-        );
+        org.springframework.data.elasticsearch.core.SearchHit<EsBookDoc> hit = mock(org.springframework.data.elasticsearch.core.SearchHit.class);
+        when(hit.getContent()).thenReturn(doc);
+        when(hit.getScore()).thenReturn(1.5f);
+
+        org.springframework.data.elasticsearch.core.SearchHits<EsBookDoc> hits = mock(org.springframework.data.elasticsearch.core.SearchHits.class);
+        when(hits.getTotalHits()).thenReturn(1L);
+        when(hits.getSearchHits()).thenReturn(java.util.List.of(hit));
+
         when(elasticsearchOperations.search(any(NativeQuery.class), eq(EsBookDoc.class))).thenReturn(hits);
 
         Map<String, Object> result = service.search("search", "", 1, 10);
@@ -130,16 +112,9 @@ class BookSearchServiceTest {
 
     @Test
     void searchNormalizesInvalidPaginationBeforeBuildingEsQuery() {
-        SearchHits<EsBookDoc> hits = new SearchHitsImpl<>(
-                0,
-                TotalHitsRelation.EQUAL_TO,
-                0.0f,
-                null,
-                null,
-                List.of(),
-                null,
-                null
-        );
+        org.springframework.data.elasticsearch.core.SearchHits<EsBookDoc> hits = mock(org.springframework.data.elasticsearch.core.SearchHits.class);
+        when(hits.getTotalHits()).thenReturn(0L);
+        when(hits.getSearchHits()).thenReturn(java.util.List.of());
         when(elasticsearchOperations.search(any(NativeQuery.class), eq(EsBookDoc.class))).thenReturn(hits);
 
         Map<String, Object> result = service.search("search", "", 0, 0);

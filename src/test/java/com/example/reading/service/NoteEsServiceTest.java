@@ -10,9 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.SearchHitsImpl;
-import org.springframework.data.elasticsearch.core.TotalHitsRelation;
+
 import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -24,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class NoteEsServiceTest {
@@ -56,16 +55,10 @@ class NoteEsServiceTest {
 
     @Test
     void searchNotesNormalizesInvalidPaginationBeforeBuildingEsQuery() {
-        SearchHits<EsNoteDoc> hits = new SearchHitsImpl<>(
-                0,
-                TotalHitsRelation.EQUAL_TO,
-                0.0f,
-                null,
-                null,
-                List.of(),
-                null,
-                null
-        );
+        org.springframework.data.elasticsearch.core.SearchHits<EsNoteDoc> hits = mock(org.springframework.data.elasticsearch.core.SearchHits.class);
+        when(hits.getTotalHits()).thenReturn(0L);
+        when(hits.iterator()).thenReturn(java.util.Collections.emptyIterator());
+        when(hits.stream()).thenReturn(java.util.stream.Stream.empty());
         when(elasticsearchOperations.search(any(CriteriaQuery.class), eq(EsNoteDoc.class))).thenReturn(hits);
         when(noteTagViewService.listTagInfoByNoteIds(any())).thenReturn(Map.of());
 
