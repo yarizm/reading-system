@@ -149,6 +149,10 @@ docker compose -f docker-compose.yml -f docker-compose.dify.yml up -d
 
 该方式会把 `backend` 接入 `${DIFY_DOCKER_NETWORK:-docker_default}`，并默认使用 `http://docker-api-1:5001/v1` 作为 Dify 内网地址。网络名或地址不一致时，在 `.env` 中覆盖 `DIFY_DOCKER_NETWORK`、`DIFY_DOCKER_BASE_URL`、`DIFY_DOCKER_CHAT_URL`、`DIFY_DOCKER_WORKFLOW_URL` 和 `DIFY_DOCKER_KB_URL`。
 
+### 关于 API Key
+
+`docker-compose.dify.yml` 仅覆盖 Dify 的内网访问地址（URL）。API Key（`DIFY_READING_KEY`、`DIFY_NOTE_KEY` 等）是 Dify 应用级凭据，与 Dify 是否本地部署无关，仍从 `.env` 的对应变量读取，无需额外覆盖。
+
 ## 手动本地启动
 
 ### 1. 准备基础服务
@@ -243,8 +247,8 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 ## 数据库与搜索
 
 - Flyway 已启用：`spring.flyway.enabled=true`，迁移位置为 `classpath:db/migration`。
-- `V0__baseline.sql` 是完整建表基线，不再需要手动执行旧的零散 SQL。
-- 已有数据库首次启用 Flyway 时会使用 `baseline-on-migrate=true` 建立基线记录。
+- **新部署（推荐）：** 直接启动即可，Flyway 会自动执行 `V0__baseline.sql` 建全表，无需手动执行 SQL。
+- **旧环境迁移：** 若已有通过手动 SQL 建立的历史数据库，需按以下顺序执行补充脚本，再通过 `baseline-on-migrate` 建立 Flyway 基线记录：`auth.sql → booklist.sql → social.sql → migration_user_upload.sql`。这四个文件仅用于历史数据兼容，新部署不需要执行。
 - 历史真实数据 dump 已从 `src/main/resources` 移除，避免打包进 jar 或泄露隐私。
 - Elasticsearch 文本字段使用内置 `cjk` analyzer，兼容官方 Docker ES 镜像。
 - 如果修改过 `EsBookDoc` mapping，需要删除并重建 `es_book` 索引，再调用搜索同步入口重新写入数据。

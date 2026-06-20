@@ -149,8 +149,8 @@ Standard layered architecture:
 ### Database
 
 - Database name: `smartreader`, charset `utf8mb4`
-- No complete init SQL exists. Supplementary scripts are in `src/main/resources/db/`.
-- Execution order: `auth.sql` → `booklist.sql` → `social.sql` → `migration_user_upload.sql`
+- Flyway is enabled. `V0__baseline.sql` automatically creates all tables on startup.
+- The legacy supplementary scripts (`auth.sql`, etc.) are only required if migrating from a legacy manual SQL database before establishing the Flyway baseline. New deployments do not need them.
 
 ### Elasticsearch Note Search
 

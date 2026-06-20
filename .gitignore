@@ -29,10 +29,13 @@ venv/
 .vscode/
 .DS_Store
 
-# Claude / Playwright
+# AI Agent / Claude / Playwright
+.agents/
 .claude/
 .playwright-mcp/
 .superpowers/
+ORIGINAL_REQUEST.md
+TEST_READY.md
 Thumbs.db
 *.iws
 *.iml
