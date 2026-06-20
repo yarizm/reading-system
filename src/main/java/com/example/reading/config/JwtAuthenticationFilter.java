@@ -40,9 +40,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         Long userId = authContextService.currentUserId(token);
         if (userId == null) {
-            response.setContentType("application/json;charset=UTF-8");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"code\":\"401\",\"msg\":\"未登录或登录已过期\"}");
+            // 设计决策：token 无效/过期时不在此处返回 401，而是放行给 Spring Security
+            // 的 authorizeHttpRequests 规则决定。这样 permitAll() 路径不会因携带过期
+            // token 而被误拦截。受保护路径仍会由 authenticationEntryPoint 返回 401。
+            filterChain.doFilter(request, response);
             return;
         }
 

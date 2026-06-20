@@ -6,7 +6,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: smartreader
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -20,7 +20,7 @@ services:
     image: redis:7-alpine
     container_name: reading-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -35,14 +35,16 @@ services:
     container_name: reading-elasticsearch
     environment:
       discovery.type: single-node
-      xpack.security.enabled: false
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"   # 仅禁用 HTTPS，保留用户名密码
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?请在 .env 中设置 ELASTIC_PASSWORD}
       ES_JAVA_OPTS: -Xms512m -Xmx512m
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
+      test: ["CMD-SHELL", "curl -u elastic:${ELASTIC_PASSWORD} -s http://localhost:9200/_cluster/health | grep -E -q 'green|yellow'"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -51,8 +53,12 @@ services:
   tts:
     build: ./lightweight-tts-service
     container_name: reading-tts
-    ports:
-      - "8091:8091"
+    # 不暴露端口：backend 通过 Docker 内部网络 http://tts:8091 访问
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   backend:
@@ -64,6 +70,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://reading-mysql:3306/smartreader?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATA_REDIS_HOST: reading-redis
       SPRING_ELASTICSEARCH_URIS: http://reading-elasticsearch:9200
+      SPRING_ELASTICSEARCH_USERNAME: elastic
+      SPRING_ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
       APP_ELASTICSEARCH_ENABLED: "true"
       APP_REDIS_ENABLED: "true"
       TTS_LIGHTWEIGHT_BASE_URL: http://tts:8091
@@ -80,7 +88,8 @@ services:
       DIFY_INSIGHT_KEY: ${DIFY_INSIGHT_KEY}
       DIFY_KB_KEY: ${DIFY_KB_KEY}
       DIFY_KB_DATASET_ID: ${DIFY_KB_DATASET_ID}
-      APP_AUTH_TOKEN_SECRET: ${APP_AUTH_TOKEN_SECRET:-change_this_to_a_long_random_secret}
+      APP_AUTH_TOKEN_SECRET: ${APP_AUTH_TOKEN_SECRET:?请在 .env 中设置 APP_AUTH_TOKEN_SECRET}
+      APP_AUTH_TOKEN_TTL_MILLIS: ${APP_AUTH_TOKEN_TTL_MILLIS:-86400000}
       SPRING_FLYWAY_BASELINE_VERSION: 0
     volumes:
       - uploads:/app/uploads
