@@ -44,11 +44,10 @@ public class DifyWorkflowClient {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> extractOutputs(Map<?, ?> response) {
-        if (response.containsKey("code") && !response.containsKey("data")) {
-            String difyCode = String.valueOf(response.get("code"));
-            Object message = response.get("message");
-            String difyMsg = message != null ? String.valueOf(message) : "未知错误";
+    private Map<String, Object> extractOutputs(Map<String, Object> response) {
+        if (com.example.reading.util.DifyResponseUtil.isError(response)) {
+            String difyCode = com.example.reading.util.DifyResponseUtil.getErrorCode(response);
+            String difyMsg = com.example.reading.util.DifyResponseUtil.getErrorMessage(response);
             if ("not_workflow_app".equals(difyCode)) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                         "Dify 应用类型错误：配置的 KEY 对应的不是 Workflow 应用，请在 Dify 后台确认");
@@ -57,14 +56,12 @@ public class DifyWorkflowClient {
                     "Dify 错误: [" + difyCode + "] " + difyMsg);
         }
 
-        Object dataObject = response.get("data");
-        if (dataObject instanceof Map<?, ?> data) {
-            Object outputsObject = data.get("outputs");
-            if (outputsObject instanceof Map<?, ?> outputs) {
-                Map<String, Object> result = new HashMap<>();
-                outputs.forEach((key, value) -> result.put(String.valueOf(key), value));
-                return result;
-            }
+        Map<String, Object> data = com.example.reading.util.DifyResponseUtil.getData(response);
+        Object outputsObject = data.get("outputs");
+        if (outputsObject instanceof Map<?, ?> outputs) {
+            Map<String, Object> result = new HashMap<>();
+            outputs.forEach((key, value) -> result.put(String.valueOf(key), value));
+            return result;
         }
 
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Dify 返回格式不正确");

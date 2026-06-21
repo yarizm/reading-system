@@ -162,6 +162,14 @@ def test_whitelist_auth_sendcode(backend_url):
     assert resp.status_code != 401
     assert resp.status_code == 200 or resp.status_code == 400
 
+def test_whitelist_auth_register(backend_url):
+    """Test POST /auth/register is whitelisted and does not return 401
+    （未注册用户必须能访问注册接口，否则陷入"先有鸡还是先有蛋"的死锁）"""
+    resp = requests.post(f"{backend_url}/auth/register", json={})
+    assert resp.status_code != 401
+    # 具体业务校验失败应该是 400，而不是 401
+    assert resp.status_code in (200, 400)
+
 
 # ----------------- TIER 1: FEATURE 5 (Non-Whitelisted Paths) -----------------
 
