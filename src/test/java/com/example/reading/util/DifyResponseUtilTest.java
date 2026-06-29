@@ -35,4 +35,35 @@ class DifyResponseUtilTest {
         Map<String, Object> response = Map.of("data", Map.of("status", "succeeded"));
         assertFalse(DifyResponseUtil.isError(response));
     }
+
+    @Test
+    void nullResponse_isError() {
+        assertTrue(DifyResponseUtil.isError(null));
+        assertEquals("NULL_RESPONSE", DifyResponseUtil.getErrorCode(null));
+        assertEquals("响应为空", DifyResponseUtil.getErrorMessage(null));
+    }
+
+    @Test
+    void getDataWithNullResponse_throwsException() {
+        assertThrows(IllegalArgumentException.class, () -> DifyResponseUtil.getData(null));
+    }
+
+    @Test
+    void getDataWithMissingDataField_throwsException() {
+        Map<String, Object> response = Map.of("code", "success");
+        assertThrows(IllegalArgumentException.class, () -> DifyResponseUtil.getData(response));
+    }
+
+    @Test
+    void getDataWithNonMapData_throwsException() {
+        Map<String, Object> response = Map.of("data", "not_a_map");
+        assertThrows(IllegalArgumentException.class, () -> DifyResponseUtil.getData(response));
+    }
+
+    @Test
+    void getDataWithNullDataValue_throwsException() {
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("data", null);
+        assertThrows(IllegalArgumentException.class, () -> DifyResponseUtil.getData(response));
+    }
 }

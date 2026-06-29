@@ -18,11 +18,17 @@ public class DifyResponseUtil {
     }
 
     public static String getErrorCode(Map<String, Object> response) {
+        if (response == null) {
+            return "NULL_RESPONSE";
+        }
         Object code = response.get("code");
         return code == null ? "UNKNOWN" : String.valueOf(code);
     }
 
     public static String getErrorMessage(Map<String, Object> response) {
+        if (response == null) {
+            return "响应为空";
+        }
         Object msg = response.get("message");
         return msg == null ? "Dify 调用失败，未返回 message" : String.valueOf(msg);
     }
@@ -30,7 +36,13 @@ public class DifyResponseUtil {
     /** 成功时安全取出 data 节点，避免后续代码到处做空判断。 */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> getData(Map<String, Object> response) {
+        if (response == null || !response.containsKey("data")) {
+            throw new IllegalArgumentException("响应缺少 data 字段");
+        }
         Object data = response.get("data");
-        return data instanceof Map ? (Map<String, Object>) data : Map.of();
+        if (!(data instanceof Map)) {
+            throw new IllegalArgumentException("data 字段不是 Map 类型: " + data);
+        }
+        return (Map<String, Object>) data;
     }
 }
