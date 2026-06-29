@@ -13,7 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 .\mvnw.cmd spring-boot:run                    # Windows
 ./mvnw spring-boot:run                        # Linux/macOS
 .\mvnw.cmd -q -DskipTests compile             # Compile only (CI check)
-.\mvnw.cmd test                               # Run tests (none exist yet)
+.\mvnw.cmd test                               # Run all backend tests
+.\mvnw.cmd test -Dtest=AuthControllerTest     # Run a single test class
+.\mvnw.cmd test -Dtest=AuthControllerTest#testLogin  # Run a single test method
 ```
 
 ### Desktop Frontend (reading-ui)
@@ -22,6 +24,7 @@ cd reading-ui
 npm ci
 npm run dev       # Dev server at http://localhost:5173
 npm run build     # Production build
+npm run test      # Run Vitest unit tests
 ```
 
 ### Mobile Frontend (reading-mobile-ui)
@@ -40,13 +43,20 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8091
 # Or via Docker: docker compose -f docker-compose.tts.yml up -d
 ```
 
+### E2E Tests
+```powershell
+cd e2e-tests
+pip install -r requirements.txt
+python run_tests.py    # Requires running backend + infrastructure
+```
+
 ## Architecture
 
 ### Monorepo Layout
 
 | Directory | Tech | Purpose |
 |---|---|---|
-| `src/main` | Java 17 / Spring Boot 3.2.2 | REST API, WebSocket, business logic |
+| `src/main` | Java 17 / Spring Boot 3.3.6 | REST API, WebSocket, business logic |
 | `reading-ui` | Vue 3 / Vite / Element Plus | Desktop web frontend |
 | `reading-mobile-ui` | Vue 3 / Vite / Vant / Pinia | Mobile web frontend |
 | `lightweight-tts-service` | Python / FastAPI / edge-tts | TTS microservice |
@@ -61,8 +71,9 @@ Standard layered architecture:
 - `entity/` — Database entities with Lombok annotations.
 - `dto/` — Request/response DTOs.
 - `config/` — Spring configuration (Security, MyBatis-Plus, WebSocket, WebMvc, TTS properties).
-- `repository/` — Elasticsearch repository (`EsBookRepository`).
+- `repository/` — Elasticsearch repositories (`EsBookRepository`, `EsNoteRepository`).
 - `utils/` — Utilities (chapter parser, WebSocket handler).
+- `util/` — Additional utilities (`DifyResponseUtil`).
 - `common/` — Shared types (`Result`).
 
 ### Key Architectural Decisions
@@ -149,7 +160,7 @@ Standard layered architecture:
 ### Database
 
 - Database name: `smartreader`, charset `utf8mb4`
-- Flyway is enabled. `V0__baseline.sql` automatically creates all tables on startup.
+- Flyway is enabled with 4 migrations: `V0__baseline.sql` (core tables), `V1__ai_generated_content_and_guide.sql`, `V2__note_management.sql`, `V3__note_review.sql`. All run automatically on startup.
 - The legacy supplementary scripts (`auth.sql`, etc.) are only required if migrating from a legacy manual SQL database before establishing the Flyway baseline. New deployments do not need them.
 
 ### Elasticsearch Note Search
@@ -176,7 +187,15 @@ Spring Boot does NOT auto-load `.env` files. Set via IDE run config, shell, or d
 
 ## CI
 
-GitHub Actions (`.github/workflows/test.yml`) runs compile/build checks only — no real MySQL/Redis/ES connections, no tests, no API keys needed. Four parallel jobs: backend compile, desktop build, mobile build, TTS Python check.
+GitHub Actions (`.github/workflows/test.yml`) runs four parallel jobs: backend test (`mvnw test`), desktop build + test, mobile build, TTS Python compile check. No real MySQL/Redis/ES connections or API keys needed — tests use mocks.
+
+## Graceful Degradation
+
+Both Elasticsearch and Redis are optional. Controlled by feature flags in `application.yml`:
+- `app.elasticsearch.enabled` (default `false`) — falls back to MySQL search when disabled
+- `app.redis.enabled` (default `false`) — falls back to in-memory caching when disabled
+
+The `DegradeEnvironmentPostProcessor` auto-disables these when the flag is off. **Do not** add hard dependencies on ES/Redis in new code — always check the flag or use the existing abstraction layers.
 
 ## Known Issues & Quirks
 
